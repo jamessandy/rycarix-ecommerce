@@ -1,0 +1,379 @@
+// Prisma Schema for Rycarix Haute E-Commerce Platform
+// Scalable Architecture: Haircare, Haute Perfumery, and Future Category Expansions
+// Integrated with Stripe & Klarna Installments
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  VIP_CLIENT
+  ADMIN
+  CURATOR
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  RETURNED
+}
+
+enum PaymentProvider {
+  STRIPE_KLARNA
+  KLARNA_DIRECT
+  STRIPE_CARD
+  APPLE_PAY
+}
+
+enum PaymentStatus {
+  REQUIRES_ACTION
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  DISPUTED
+}
+
+enum KlarnaPlanType {
+  PAY_IN_4
+  PAY_NOW
+  PAY_LATER_30
+  FINANCING
+}
+
+// -----------------------------------------------------------------------------
+// USER & CLIENT ACCOUNTS
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  emailVerified DateTime?
+  name          String?
+  phone         String?
+  role          Role           @default(USER)
+  image         String?
+  hashedPassword String?
+
+  addresses     Address[]
+  orders        Order[]
+  wishlist      WishlistItem[]
+  reviews       Review[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([email])
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String   @default("SHIPPING") // "SHIPPING" | "BILLING"
+  firstName    String
+  lastName     String
+  company      String?
+  street       String
+  apartment    String?
+  city         String
+  state        String
+  postalCode   String
+  country      String   @default("US")
+  phone        String?
+  isDefault    Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// -----------------------------------------------------------------------------
+// TAXONOMY & DYNAMIC CATALOG ARCHITECTURE
+// -----------------------------------------------------------------------------
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  displayOrder Int       @default(0)
+  isActive    Boolean    @default(true)
+
+  // Hierarchical nesting for unlimited taxonomy depth
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+
+  products    ProductCategory[]
+  metadata    Json?      // Category custom attributes and filter schema
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([slug])
+}
+
+model Product {
+  id             String            @id @default(cuid())
+  title          String
+  slug           String            @unique
+  subtitle       String?           // e.g., "Extrait de Parfum • 30% Essence Concentration"
+  summary        String?           // Brief editorial overview
+  description    String            // Full description / sensory narrative
+  
+  // Editorial & Transparency Accordion Content
+  ingredients    String?           // Detailed INCI formulation list
+  howToUse       String?           // Application rituals and techniques
+  sourcingEthics String?           // Sourcing terroir, sustainability & ethical certs
+  
+  status         ProductStatus     @default(DRAFT)
+  isFeatured     Boolean           @default(false)
+  
+  // Base display price cached from default variant
+  basePrice      Decimal           @db.Decimal(10, 2)
+  compareAtPrice Decimal?          @db.Decimal(10, 2)
+
+  // Dynamic EAV / Extensible JSON Specification
+  // Allows hair products (porosity, hair type, scent note),
+  // perfumes (olfactory family, top/heart/base notes, flacon type),
+  // and future items (candles, skincare elixirs, silk accessories) without schema alters
+  attributes     Json?
+
+  categories     ProductCategory[]
+  variants       ProductVariant[]
+  images         ProductImage[]
+  reviews        Review[]
+  orderItems     OrderItem[]
+  wishlistItems  WishlistItem[]
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([isFeatured])
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
+}
+
+model ProductVariant {
+  id             String      @id @default(cuid())
+  productId      String
+  product        Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  sku            String      @unique
+  barcode        String?
+  title          String      // e.g. "100ml / 3.4 fl. oz." or "50ml Flacon"
+  
+  price          Decimal     @db.Decimal(10, 2)
+  compareAtPrice Decimal?    @db.Decimal(10, 2)
+  costPrice      Decimal?    @db.Decimal(10, 2)
+  
+  inventory      Int         @default(0)
+  lowStockAlert  Int         @default(5)
+  weightGrams    Int?
+
+  // Specific variant attributes (e.g. { "volume": "100ml", "finish": "Obsidian Glass" })
+  attributes     Json?
+
+  isActive       Boolean     @default(true)
+  orderItems     OrderItem[]
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([productId])
+  @@index([sku])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  
+  // Tactical visual flags
+  isHero    Boolean  @default(false)
+  isTexture Boolean  @default(false) // Triggered on carousel hover for sensory texture swap!
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([isTexture])
+}
+
+// -----------------------------------------------------------------------------
+// ORDERS & FULFILLMENT
+// -----------------------------------------------------------------------------
+
+model Order {
+  id               String            @id @default(cuid())
+  orderNumber      String            @unique // e.g. "RY-98214"
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestEmail       String?
+  
+  status           OrderStatus       @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+  
+  currency         String            @default("USD")
+  subtotal         Decimal           @db.Decimal(10, 2)
+  tax              Decimal           @db.Decimal(10, 2) @default(0.00)
+  shippingCost     Decimal           @db.Decimal(10, 2) @default(0.00)
+  discountTotal    Decimal           @db.Decimal(10, 2) @default(0.00)
+  total            Decimal           @db.Decimal(10, 2)
+  
+  // Immutable address snapshots
+  shippingAddress  Json
+  billingAddress   Json?
+
+  // Tracking and fulfillment
+  carrier          String?           // e.g. "FedEx Priority", "DHL Express"
+  trackingNumber   String?
+  trackingUrl      String?
+
+  items            OrderItem[]
+  payments         Payment[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([orderNumber])
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id             String          @id @default(cuid())
+  orderId        String
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  variantId      String?
+  variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  // Snapshot at point of purchase
+  productTitle   String
+  variantTitle   String?
+  sku            String
+  unitPrice      Decimal         @db.Decimal(10, 2)
+  quantity       Int
+  total          Decimal         @db.Decimal(10, 2)
+  
+  attributesSnapshot Json?
+
+  createdAt      DateTime        @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// -----------------------------------------------------------------------------
+// PAYMENTS & KLARNA INSTALLMENT LIFECYCLE
+// -----------------------------------------------------------------------------
+
+model Payment {
+  id                   String          @id @default(cuid())
+  orderId              String
+  order                Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider             PaymentProvider @default(STRIPE_KLARNA)
+  providerTransactionId String         @unique // Stripe PaymentIntent ID or Klarna Order ID
+  status               PaymentStatus   @default(PROCESSING)
+  amount               Decimal         @db.Decimal(10, 2)
+  currency             String          @default("USD")
+
+  // Klarna-specific telemetry & schedule breakdown
+  isKlarnaInstallment  Boolean         @default(false)
+  klarnaPlanType       KlarnaPlanType? @default(PAY_IN_4)
+  klarnaInstallments   Int?            @default(4)
+  installmentAmount    Decimal?        @db.Decimal(10, 2) // e.g. $70.00 each
+  installmentsPaid     Int?            @default(1)
+  nextInstallmentDue   DateTime?
+  
+  // Detailed schedule JSON: array of { installmentIndex, amount, dueDate, status }
+  installmentSchedule  Json?
+  
+  settledAt            DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([orderId])
+  @@index([providerTransactionId])
+  @@index([status])
+}
+
+// -----------------------------------------------------------------------------
+// CLIENT ENGAGEMENT: REVIEWS & WISHLIST
+// -----------------------------------------------------------------------------
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  rating    Int      @default(5)
+  headline  String?
+  body      String
+  isVerifiedPurchase Boolean @default(true)
+  isApproved Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([userId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
