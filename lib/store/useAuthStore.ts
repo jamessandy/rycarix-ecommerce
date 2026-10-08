@@ -110,9 +110,9 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // Default to VIP client for rich first load experience
-      user: DEMO_USERS.VIP_CLIENT,
-      isAuthenticated: true,
+      // Start logged out for real users
+      user: null,
+      isAuthenticated: false,
 
       login: async (email: string, _password?: string) => {
         await new Promise((resolve) => setTimeout(resolve, 350));

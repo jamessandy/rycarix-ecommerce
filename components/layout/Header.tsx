@@ -225,42 +225,7 @@ export default function Header() {
                       )}
                     </div>
 
-                    {/* Quick Demo Persona Switcher */}
-                    <div className="px-4 py-2 bg-ry-pearl/60 border-b border-ry-ash/40">
-                      <span className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1.5 flex items-center gap-1">
-                        <KeyRound className="w-3 h-3" /> Demo Switcher
-                      </span>
-                      <div className="grid grid-cols-2 gap-1 text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            loginAsDemo('VIP_CLIENT');
-                            setUserDropdownOpen(false);
-                          }}
-                          className={`p-1 text-left border ${
-                            user.role === 'VIP_CLIENT'
-                              ? 'bg-ry-burgundy text-ry-white border-ry-burgundy'
-                              : 'bg-white hover:bg-ry-pearl text-ry-charcoal border-ry-ash/50'
-                          }`}
-                        >
-                          VIP Customer
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            loginAsDemo('ADMIN');
-                            setUserDropdownOpen(false);
-                          }}
-                          className={`p-1 text-left border ${
-                            user.role === 'ADMIN'
-                              ? 'bg-ry-burgundy text-ry-white border-ry-burgundy'
-                              : 'bg-white hover:bg-ry-pearl text-ry-charcoal border-ry-ash/50'
-                          }`}
-                        >
-                          Store Admin
-                        </button>
-                      </div>
-                    </div>
+
 
                     <div className="pt-2 px-4">
                       <button
@@ -289,15 +254,7 @@ export default function Header() {
               </Link>
             )}
 
-            {/* Direct Admin link shortcut */}
-            <Link
-              href="/dashboard/admin"
-              className="hidden md:flex items-center gap-1 text-[10px] uppercase tracking-editorial text-ry-stone hover:text-ry-onyx transition-colors"
-              title="Admin Dashboard"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin</span>
-            </Link>
+
 
             {/* Slide-out Cart Trigger */}
             <button
@@ -460,13 +417,7 @@ export default function Header() {
                   </Link>
                 )}
 
-                <Link
-                  href="/dashboard/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 pt-1"
-                >
-                  <Shield className="w-4 h-4" /> Admin Dashboard
-                </Link>
+
               </div>
             </nav>
           </div>
