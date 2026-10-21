@@ -67,7 +67,11 @@ export async function POST(req: NextRequest) {
           customer_email: customerEmail || undefined,
           billing_address_collection: 'required',
           shipping_address_collection: {
-            allowed_countries: ['US', 'CA', 'GB', 'FR', 'DE', 'AE', 'JP'],
+            allowed_countries: (currency === 'gbp'
+              ? ['GB', 'US', 'CA', 'FR', 'DE', 'AE', 'JP']
+              : currency === 'usd'
+              ? ['US', 'CA', 'GB', 'FR', 'DE', 'AE', 'JP']
+              : ['FR', 'DE', 'GB', 'US', 'CA', 'AE', 'JP']) as any,
           },
           shipping_options: [
             {
