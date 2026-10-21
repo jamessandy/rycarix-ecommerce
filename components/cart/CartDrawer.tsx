@@ -48,14 +48,16 @@ export default function CartDrawer() {
 
       const data = await response.json();
       if (data.url) {
+        closeCart();
         window.location.href = data.url;
       } else {
-        alert(data.message || 'Proceeding to secure checkout...');
-        setIsCheckingOut(false);
+        closeCart();
+        window.location.href = '/checkout';
       }
     } catch (err) {
       console.error('Checkout error:', err);
-      setIsCheckingOut(false);
+      closeCart();
+      window.location.href = '/checkout';
     }
   };
 

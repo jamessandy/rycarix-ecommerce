@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
         currency: currency,
         product_data: {
           name: item.title,
-          description: `${item.variantTitle} • SKU: ${item.sku || 'RY-01'}`,
-          images: item.image ? [item.image] : [],
+          description: item.variantTitle ? `${item.variantTitle} • SKU: ${item.sku || 'RY-01'}` : undefined,
+          images: item.image && typeof item.image === 'string' && item.image.startsWith('http') ? [item.image] : [],
         },
         unit_amount: Math.round(item.price * 100), // Stripe expects cents
       },
@@ -58,54 +58,62 @@ export async function POST(req: NextRequest) {
 
     // If Stripe API key is configured, create an authentic Stripe + Klarna session
     if (stripe) {
-      const session = await stripe.checkout.sessions.create({
-        // Enable card AND Klarna as primary payment methods, Link for Apple Pay / Google Pay
-        payment_method_types: ['card', 'klarna', 'link'],
-        payment_method_options: {
-          klarna: {
-            preferred_locale: 'en-US',
-          } as any,
-        },
-        line_items,
-        mode: 'payment',
-        customer_email: customerEmail || undefined,
-        billing_address_collection: 'required',
-        shipping_address_collection: {
-          allowed_countries: ['US', 'CA', 'GB', 'FR', 'DE', 'AE', 'JP'],
-        },
-        shipping_options: [
-          {
-            shipping_rate_data: {
-              type: 'fixed_amount',
-              fixed_amount: { amount: 0, currency: currency },
-              display_name: 'Complimentary White-Glove Courier',
-              delivery_estimate: {
-                minimum: { unit: 'business_day', value: 2 },
-                maximum: { unit: 'business_day', value: 3 },
+      try {
+        const session = await stripe.checkout.sessions.create({
+          // Enable card AND Klarna as primary payment methods, Link for Apple Pay / Google Pay
+          payment_method_types: ['card', 'klarna', 'link'],
+          line_items,
+          mode: 'payment',
+          customer_email: customerEmail || undefined,
+          billing_address_collection: 'required',
+          shipping_address_collection: {
+            allowed_countries: ['US', 'CA', 'GB', 'FR', 'DE', 'AE', 'JP'],
+          },
+          shipping_options: [
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: 0, currency: currency },
+                display_name: 'Complimentary White-Glove Courier',
+                delivery_estimate: {
+                  minimum: { unit: 'business_day', value: 2 },
+                  maximum: { unit: 'business_day', value: 3 },
+                },
               },
             },
-          },
-          {
-            shipping_rate_data: {
-              type: 'fixed_amount',
-              fixed_amount: { amount: 2500, currency: currency },
-              display_name: 'Priority Next-Morning Express',
-              delivery_estimate: {
-                minimum: { unit: 'business_day', value: 1 },
-                maximum: { unit: 'business_day', value: 1 },
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: 2500, currency: currency },
+                display_name: 'Priority Next-Morning Express',
+                delivery_estimate: {
+                  minimum: { unit: 'business_day', value: 1 },
+                  maximum: { unit: 'business_day', value: 1 },
+                },
               },
             },
+          ],
+          success_url: `${host}/dashboard/user?session_id={CHECKOUT_SESSION_ID}&status=success`,
+          cancel_url: `${host}/?checkout_canceled=true`,
+          metadata: {
+            platform: 'Rycarix Haute E-Commerce',
+            paymentChannel: 'Klarna_Installments_Preferred',
           },
-        ],
-        success_url: `${host}/dashboard/user?session_id={CHECKOUT_SESSION_ID}&status=success`,
-        cancel_url: `${host}/?checkout_canceled=true`,
-        metadata: {
-          platform: 'Rycarix Haute E-Commerce',
-          paymentChannel: 'Klarna_Installments_Preferred',
-        },
-      });
+        });
 
-      return NextResponse.json({ url: session.url, sessionId: session.id });
+        if (session.url) {
+          return NextResponse.json({ url: session.url, sessionId: session.id });
+        }
+      } catch (stripeErr: any) {
+        console.warn('Stripe checkout session failed, falling back to simulated checkout:', stripeErr.message);
+        return NextResponse.json({
+          url: `/checkout`,
+          message: 'Redirecting to checkout...',
+          simulated: true,
+          line_items,
+          fallbackReason: stripeErr.message,
+        });
+      }
     }
 
     // Graceful Simulated Luxury Checkout for Sandbox/Preview mode
