@@ -11,9 +11,9 @@ interface HeroProps {
 export default function Hero({ onSelectCategory }: HeroProps) {
   const quickCategories = [
     { label: 'All Products', value: 'ALL' },
+    { label: 'Hair', value: 'Hair' },
     { label: 'Perfume', value: 'Haute Parfumerie' },
     { label: 'Skincare', value: 'Botanical Skincare' },
-    { label: 'Hair Care', value: 'Hair Care' },
     { label: 'Home & Candles', value: 'Home & Living' },
     { label: 'Accessories', value: 'Accessories' },
   ];
@@ -50,18 +50,18 @@ export default function Hero({ onSelectCategory }: HeroProps) {
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-ry-white/20 bg-ry-white/10 backdrop-blur-md mb-6 animate-fade-in">
           <Sparkles className="w-3.5 h-3.5 text-ry-ash" />
           <span className="text-[10px] uppercase tracking-[0.3em] font-sans text-ry-ash">
-            Luxury Perfume, Hair Care & Living
+            Luxury Hair, Perfume & Living
           </span>
         </div>
 
         {/* Headline */}
         <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-normal leading-[1.12] tracking-tight mb-6 text-ry-white max-w-4xl mx-auto">
           Luxury Essentials <br className="hidden sm:inline" />
-          <span className="italic font-light text-ry-oatmeal">for Scent, Hair & Skin</span>
+          <span className="italic font-light text-ry-oatmeal">for Hair, Scent & Skin</span>
         </h1>
 
         <p className="font-sans text-xs sm:text-base text-ry-ash/90 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-          Discover long-lasting perfumes, restorative botanical hair oils, high-potency skincare, and scented candles.
+          Discover restorative botanical hair elixirs, long-lasting perfumes, high-potency skincare, and scented candles.
         </p>
 
         {/* Primary Call to Actions */}

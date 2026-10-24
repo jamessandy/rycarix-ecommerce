@@ -96,7 +96,7 @@ const MOCK_WISHLIST = [
     id: 'prod-hair-2',
     title: 'Crème de Soie Keratin Restorative Mask',
     price: 110.0,
-    category: 'Hair Care',
+    category: 'Hair',
     image:
       'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=600&auto=format&fit=crop',
   },

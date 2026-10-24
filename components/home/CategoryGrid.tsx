@@ -26,7 +26,7 @@ export default function CategoryGrid({ onSelectCategory }: CategoryGridProps) {
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-ry-stone max-w-md font-sans">
-            Explore our curated selection of fine fragrances, restorative hair care, clean skincare, and scented home goods.
+            Explore our curated selection of restorative botanical hair, fine fragrances, clean skincare, and scented home goods.
           </p>
         </div>
 

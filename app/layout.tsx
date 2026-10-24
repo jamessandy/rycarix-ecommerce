@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Playfair_Display, Inter } from 'next/font/google';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/cart/CartDrawer';
+import TawkToChat from '@/components/support/TawkToChat';
+import GoogleAnalytics from '@/components/analytics/GoogleAnalytics';
+import TrafficTracker from '@/components/analytics/TrafficTracker';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -21,21 +25,23 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Rycarix | Luxury Perfumes, Hair Care & Skincare',
+  title: 'Rycarix | Luxury Botanical Hair, Perfumes & Skincare',
   description:
-    'Shop luxury fragrances, botanical hair care, clean skincare, and scented candles. Free shipping on orders over £150 and Klarna Pay in 4.',
+    'Shop artisanal botanical hair, luxury fragrances, clean skincare, and scented candles. Free shipping on orders over £150 and Klarna Pay in 4.',
   keywords: [
     'Rycarix',
+    'Luxury Hair',
+    'Artisanal Hair Formulations',
+    'Hair Nectars',
     'Perfume',
     'Fragrance',
-    'Luxury Hair Care',
     'Botanical Skincare',
     'Scented Candles',
     'Klarna',
   ],
   openGraph: {
-    title: 'Rycarix | Luxury Perfumes, Hair Care & Skincare',
-    description: 'Shop luxury fragrances, botanical hair care, clean skincare, and scented candles.',
+    title: 'Rycarix | Luxury Botanical Hair, Perfumes & Skincare',
+    description: 'Shop artisanal botanical hair, luxury fragrances, clean skincare, and scented candles.',
     url: 'https://www.rycarix.com',
     siteName: 'Rycarix',
     locale: 'en_US',
@@ -55,6 +61,11 @@ export default function RootLayout({
         <div className="flex-1">{children}</div>
         <CartDrawer />
         <Footer />
+        <TawkToChat />
+        <GoogleAnalytics />
+        <Suspense fallback={null}>
+          <TrafficTracker />
+        </Suspense>
       </body>
     </html>
   );

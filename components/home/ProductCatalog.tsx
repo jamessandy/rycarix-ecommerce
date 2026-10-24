@@ -33,9 +33,9 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
 
   const categoryOptions = [
     { label: 'All Products', value: 'ALL', count: PRODUCTS.length },
+    { label: 'Hair', value: 'Hair', count: PRODUCTS.filter(p => p.category === 'Hair' || p.category === 'Hair Care').length },
     { label: 'Perfume', value: 'Haute Parfumerie', count: PRODUCTS.filter(p => p.category === 'Haute Parfumerie').length },
     { label: 'Skincare', value: 'Botanical Skincare', count: PRODUCTS.filter(p => p.category === 'Botanical Skincare').length },
-    { label: 'Hair Care', value: 'Hair Care', count: PRODUCTS.filter(p => p.category === 'Hair Care').length },
     { label: 'Body & Bath', value: 'Body & Bath', count: PRODUCTS.filter(p => p.category === 'Body & Bath').length },
     { label: 'Home & Candles', value: 'Home & Living', count: PRODUCTS.filter(p => p.category === 'Home & Living').length },
     { label: 'Accessories', value: 'Accessories', count: PRODUCTS.filter(p => p.category === 'Accessories').length },
@@ -44,7 +44,10 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
   const filteredProducts = useMemo(() => {
     return PRODUCTS.filter((product) => {
       const matchesCategory =
-        activeCategory === 'ALL' || product.category === activeCategory;
+        activeCategory === 'ALL' ||
+        product.category === activeCategory ||
+        (activeCategory === 'Hair' && (product.category === 'Hair' || product.category === 'Hair Care')) ||
+        (activeCategory === 'Hair Care' && (product.category === 'Hair' || product.category === 'Hair Care'));
       const matchesSearch =
         searchQuery === '' ||
         product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,7 +103,7 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-ry-stone max-w-md font-sans">
-            Browse our curated selection of luxury perfumes, botanical hair care, clean skincare, and scented candles.
+            Browse our curated selection of restorative botanical hair, luxury perfumes, clean skincare, and scented candles.
           </p>
         </div>
 

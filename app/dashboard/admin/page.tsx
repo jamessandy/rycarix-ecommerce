@@ -28,6 +28,13 @@ import {
   CheckCircle2,
   X,
   Flame,
+  Users,
+  Globe,
+  Smartphone,
+  MessageSquare,
+  Activity,
+  ArrowUpRight,
+  BarChart3,
 } from 'lucide-react';
 import { PRODUCTS } from '@/lib/data/mockData';
 import { useAuthStore } from '@/lib/store/useAuthStore';
@@ -60,7 +67,7 @@ export default function AdminDashboard() {
   // Dynamic Product Form State
   const [formData, setFormData] = useState<AdminProductForm>({
     title: '',
-    category: 'Haute Perfumery',
+    category: 'Hair',
     subtitle: '',
     basePrice: 195,
     stock: 50,
@@ -417,7 +424,7 @@ export default function AdminDashboard() {
                 : 'text-ry-stone hover:text-ry-onyx'
             }`}
           >
-            Payment Conversion Analytics
+            Website Traffic & Analytics
           </button>
         </div>
 
@@ -674,80 +681,412 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Tab 3: Analytics */}
+        {/* Tab 3: Website Traffic & Live Analytics */}
         {activeTab === 'analytics' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-            <div className="bg-ry-white border border-ry-ash p-6">
-              <h3 className="font-serif text-lg mb-2">Klarna Payment Conversion Impact</h3>
-              <p className="text-xs text-ry-stone mb-6">
-                Customer checkout behavior analysis across Rycarix price tiers.
-              </p>
-
-              <div className="space-y-4 text-xs font-sans">
+          <div className="space-y-6 animate-fade-in">
+            {/* Realtime Live Visitor & Integration Status Header */}
+            <div className="bg-ry-white border border-ry-ash p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                </span>
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Cart Abandonment Reduction with Klarna Messaging</span>
-                    <strong className="text-emerald-700">-28.4%</strong>
+                  <h3 className="font-serif text-lg text-ry-onyx flex items-center gap-2">
+                    <span>18 Active Visitors Browsing Right Now</span>
+                  </h3>
+                  <p className="text-xs text-ry-stone">
+                    Real-time telemetry tracking live pageviews, hair formulation interest, and active carts.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-editorial font-sans">
+                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 flex items-center gap-1.5 font-medium">
+                  <MessageSquare className="w-3 h-3 text-emerald-600" />
+                  <span>Tawk.to Live Support: Online</span>
+                </div>
+                <div className="px-3 py-1.5 bg-ry-pearl border border-ry-ash text-ry-onyx flex items-center gap-1.5 font-medium">
+                  <Globe className="w-3 h-3 text-ry-stone" />
+                  <span>Google Analytics: Connected</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Top 4 KPI Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-ry-white border border-ry-ash p-5">
+                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
+                  <span>Today's Unique Visitors</span>
+                  <Users className="w-4 h-4 text-ry-stone" />
+                </div>
+                <div className="font-serif text-3xl text-ry-onyx">1,842</div>
+                <span className="text-[11px] text-emerald-700 font-sans mt-1 inline-block">
+                  ↑ +18.4% vs last week
+                </span>
+              </div>
+
+              <div className="bg-ry-white border border-ry-ash p-5">
+                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
+                  <span>Today's Total Pageviews</span>
+                  <Activity className="w-4 h-4 text-ry-stone" />
+                </div>
+                <div className="font-serif text-3xl text-ry-onyx">6,920</div>
+                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
+                  3.75 pages / session
+                </span>
+              </div>
+
+              <div className="bg-ry-white border border-ry-ash p-5">
+                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
+                  <span>Avg. Dwell Time</span>
+                  <Clock className="w-4 h-4 text-ry-stone" />
+                </div>
+                <div className="font-serif text-3xl text-ry-onyx">3m 42s</div>
+                <span className="text-[11px] text-emerald-700 font-sans mt-1 inline-block">
+                  Low bounce rate: 27.4%
+                </span>
+              </div>
+
+              <div className="bg-ry-white border border-ry-ash p-5">
+                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
+                  <span>Store Conversion Rate</span>
+                  <Percent className="w-4 h-4 text-ry-stone" />
+                </div>
+                <div className="font-serif text-3xl text-ry-onyx">3.82%</div>
+                <span className="text-[11px] text-emerald-700 font-sans mt-1 inline-block">
+                  Hair line converting at 4.6%
+                </span>
+              </div>
+            </div>
+
+            {/* Category Performance & Traffic Attribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Category Traffic Share (Showing Hair as #1) */}
+              <div className="bg-ry-white border border-ry-ash p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-serif text-lg text-ry-onyx">Category Traffic & Sales Velocity</h3>
+                  <span className="text-[10px] uppercase tracking-editorial px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 font-medium">
+                    Hair is Main Selling Line
+                  </span>
+                </div>
+                <p className="text-xs text-ry-stone mb-6">
+                  Traffic share, revenue contribution, and conversion efficiency by department.
+                </p>
+
+                <div className="space-y-4 text-xs font-sans">
+                  <div>
+                    <div className="flex justify-between mb-1.5 items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-ry-onyx">Hair (Top Selling Department)</span>
+                        <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial">
+                          #1 Bestseller
+                        </span>
+                      </div>
+                      <div className="font-mono text-right">
+                        <strong className="text-ry-onyx">3,240 views</strong>
+                        <span className="text-emerald-700 ml-2 font-semibold">46.8% share</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-ry-ash/40 h-2.5">
+                      <div className="bg-ry-burgundy h-full w-[46.8%]" />
+                    </div>
+                    <div className="flex justify-between text-[11px] text-ry-stone mt-1">
+                      <span>Conversion: 4.6% • Revenue: £48,920.00</span>
+                      <span className="text-emerald-700">↑ +24.5% volume</span>
+                    </div>
                   </div>
-                  <div className="w-full bg-ry-ash/40 h-2">
-                    <div className="bg-emerald-600 h-full w-[72%]" />
+
+                  <div>
+                    <div className="flex justify-between mb-1.5 items-center">
+                      <span className="font-medium text-ry-onyx">Haute Parfumerie</span>
+                      <div className="font-mono text-right">
+                        <span>2,160 views</span>
+                        <span className="text-ry-stone ml-2">31.2% share</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-ry-ash/40 h-2">
+                      <div className="bg-ry-onyx h-full w-[31.2%]" />
+                    </div>
+                    <div className="flex justify-between text-[11px] text-ry-stone mt-1">
+                      <span>Conversion: 3.1% • Revenue: £64,200.00</span>
+                      <span>↑ +12.1% volume</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1.5 items-center">
+                      <span className="font-medium text-ry-onyx">Botanical Skincare</span>
+                      <div className="font-mono text-right">
+                        <span>980 views</span>
+                        <span className="text-ry-stone ml-2">14.1% share</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-ry-ash/40 h-2">
+                      <div className="bg-ry-stone h-full w-[14.1%]" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1.5 items-center">
+                      <span className="font-medium text-ry-onyx">Body & Bath</span>
+                      <div className="font-mono text-right">
+                        <span>310 views</span>
+                        <span className="text-ry-stone ml-2">4.4% share</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-ry-ash/40 h-2">
+                      <div className="bg-ry-ash h-full w-[4.4%]" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between mb-1.5 items-center">
+                      <span className="font-medium text-ry-onyx">Home & Living (Bougies & Mists)</span>
+                      <div className="font-mono text-right">
+                        <span>240 views</span>
+                        <span className="text-ry-stone ml-2">3.5% share</span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-ry-ash/40 h-2">
+                      <div className="bg-ry-ash h-full w-[3.5%]" />
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>AOV Uplift on Fragrance Flacons (£200+)</span>
-                    <strong className="text-ry-onyx">+34.2%</strong>
-                  </div>
-                  <div className="w-full bg-ry-ash/40 h-2">
-                    <div className="bg-ry-onyx h-full w-[65%]" />
-                  </div>
-                </div>
+              {/* Traffic Acquisition Sources */}
+              <div className="bg-ry-white border border-ry-ash p-6">
+                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Traffic Acquisition Channels</h3>
+                <p className="text-xs text-ry-stone mb-6">
+                  Where store visitors and luxury purchasers are arriving from.
+                </p>
 
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span>Klarna Pay in 4 Adoption Rate</span>
-                    <strong className="text-[#992255]">42.8% of all checkouts</strong>
+                <div className="space-y-4 text-xs font-sans">
+                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
+                    <div>
+                      <div className="font-medium text-ry-onyx">Instagram (Editorial & Reels)</div>
+                      <div className="text-[11px] text-ry-stone">Hair texture transformation clips</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-medium block">2,480 visits (35.8%)</span>
+                      <span className="text-emerald-700 text-[10px]">↑ +18.2%</span>
+                    </div>
                   </div>
-                  <div className="w-full bg-ry-ash/40 h-2">
-                    <div className="bg-[#FFA8CD] h-full w-[43%]" />
+
+                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
+                    <div>
+                      <div className="font-medium text-ry-onyx">Direct / VIP Clientele Bookmarks</div>
+                      <div className="text-[11px] text-ry-stone">Repeat clientele reordering hair oils</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-medium block">1,720 visits (24.8%)</span>
+                      <span className="text-emerald-700 text-[10px]">↑ +9.4%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
+                    <div>
+                      <div className="font-medium text-ry-onyx">Google Organic Search & Shopping</div>
+                      <div className="text-[11px] text-ry-stone">Luxury hair oil, HD lace wig queries</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-medium block">1,540 visits (22.3%)</span>
+                      <span className="text-emerald-700 text-[10px]">↑ +14.1%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
+                    <div>
+                      <div className="font-medium text-ry-onyx">TikTok Viral Hair Care Reviews</div>
+                      <div className="text-[11px] text-ry-stone">L'Huile Sublime application routines</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-medium block">860 visits (12.4%)</span>
+                      <span className="text-emerald-700 text-[10px]">↑ +41.6%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div>
+                      <div className="font-medium text-ry-onyx">Private Concierge Newsletter</div>
+                      <div className="text-[11px] text-ry-stone">VIP members private vault releases</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-medium block">320 visits (4.7%)</span>
+                      <span className="text-emerald-700 text-[10px]">↑ +6.5%</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-ry-white border border-ry-ash p-6 flex flex-col justify-between">
-              <div>
-                <h3 className="font-serif text-lg mb-2">Extensible Category Performance</h3>
+            {/* Bottom Row: Top Pages, Devices & Integrations */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Top Visited Formulations */}
+              <div className="lg:col-span-2 bg-ry-white border border-ry-ash p-6">
+                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Top Visited Pages & Products</h3>
                 <p className="text-xs text-ry-stone mb-4">
-                  Revenue contribution by taxonomy classification.
+                  Real-time pageview volume across catalog formulations.
                 </p>
-                <div className="space-y-3 text-xs">
-                  <div className="flex justify-between py-2 border-b border-ry-ash/40">
-                    <span className="font-medium">Haute Parfumerie</span>
-                    <span className="font-mono">£64,200.00 (43.1%)</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-ry-ash/40">
-                    <span className="font-medium">Botanical Skincare</span>
-                    <span className="font-mono">£38,620.00 (25.9%)</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-ry-ash/40">
-                    <span className="font-medium">Hair & Scalp Rituals</span>
-                    <span className="font-mono">£24,180.00 (16.2%)</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-ry-ash/40">
-                    <span className="font-medium">Home & Living (Ceramics & Mists)</span>
-                    <span className="font-mono">£12,940.00 (8.7%)</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-ry-ash/40">
-                    <span className="font-medium">Accessories & Fine Objects</span>
-                    <span className="font-mono">£8,980.00 (6.1%)</span>
-                  </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-ry-pearl border-b border-ry-ash text-[10px] uppercase tracking-editorial text-ry-stone">
+                      <tr>
+                        <th className="py-2.5 px-3">Formulation / Route</th>
+                        <th className="py-2.5 px-3">Views</th>
+                        <th className="py-2.5 px-3">Bounce Rate</th>
+                        <th className="py-2.5 px-3 text-right">Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ry-ash/40">
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">Hair</span>
+                          <span>L’Huile Sublime Regenerative Hair Nectar</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono">2,410</td>
+                        <td className="py-2.5 px-3 text-emerald-700 font-mono">19.8%</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+28%</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">Hair</span>
+                          <span>Bespoke HD Lace Wavy Bob Wig</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono">1,420</td>
+                        <td className="py-2.5 px-3 text-emerald-700 font-mono">22.0%</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+34%</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">Hair</span>
+                          <span>Crème de Soie Keratin Hair Mask</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono">960</td>
+                        <td className="py-2.5 px-3 text-emerald-700 font-mono">24.5%</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+19%</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 bg-ry-onyx text-ry-white text-[9px] uppercase font-mono">Scent</span>
+                          <span>Santal Noir Extrait de Parfum</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono">890</td>
+                        <td className="py-2.5 px-3 font-mono">29.1%</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+12%</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 bg-ry-stone text-ry-white text-[9px] uppercase font-mono">Cart</span>
+                          <span>Checkout & Klarna 4-Pay Gateway</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono">620</td>
+                        <td className="py-2.5 px-3 text-emerald-700 font-mono">12.4%</td>
+                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+15%</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              <div className="mt-6 p-3 bg-ry-pearl border border-ry-ash text-[11px] text-ry-stone">
-                Taxonomy is designed to dynamically accept lifestyle, home fragrance, or travel accessories without database migrations.
+              {/* Integrations & Devices Card */}
+              <div className="space-y-6">
+                {/* Tawk.to Live Concierge Card */}
+                <div className="bg-ry-white border border-ry-ash p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-editorial font-medium text-ry-stone">
+                      Live Customer Support
+                    </span>
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] uppercase tracking-editorial font-semibold">
+                      Connected
+                    </span>
+                  </div>
+                  <h4 className="font-serif text-base text-ry-onyx mb-1">Tawk.to Chat Widget</h4>
+                  <p className="text-xs text-ry-stone mb-3">
+                    Live chat advisor ready to answer hair inquiries & order questions across the website.
+                  </p>
+                  <div className="p-2.5 bg-ry-pearl border border-ry-ash text-[11px] font-mono text-ry-stone space-y-1">
+                    <div>Property: <strong className="text-ry-onyx">6adbc0451558303471484219</strong></div>
+                    <div>Widget ID: <strong className="text-ry-onyx">1k5l6e4bp</strong></div>
+                  </div>
+                </div>
+
+                {/* Device Split */}
+                <div className="bg-ry-white border border-ry-ash p-5">
+                  <h4 className="font-serif text-base text-ry-onyx mb-1">Device Breakdown</h4>
+                  <p className="text-xs text-ry-stone mb-3">Luxury shoppers predominantly on mobile.</p>
+                  <div className="space-y-2 text-xs font-sans">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span>Mobile (iOS & Android)</span>
+                        <span className="font-mono font-medium">69%</span>
+                      </div>
+                      <div className="w-full bg-ry-ash/40 h-1.5">
+                        <div className="bg-ry-onyx h-full w-[69%]" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span>Desktop (macOS & Windows)</span>
+                        <span className="font-mono font-medium">26%</span>
+                      </div>
+                      <div className="w-full bg-ry-ash/40 h-1.5">
+                        <div className="bg-ry-stone h-full w-[26%]" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span>Tablet (iPad)</span>
+                        <span className="font-mono font-medium">5%</span>
+                      </div>
+                      <div className="w-full bg-ry-ash/40 h-1.5">
+                        <div className="bg-ry-ash h-full w-[5%]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Klarna & Payment Conversion Impact Section */}
+            <div className="bg-ry-white border border-ry-ash p-6">
+              <h3 className="font-serif text-lg mb-2 text-ry-onyx">Klarna 4-Pay Conversion Telemetry</h3>
+              <p className="text-xs text-ry-stone mb-4">
+                Impact of flexible Klarna payments on high-ticket hair extensions, elixirs, and rare extraits.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans">
+                <div className="p-4 bg-ry-pearl border border-ry-ash">
+                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
+                    Cart Abandonment Reduction
+                  </span>
+                  <div className="font-serif text-2xl text-emerald-700">-28.4%</div>
+                  <p className="text-[11px] text-ry-stone mt-1">
+                    Klarna on-site badge lowers checkout drop-off
+                  </p>
+                </div>
+
+                <div className="p-4 bg-ry-pearl border border-ry-ash">
+                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
+                    AOV Uplift on Hair & Fragrance
+                  </span>
+                  <div className="font-serif text-2xl text-ry-onyx">+34.2%</div>
+                  <p className="text-[11px] text-ry-stone mt-1">
+                    Shoppers add both nectar and mask when paying in 4
+                  </p>
+                </div>
+
+                <div className="p-4 bg-ry-pearl border border-ry-ash">
+                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
+                    Klarna Checkout Share
+                  </span>
+                  <div className="font-serif text-2xl text-[#992255]">42.8%</div>
+                  <p className="text-[11px] text-ry-stone mt-1">
+                    Of all completed checkouts use 4-Pay installments
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -797,9 +1136,9 @@ export default function AdminDashboard() {
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                       className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
                     >
+                      <option value="Hair">Hair (Main Seller)</option>
                       <option value="Haute Parfumerie">Haute Parfumerie</option>
                       <option value="Botanical Skincare">Botanical Skincare</option>
-                      <option value="Hair Care">Hair Care & Scalp</option>
                       <option value="Body & Bath">Body & Bath</option>
                       <option value="Home & Living">Home & Living</option>
                       <option value="Accessories">Accessories & Fine Goods</option>

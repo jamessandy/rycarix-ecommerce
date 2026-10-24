@@ -69,9 +69,9 @@ export default function Header() {
 
   const navLinks = [
     { name: 'Shop All', href: '/#catalog' },
+    { name: 'Hair', href: '/#catalog' },
     { name: 'Perfume', href: '/#catalog' },
     { name: 'Skincare', href: '/#catalog' },
-    { name: 'Hair Care', href: '/#catalog' },
     { name: 'Home & Candles', href: '/#catalog' },
     { name: 'Accessories', href: '/#catalog' },
     { name: 'About Us', href: '/#philosophy' },
@@ -284,7 +284,7 @@ export default function Header() {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search perfume, haircare, skincare, candles..."
+                  placeholder="Search hair, perfume, skincare, candles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-11 pr-10 py-3 text-sm bg-ry-pearl border border-ry-ash/70 focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone font-sans"
