@@ -169,43 +169,21 @@ function UserDashboardContent() {
             <User className="w-6 h-6 stroke-[1.4]" />
           </div>
           <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block mb-2">
-            My Account
+            Client Sanctuary
           </span>
           <h2 className="font-serif text-2xl text-ry-onyx mb-3">
             Sign In Required
           </h2>
           <p className="text-xs text-ry-stone leading-relaxed mb-6">
-            Please log in to view your orders, track shipments, and view your saved items.
+            Please sign in to view your private order archive, track live courier dispatches, and access saved delivery addresses.
           </p>
 
           <Link
-            href="/login"
-            className="block w-full py-3.5 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors mb-4"
+            href="/login?redirect=/dashboard/user"
+            className="block w-full py-3.5 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors"
           >
             Sign In to Your Account
           </Link>
-
-          <div className="pt-4 border-t border-ry-ash/50">
-            <span className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-2 flex items-center justify-center gap-1">
-              <KeyRound className="w-3 h-3" /> Quick Demo Accounts
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => loginAsDemo('VIP_CLIENT')}
-                className="flex-1 py-2 text-[10px] uppercase tracking-editorial border border-ry-ash hover:bg-ry-pearl transition-colors"
-              >
-                Customer Account
-              </button>
-              <button
-                type="button"
-                onClick={() => loginAsDemo('ADMIN')}
-                className="flex-1 py-2 text-[10px] uppercase tracking-editorial border border-ry-ash hover:bg-ry-pearl transition-colors"
-              >
-                Store Admin
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     );

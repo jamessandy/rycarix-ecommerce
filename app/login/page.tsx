@@ -13,17 +13,16 @@ import {
   Sparkles,
   ArrowRight,
   CheckCircle2,
-  KeyRound,
   Crown,
 } from 'lucide-react';
-import { useAuthStore, DEMO_USERS } from '@/lib/store/useAuthStore';
+import { useAuthStore } from '@/lib/store/useAuthStore';
 
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
 
-  const { login, signup, loginAsDemo, isAuthenticated, user } = useAuthStore();
+  const { login, signup, isAuthenticated, user } = useAuthStore();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,12 +54,12 @@ function LoginFormContent() {
         setTimeout(() => {
           if (redirectUrl) {
             router.push(redirectUrl);
-          } else if (email.toLowerCase().includes('admin')) {
+          } else if (res.role === 'ADMIN' || email.toLowerCase().includes('admin')) {
             router.push('/dashboard/admin');
           } else {
             router.push('/dashboard/user');
           }
-        }, 400);
+        }, 350);
       } else {
         setErrorMessage(res.error || 'Invalid credentials.');
       }
@@ -93,7 +92,7 @@ function LoginFormContent() {
         setSuccessMessage('Your account has been created successfully!');
         setTimeout(() => {
           router.push(redirectUrl || '/dashboard/user');
-        }, 500);
+        }, 450);
       } else {
         setErrorMessage(res.error || 'Failed to create account.');
       }
@@ -104,42 +103,29 @@ function LoginFormContent() {
     }
   };
 
-  const handleQuickDemo = (roleKey: 'VIP_CLIENT' | 'ADMIN' | 'USER') => {
-    setIsLoading(true);
-    loginAsDemo(roleKey);
-    setTimeout(() => {
-      setIsLoading(false);
-      if (roleKey === 'ADMIN') {
-        router.push(redirectUrl || '/dashboard/admin');
-      } else {
-        router.push(redirectUrl || '/dashboard/user');
-      }
-    }, 300);
-  };
-
   return (
     <div className="min-h-screen bg-ry-pearl pt-28 pb-20 px-4 sm:px-6 lg:px-8 flex items-center justify-center font-sans">
       <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 bg-ry-white border border-ry-ash/70 shadow-xl overflow-hidden">
         
-        {/* Left Side: Benefits & Demo Accounts */}
+        {/* Left Side: Client Sanctuary Benefits & Trust */}
         <div className="lg:col-span-5 bg-ry-wine text-ry-white p-8 sm:p-12 flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
             <span className="text-[10px] uppercase tracking-[0.35em] text-ry-stone block mb-2 font-medium">
-              Customer Portal
+              Client Portal
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl text-ry-white font-normal leading-tight">
-              Sign In to Your Account
+              Sign In to Your Sanctuary
             </h2>
             <p className="text-xs text-ry-stone mt-4 leading-relaxed">
-              Track packages in real time, view your order history, manage saved addresses, and see your Klarna payment schedules.
+              Track packages in real time, view your private order archive, manage delivery addresses, and review Klarna payment schedules.
             </p>
 
             <div className="mt-8 space-y-4 text-xs font-sans border-t border-ry-burgundy pt-6">
               <div className="flex items-start gap-3">
                 <Crown className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Member Perks</strong>
-                  <span className="text-ry-stone text-[11px]">Free shipping on orders over £150 and early access to sales.</span>
+                  <strong className="text-ry-white font-medium block">Complimentary Shipping</strong>
+                  <span className="text-ry-stone text-[11px]">Free courier delivery on all orders over £150 with tracked transit.</span>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -152,51 +138,27 @@ function LoginFormContent() {
               <div className="flex items-start gap-3">
                 <Sparkles className="w-4 h-4 text-amber-200 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Wishlist & Orders</strong>
-                  <span className="text-ry-stone text-[11px]">Save products to your wishlist and download order invoices.</span>
+                  <strong className="text-ry-white font-medium block">Personalized Wishlist</strong>
+                  <span className="text-ry-stone text-[11px]">Curate private collections and download official invoices.</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Quick Demo Switcher */}
+          {/* Security & Concierge Direct Link */}
           <div className="relative z-10 mt-10 pt-6 border-t border-ry-burgundy">
-            <span className="text-[9px] uppercase tracking-editorial text-amber-200/90 font-medium block mb-2.5 flex items-center gap-1.5">
-              <KeyRound className="w-3 h-3 text-amber-300" /> Demo Test Accounts
-            </span>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('VIP_CLIENT')}
-                className="w-full text-left p-2.5 bg-ry-burgundyDeep/80 hover:bg-ry-burgundyDeep border border-ry-burgundyLight/30 hover:border-ry-white/50 transition-all flex items-center justify-between group"
-              >
-                <div>
-                  <div className="text-xs text-ry-white font-serif group-hover:text-amber-200 transition-colors">
-                    Éléonore de Vance (Customer)
-                  </div>
-                  <div className="text-[10px] text-ry-stone">
-                    VIP Member • Has orders & Klarna schedule
-                  </div>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-ry-stone group-hover:text-white group-hover:translate-x-1 transition-all" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('ADMIN')}
-                className="w-full text-left p-2.5 bg-ry-burgundyDeep/80 hover:bg-ry-burgundyDeep border border-ry-burgundyLight/30 hover:border-ry-white/50 transition-all flex items-center justify-between group"
-              >
-                <div>
-                  <div className="text-xs text-ry-white font-serif group-hover:text-amber-200 transition-colors">
-                    Henri Laurent (Store Admin)
-                  </div>
-                  <div className="text-[10px] text-ry-stone">
-                    Admin • Product catalog & inventory management
-                  </div>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-ry-stone group-hover:text-white group-hover:translate-x-1 transition-all" />
-              </button>
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span className="text-[10px] uppercase tracking-editorial text-amber-200/90 font-medium">
+                Encrypted Client Portal
+              </span>
             </div>
+            <p className="text-[11px] text-ry-stone leading-relaxed">
+              Protected with bank-grade 256-bit SSL encryption. For boutique order inquiries or direct concierge assistance, contact{' '}
+              <a href="mailto:concierge@rycarix.com" className="text-ry-white underline hover:text-amber-200 transition-colors">
+                concierge@rycarix.com
+              </a>.
+            </p>
           </div>
         </div>
 
@@ -209,7 +171,7 @@ function LoginFormContent() {
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-ry-stone">
-                  Logged in as <strong className="text-ry-onyx">{user.name}</strong> ({user.title})
+                  Signed in as <strong className="text-ry-onyx">{user.name}</strong> ({user.title})
                 </span>
               </div>
               <Link
@@ -294,16 +256,6 @@ function LoginFormContent() {
                   <label className="block text-[10px] uppercase tracking-editorial text-ry-stone font-medium">
                     Password
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('eleonore.devance@luxury-atelier.com');
-                      setPassword('password123');
-                    }}
-                    className="text-[10px] text-ry-stone hover:text-ry-onyx underline transition-colors"
-                  >
-                    Auto-fill demo user
-                  </button>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-ry-stone absolute left-3.5 top-3.5" />
@@ -335,9 +287,12 @@ function LoginFormContent() {
                   />
                   <span className="text-[11px]">Remember me</span>
                 </label>
-                <span className="text-[11px] underline underline-offset-4 cursor-pointer hover:text-ry-onyx">
+                <a
+                  href="mailto:support@rycarix.com?subject=Password%20Reset%20Request"
+                  className="text-[11px] underline underline-offset-4 hover:text-ry-onyx"
+                >
                   Forgot password?
-                </span>
+                </a>
               </div>
 
               <button
@@ -356,7 +311,7 @@ function LoginFormContent() {
               </button>
 
               <div className="pt-4 text-center text-xs text-ry-stone">
-                Don’t have an account?{' '}
+                Don’t have an account yet?{' '}
                 <button
                   type="button"
                   onClick={() => setMode('signup')}
@@ -440,7 +395,7 @@ function LoginFormContent() {
                     className="mt-0.5 w-3.5 h-3.5 rounded-none border-ry-ash text-ry-onyx accent-ry-onyx focus:ring-0"
                   />
                   <span className="text-[11px] text-ry-charcoal leading-relaxed">
-                    Sign up for the newsletter to get <strong>10% off</strong> your first order (code: <strong>RYCARIX10</strong>) and news about special sales.
+                    Sign up for the newsletter to receive <strong>10% off</strong> your first order (code: <strong>RYCARIX10</strong>) and private seasonal invitations.
                   </span>
                 </label>
               </div>

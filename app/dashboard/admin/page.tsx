@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   TrendingUp,
   DollarSign,
@@ -35,6 +36,7 @@ import {
   Activity,
   ArrowUpRight,
   BarChart3,
+  LogOut,
 } from 'lucide-react';
 import { PRODUCTS } from '@/lib/data/mockData';
 import { useAuthStore } from '@/lib/store/useAuthStore';
@@ -59,7 +61,27 @@ interface AdminProductForm {
 }
 
 export default function AdminDashboard() {
-  const { user, loginAsDemo } = useAuthStore();
+  const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuthStore();
+  const [hasHydrated, setHasHydrated] = useState(false);
+
+  useEffect(() => {
+    if (useAuthStore.persist?.hasHydrated()) {
+      setHasHydrated(true);
+    }
+    const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
+      setHasHydrated(true);
+    });
+    return () => unsub?.();
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydrated) return;
+    if (!isAuthenticated || user?.role !== 'ADMIN') {
+      router.replace('/login?redirect=/dashboard/admin');
+    }
+  }, [hasHydrated, isAuthenticated, user, router]);
+
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'analytics'>('inventory');
   const [productsList, setProductsList] = useState(PRODUCTS);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -316,6 +338,17 @@ export default function AdminDashboard() {
     }, 600);
   };
 
+  if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen bg-ry-pearl flex flex-col items-center justify-center font-sans text-ry-onyx px-4">
+        <div className="w-10 h-10 rounded-full border-2 border-ry-onyx border-t-transparent animate-spin mb-4" />
+        <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone">
+          Verifying Administrator Access...
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-ry-pearl text-ry-onyx pt-28 pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -328,7 +361,7 @@ export default function AdminDashboard() {
                 Rycarix Admin
               </span>
               <span className="text-xs text-ry-stone">
-                Admin: {user?.role === 'ADMIN' ? user.name : 'Henri Laurent'} • Dashboard v2.4
+                Admin: {user?.name || 'Store Administrator'} • Live Atelier
               </span>
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl text-ry-onyx">
@@ -343,6 +376,17 @@ export default function AdminDashboard() {
             >
               <Plus className="w-4 h-4" />
               <span>Add New Product</span>
+            </button>
+            <button
+              onClick={() => {
+                logout();
+                router.push('/login');
+              }}
+              className="px-4 py-3 border border-ry-ash text-ry-stone hover:text-red-700 hover:border-red-300 text-xs uppercase tracking-editorial flex items-center gap-1.5 transition-colors"
+              title="Sign Out of Admin"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>
