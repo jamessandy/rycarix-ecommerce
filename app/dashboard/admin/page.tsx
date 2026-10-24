@@ -149,73 +149,31 @@ export default function AdminDashboard() {
     alert(`Product "${formData.title}" added to catalog.`);
   };
 
-  const INITIAL_ADMIN_ORDERS = [
-    {
-      id: 'RY-84920',
-      customer: 'Éléonore de Vance',
-      email: 'eleonore.devance@luxury-atelier.com',
-      date: '2026-09-14',
-      items: 'Santal Noir Extrait (100ml)',
-      itemCategory: 'Haute Perfumery',
-      total: 280.0,
-      paymentMethod: 'Klarna Pay in 4',
-      klarnaSettlement: 'Settled to Merchant Account',
-      fulfillment: 'In Transit',
-      carrier: 'FedEx Priority',
-      trackingNumber: '7829-1092-4821',
-      address: {
-        street: '740 Park Avenue, Apt 11B',
-        city: 'New York',
-        state: 'NY',
-        postalCode: '10021',
-        country: 'United States',
-      },
-    },
-    {
-      id: 'RY-84919',
-      customer: 'Duchess Caroline S.',
-      email: 'caroline.s@monaco-yachts.mc',
-      date: '2026-09-15',
-      items: 'L’Huile Sublime Nectar (100ml) x 2',
-      itemCategory: 'Haircare',
-      total: 270.0,
-      paymentMethod: 'Klarna Pay in 4',
-      klarnaSettlement: 'Settled to Merchant Account',
-      fulfillment: 'Dispatched',
-      carrier: 'DHL Global Express',
-      trackingNumber: 'DHL-9840-2811',
-      address: {
-        street: '12 Avenue des Papalins',
-        city: 'Monaco',
-        state: 'Fontvieille',
-        postalCode: '98000',
-        country: 'Monaco',
-      },
-    },
-    {
-      id: 'RY-84918',
-      customer: 'Jonathan Sterling',
-      email: 'j.sterling@mayfair.co.uk',
-      date: '2026-09-16',
-      items: 'Santal Noir Extrait (50ml) & Velvet Mask',
-      itemCategory: 'Haute Perfumery',
-      total: 245.0,
-      paymentMethod: 'Stripe Card',
-      klarnaSettlement: 'Direct Card Capture',
-      fulfillment: 'Unfulfilled (Awaiting Courier)',
-      carrier: 'Pending (ShipStation)',
-      trackingNumber: '',
-      address: {
-        street: '45 Berkeley Square, Mayfair',
-        city: 'London',
-        state: 'Greater London',
-        postalCode: 'W1J 5AS',
-        country: 'United Kingdom',
-      },
-    },
-  ];
+  const [adminOrders, setAdminOrders] = useState<any[]>([]);
+  const [trafficData, setTrafficData] = useState<any>(null);
 
-  const [adminOrders, setAdminOrders] = useState(INITIAL_ADMIN_ORDERS);
+  useEffect(() => {
+    fetch('/api/analytics/traffic')
+      .then((res) => res.json())
+      .then((data) => setTrafficData(data))
+      .catch(() => {});
+  }, [activeTab]);
+
+  // Dynamic calculations based strictly on real catalog and active orders
+  const totalGMV = adminOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const klarnaVolume = adminOrders
+    .filter((o) => (o.paymentMethod || '').toLowerCase().includes('klarna'))
+    .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const aov = adminOrders.length > 0 ? totalGMV / adminOrders.length : 0;
+
+  const totalActiveInventory = productsList.reduce((acc, p) => {
+    const variantStock = p.variants?.reduce((vAcc: number, v: any) => vAcc + (v.inventory || 0), 0) || 0;
+    return acc + variantStock;
+  }, 0);
+
+  const lowStockCount = productsList.filter((p) =>
+    p.variants?.some((v: any) => (v.inventory || 0) < 20)
+  ).length;
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
   const [activeLabelData, setActiveLabelData] = useState<ShippingLabelData | null>(null);
   const [isDispatching, setIsDispatching] = useState(false);
@@ -398,8 +356,12 @@ export default function AdminDashboard() {
               <span className="text-[10px] uppercase tracking-editorial">Gross Merchandise Value</span>
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">£148,920.00</div>
-            <p className="text-[11px] text-emerald-600 font-sans mt-1">+18.4% vs previous month</p>
+            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
+              £{totalGMV.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-[11px] text-ry-stone font-sans mt-1">
+              {adminOrders.length} {adminOrders.length === 1 ? 'order' : 'orders'} recorded to date
+            </p>
           </div>
 
           <div className="bg-ry-white border border-[#FFA8CD]/60 p-5 bg-gradient-to-br from-white to-[#FFF5F8]">
@@ -411,9 +373,11 @@ export default function AdminDashboard() {
                 Klarna.
               </span>
             </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">£63,740.00</div>
+            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
+              £{klarnaVolume.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <p className="text-[11px] text-[#992255] font-sans mt-1">
-              42.8% of GMV • 0% merchant default liability
+              {totalGMV > 0 ? ((klarnaVolume / totalGMV) * 100).toFixed(1) : '0.0'}% of GMV • 0% merchant default liability
             </p>
           </div>
 
@@ -422,9 +386,11 @@ export default function AdminDashboard() {
               <span className="text-[10px] uppercase tracking-editorial">Average Order Value (AOV)</span>
               <DollarSign className="w-4 h-4 text-ry-stone" />
             </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">£214.50</div>
+            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
+              £{aov.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <p className="text-[11px] text-ry-stone font-sans mt-1">
-              +32% higher when Klarna Pay in 4 chosen
+              {adminOrders.length > 0 ? 'Live average across customer baskets' : 'Awaiting initial store orders'}
             </p>
           </div>
 
@@ -433,8 +399,12 @@ export default function AdminDashboard() {
               <span className="text-[10px] uppercase tracking-editorial">Active Inventory Units</span>
               <Package className="w-4 h-4 text-ry-stone" />
             </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">486 Units</div>
-            <p className="text-[11px] text-ry-stone font-sans mt-1">4 SKUs under low-stock watch</p>
+            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
+              {totalActiveInventory} Units
+            </div>
+            <p className="text-[11px] text-ry-stone font-sans mt-1">
+              {lowStockCount} {lowStockCount === 1 ? 'SKU' : 'SKUs'} under low-stock watch ({productsList.length} total products)
+            </p>
           </div>
         </div>
 
@@ -631,96 +601,106 @@ export default function AdminDashboard() {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
-                    <tr>
-                      <th className="py-3 px-4">Order Ref</th>
-                      <th className="py-3 px-4">Client & Destination</th>
-                      <th className="py-3 px-4">Items</th>
-                      <th className="py-3 px-4">Total</th>
-                      <th className="py-3 px-4">Payment Method</th>
-                      <th className="py-3 px-4">Fulfillment Status</th>
-                      <th className="py-3 px-4">Dispatch & Tracking</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ry-ash/40">
-                    {adminOrders.map((ord) => (
-                      <tr key={ord.id} className="hover:bg-ry-pearl/50">
-                        <td className="py-3.5 px-4 font-mono font-medium">{ord.id}</td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-medium text-ry-onyx">{ord.customer}</div>
-                          <div className="text-[10px] text-ry-stone">{ord.email}</div>
-                          <div className="text-[10px] text-ry-stone/80 truncate max-w-[180px]">
-                            {ord.address?.city}, {ord.address?.country}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-ry-stone">
-                          <div>{ord.items}</div>
-                          {ord.items.toLowerCase().includes('extrait') && (
-                            <span className="inline-flex items-center gap-1 text-[9px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 mt-0.5">
-                              <Flame className="w-2.5 h-2.5 text-amber-600" /> UN 1266 LQ (Contains Alcohol)
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono">£{ord.total.toFixed(2)}</td>
-                        <td className="py-3.5 px-4">
-                          {ord.paymentMethod.includes('Klarna') ? (
-                            <span className="inline-flex items-center gap-1 bg-[#FFF0F5] border border-[#FFA8CD] text-[#801040] px-2 py-0.5 text-[10px] font-semibold">
-                              Klarna Pay in 4
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 bg-ry-oatmeal text-[10px]">
-                              {ord.paymentMethod}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-1 text-[10px] uppercase tracking-editorial inline-block ${
-                            ord.fulfillment.includes('Dispatched') || ord.fulfillment.includes('In Transit')
-                              ? 'bg-ry-onyx text-ry-white'
-                              : 'bg-amber-100 text-amber-900 border border-amber-300'
-                          }`}>
-                            {ord.fulfillment}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {ord.trackingNumber ? (
-                            <div className="space-y-1">
-                              <Link
-                                href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
-                                target="_blank"
-                                className="inline-flex items-center gap-1 text-ry-onyx font-medium hover:underline text-[11px] font-mono group"
-                              >
-                                <span>{ord.trackingNumber}</span>
-                                <ExternalLink className="w-3 h-3 text-ry-stone group-hover:text-ry-onyx" />
-                              </Link>
-                              <div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenDispatchModal(ord)}
-                                  className="text-[10px] text-ry-stone hover:text-ry-onyx underline flex items-center gap-1"
-                                >
-                                  <FileText className="w-3 h-3" /> View Label & LQ Hazard
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDispatchModal(ord)}
-                              className="px-3 py-1.5 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5 shadow-xs"
-                            >
-                              <Package className="w-3.5 h-3.5" />
-                              <span>Dispatch via ShipStation</span>
-                            </button>
-                          )}
-                        </td>
+              {adminOrders.length === 0 ? (
+                <div className="p-12 text-center text-ry-stone">
+                  <Package className="w-10 h-10 mx-auto mb-3 stroke-[1.4] text-ry-stone/60" />
+                  <h4 className="font-serif text-lg text-ry-onyx mb-1">No Orders Placed Yet</h4>
+                  <p className="text-xs text-ry-stone max-w-md mx-auto">
+                    When customers place orders using Stripe Card or Klarna Pay in 4, customer delivery addresses, parcel packaging classifications (UN 1266 LQ), and dispatch tracking will appear here in real time.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
+                      <tr>
+                        <th className="py-3 px-4">Order Ref</th>
+                        <th className="py-3 px-4">Client & Destination</th>
+                        <th className="py-3 px-4">Items</th>
+                        <th className="py-3 px-4">Total</th>
+                        <th className="py-3 px-4">Payment Method</th>
+                        <th className="py-3 px-4">Fulfillment Status</th>
+                        <th className="py-3 px-4">Dispatch & Tracking</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-ry-ash/40">
+                      {adminOrders.map((ord) => (
+                        <tr key={ord.id} className="hover:bg-ry-pearl/50">
+                          <td className="py-3.5 px-4 font-mono font-medium">{ord.id}</td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-medium text-ry-onyx">{ord.customer}</div>
+                            <div className="text-[10px] text-ry-stone">{ord.email}</div>
+                            <div className="text-[10px] text-ry-stone/80 truncate max-w-[180px]">
+                              {ord.address?.city}, {ord.address?.country}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-ry-stone">
+                            <div>{ord.items}</div>
+                            {ord.items?.toLowerCase().includes('extrait') && (
+                              <span className="inline-flex items-center gap-1 text-[9px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 mt-0.5">
+                                <Flame className="w-2.5 h-2.5 text-amber-600" /> UN 1266 LQ (Contains Alcohol)
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 font-mono">£{ord.total?.toFixed(2)}</td>
+                          <td className="py-3.5 px-4">
+                            {ord.paymentMethod?.includes('Klarna') ? (
+                              <span className="inline-flex items-center gap-1 bg-[#FFF0F5] border border-[#FFA8CD] text-[#801040] px-2 py-0.5 text-[10px] font-semibold">
+                                Klarna Pay in 4
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-ry-oatmeal text-[10px]">
+                                {ord.paymentMethod}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-1 text-[10px] uppercase tracking-editorial inline-block ${
+                              ord.fulfillment?.includes('Dispatched') || ord.fulfillment?.includes('In Transit')
+                                ? 'bg-ry-onyx text-ry-white'
+                                : 'bg-amber-100 text-amber-900 border border-amber-300'
+                            }`}>
+                              {ord.fulfillment}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {ord.trackingNumber ? (
+                              <div className="space-y-1">
+                                <Link
+                                  href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
+                                  target="_blank"
+                                  className="inline-flex items-center gap-1 text-ry-onyx font-medium hover:underline text-[11px] font-mono group"
+                                >
+                                  <span>{ord.trackingNumber}</span>
+                                  <ExternalLink className="w-3 h-3 text-ry-stone group-hover:text-ry-onyx" />
+                                </Link>
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenDispatchModal(ord)}
+                                    className="text-[10px] text-ry-stone hover:text-ry-onyx underline flex items-center gap-1"
+                                  >
+                                    <FileText className="w-3 h-3" /> View Label & LQ Hazard
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDispatchModal(ord)}
+                                className="px-3 py-1.5 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5 shadow-xs"
+                              >
+                                <Package className="w-3.5 h-3.5" />
+                                <span>Dispatch via ShipStation</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -737,10 +717,13 @@ export default function AdminDashboard() {
                 </span>
                 <div>
                   <h3 className="font-serif text-lg text-ry-onyx flex items-center gap-2">
-                    <span>18 Active Visitors Browsing Right Now</span>
+                    <span>
+                      {trafficData?.metrics?.activeLiveVisitors ?? 0} Active Session
+                      {(trafficData?.metrics?.activeLiveVisitors ?? 0) === 1 ? '' : 's'} Live
+                    </span>
                   </h3>
                   <p className="text-xs text-ry-stone">
-                    Real-time telemetry tracking live pageviews, hair formulation interest, and active carts.
+                    Live telemetry tracking real pageviews, active shopping carts, and category interest.
                   </p>
                 </div>
               </div>
@@ -752,7 +735,9 @@ export default function AdminDashboard() {
                 </div>
                 <div className="px-3 py-1.5 bg-ry-pearl border border-ry-ash text-ry-onyx flex items-center gap-1.5 font-medium">
                   <Globe className="w-3 h-3 text-ry-stone" />
-                  <span>Google Analytics: Connected</span>
+                  <span>
+                    Google Analytics: {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? 'Connected' : 'Standby'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -764,9 +749,11 @@ export default function AdminDashboard() {
                   <span>Today's Unique Visitors</span>
                   <Users className="w-4 h-4 text-ry-stone" />
                 </div>
-                <div className="font-serif text-3xl text-ry-onyx">1,842</div>
-                <span className="text-[11px] text-emerald-700 font-sans mt-1 inline-block">
-                  ↑ +18.4% vs last week
+                <div className="font-serif text-3xl text-ry-onyx">
+                  {trafficData?.metrics?.todayUniqueVisitors ?? 0}
+                </div>
+                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
+                  Unique visitors browsing store
                 </span>
               </div>
 
@@ -775,9 +762,11 @@ export default function AdminDashboard() {
                   <span>Today's Total Pageviews</span>
                   <Activity className="w-4 h-4 text-ry-stone" />
                 </div>
-                <div className="font-serif text-3xl text-ry-onyx">6,920</div>
+                <div className="font-serif text-3xl text-ry-onyx">
+                  {trafficData?.metrics?.todayPageviews ?? 0}
+                </div>
                 <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
-                  3.75 pages / session
+                  Verified live page impressions
                 </span>
               </div>
 
@@ -786,9 +775,11 @@ export default function AdminDashboard() {
                   <span>Avg. Dwell Time</span>
                   <Clock className="w-4 h-4 text-ry-stone" />
                 </div>
-                <div className="font-serif text-3xl text-ry-onyx">3m 42s</div>
-                <span className="text-[11px] text-emerald-700 font-sans mt-1 inline-block">
-                  Low bounce rate: 27.4%
+                <div className="font-serif text-3xl text-ry-onyx">
+                  {trafficData?.metrics?.avgSessionDuration ?? '0m 00s'}
+                </div>
+                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
+                  Active session duration
                 </span>
               </div>
 
@@ -797,105 +788,62 @@ export default function AdminDashboard() {
                   <span>Store Conversion Rate</span>
                   <Percent className="w-4 h-4 text-ry-stone" />
                 </div>
-                <div className="font-serif text-3xl text-ry-onyx">3.82%</div>
-                <span className="text-[11px] text-emerald-700 font-sans mt-1 inline-block">
-                  Hair line converting at 4.6%
+                <div className="font-serif text-3xl text-ry-onyx">
+                  {adminOrders.length > 0 && (trafficData?.metrics?.todayUniqueVisitors || 0) > 0
+                    ? ((adminOrders.length / trafficData.metrics.todayUniqueVisitors) * 100).toFixed(2) + '%'
+                    : '0.00%'}
+                </div>
+                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
+                  {adminOrders.length} {adminOrders.length === 1 ? 'order' : 'orders'} completed
                 </span>
               </div>
             </div>
 
             {/* Category Performance & Traffic Attribution */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Category Traffic Share (Showing Hair as #1) */}
+              {/* Category Traffic Share */}
               <div className="bg-ry-white border border-ry-ash p-6">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-serif text-lg text-ry-onyx">Category Traffic & Sales Velocity</h3>
                   <span className="text-[10px] uppercase tracking-editorial px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 font-medium">
-                    Hair is Main Selling Line
+                    Hair is Flagship Line
                   </span>
                 </div>
                 <p className="text-xs text-ry-stone mb-6">
-                  Traffic share, revenue contribution, and conversion efficiency by department.
+                  Real traffic share and revenue distribution across boutique categories.
                 </p>
 
                 <div className="space-y-4 text-xs font-sans">
-                  <div>
-                    <div className="flex justify-between mb-1.5 items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-ry-onyx">Hair (Top Selling Department)</span>
-                        <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial">
-                          #1 Bestseller
-                        </span>
+                  {(trafficData?.categoryTraffic || [
+                    { name: 'Hair (Flagship Category)', views: 0, share: '0.0%', badge: 'Main Line' },
+                    { name: 'Haute Parfumerie', views: 0, share: '0.0%' },
+                    { name: 'Botanical Skincare', views: 0, share: '0.0%' },
+                    { name: 'Body & Bath', views: 0, share: '0.0%' },
+                    { name: 'Home & Living', views: 0, share: '0.0%' },
+                  ]).map((cat: any, idx: number) => (
+                    <div key={idx}>
+                      <div className="flex justify-between mb-1.5 items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-ry-onyx">{cat.name}</span>
+                          {cat.badge && (
+                            <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial">
+                              {cat.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-mono text-right">
+                          <strong className="text-ry-onyx">{cat.views} views</strong>
+                          <span className="text-ry-stone ml-2 font-medium">{cat.share} share</span>
+                        </div>
                       </div>
-                      <div className="font-mono text-right">
-                        <strong className="text-ry-onyx">3,240 views</strong>
-                        <span className="text-emerald-700 ml-2 font-semibold">46.8% share</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-ry-ash/40 h-2.5">
-                      <div className="bg-ry-burgundy h-full w-[46.8%]" />
-                    </div>
-                    <div className="flex justify-between text-[11px] text-ry-stone mt-1">
-                      <span>Conversion: 4.6% • Revenue: £48,920.00</span>
-                      <span className="text-emerald-700">↑ +24.5% volume</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between mb-1.5 items-center">
-                      <span className="font-medium text-ry-onyx">Haute Parfumerie</span>
-                      <div className="font-mono text-right">
-                        <span>2,160 views</span>
-                        <span className="text-ry-stone ml-2">31.2% share</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-ry-ash/40 h-2">
-                      <div className="bg-ry-onyx h-full w-[31.2%]" />
-                    </div>
-                    <div className="flex justify-between text-[11px] text-ry-stone mt-1">
-                      <span>Conversion: 3.1% • Revenue: £64,200.00</span>
-                      <span>↑ +12.1% volume</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between mb-1.5 items-center">
-                      <span className="font-medium text-ry-onyx">Botanical Skincare</span>
-                      <div className="font-mono text-right">
-                        <span>980 views</span>
-                        <span className="text-ry-stone ml-2">14.1% share</span>
+                      <div className="w-full bg-ry-ash/40 h-2">
+                        <div
+                          className="bg-ry-onyx h-full transition-all duration-500"
+                          style={{ width: cat.share !== '0.0%' ? cat.share : '0%' }}
+                        />
                       </div>
                     </div>
-                    <div className="w-full bg-ry-ash/40 h-2">
-                      <div className="bg-ry-stone h-full w-[14.1%]" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between mb-1.5 items-center">
-                      <span className="font-medium text-ry-onyx">Body & Bath</span>
-                      <div className="font-mono text-right">
-                        <span>310 views</span>
-                        <span className="text-ry-stone ml-2">4.4% share</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-ry-ash/40 h-2">
-                      <div className="bg-ry-ash h-full w-[4.4%]" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between mb-1.5 items-center">
-                      <span className="font-medium text-ry-onyx">Home & Living (Bougies & Mists)</span>
-                      <div className="font-mono text-right">
-                        <span>240 views</span>
-                        <span className="text-ry-stone ml-2">3.5% share</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-ry-ash/40 h-2">
-                      <div className="bg-ry-ash h-full w-[3.5%]" />
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
@@ -909,56 +857,49 @@ export default function AdminDashboard() {
                 <div className="space-y-4 text-xs font-sans">
                   <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
                     <div>
-                      <div className="font-medium text-ry-onyx">Instagram (Editorial & Reels)</div>
-                      <div className="text-[11px] text-ry-stone">Hair texture transformation clips</div>
+                      <div className="font-medium text-ry-onyx">Direct / Store Domain</div>
+                      <div className="text-[11px] text-ry-stone">Direct navigation to rycarix.com</div>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono font-medium block">2,480 visits (35.8%)</span>
-                      <span className="text-emerald-700 text-[10px]">↑ +18.2%</span>
+                      <span className="font-mono font-medium block">
+                        {(trafficData?.metrics?.todayUniqueVisitors ?? 0) > 0
+                          ? `${trafficData?.metrics?.todayUniqueVisitors} ${trafficData?.metrics?.todayUniqueVisitors === 1 ? 'visitor' : 'visitors'}`
+                          : '0 visitors'}
+                      </span>
+                      <span className="text-ry-stone text-[10px]">Verified Direct Channel</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
                     <div>
-                      <div className="font-medium text-ry-onyx">Direct / VIP Clientele Bookmarks</div>
-                      <div className="text-[11px] text-ry-stone">Repeat clientele reordering hair oils</div>
+                      <div className="font-medium text-ry-onyx">Instagram / Social Links</div>
+                      <div className="text-[11px] text-ry-stone">Bio links and campaign referrals</div>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono font-medium block">1,720 visits (24.8%)</span>
-                      <span className="text-emerald-700 text-[10px]">↑ +9.4%</span>
+                      <span className="font-mono font-medium block">0 visitors</span>
+                      <span className="text-ry-stone text-[10px]">Awaiting Campaign</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
                     <div>
-                      <div className="font-medium text-ry-onyx">Google Organic Search & Shopping</div>
-                      <div className="text-[11px] text-ry-stone">Luxury hair oil, HD lace wig queries</div>
+                      <div className="font-medium text-ry-onyx">Google Organic Search</div>
+                      <div className="text-[11px] text-ry-stone">Search queries & organic index</div>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono font-medium block">1,540 visits (22.3%)</span>
-                      <span className="text-emerald-700 text-[10px]">↑ +14.1%</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
-                    <div>
-                      <div className="font-medium text-ry-onyx">TikTok Viral Hair Care Reviews</div>
-                      <div className="text-[11px] text-ry-stone">L'Huile Sublime application routines</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono font-medium block">860 visits (12.4%)</span>
-                      <span className="text-emerald-700 text-[10px]">↑ +41.6%</span>
+                      <span className="font-mono font-medium block">0 visitors</span>
+                      <span className="text-ry-stone text-[10px]">SEO Tags Ready</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between py-2">
                     <div>
-                      <div className="font-medium text-ry-onyx">Private Concierge Newsletter</div>
-                      <div className="text-[11px] text-ry-stone">VIP members private vault releases</div>
+                      <div className="font-medium text-ry-onyx">Direct Concierge Invitations</div>
+                      <div className="text-[11px] text-ry-stone">VIP client links & direct shares</div>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono font-medium block">320 visits (4.7%)</span>
-                      <span className="text-emerald-700 text-[10px]">↑ +6.5%</span>
+                      <span className="font-mono font-medium block">0 visitors</span>
+                      <span className="text-ry-stone text-[10px]">Concierge Portal</span>
                     </div>
                   </div>
                 </div>
@@ -969,9 +910,9 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Top Visited Formulations */}
               <div className="lg:col-span-2 bg-ry-white border border-ry-ash p-6">
-                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Top Visited Pages & Products</h3>
+                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Catalog Formulations & Status</h3>
                 <p className="text-xs text-ry-stone mb-4">
-                  Real-time pageview volume across catalog formulations.
+                  Active formulations published to the catalog and ready for customer purchase.
                 </p>
 
                 <div className="overflow-x-auto">
@@ -979,57 +920,27 @@ export default function AdminDashboard() {
                     <thead className="bg-ry-pearl border-b border-ry-ash text-[10px] uppercase tracking-editorial text-ry-stone">
                       <tr>
                         <th className="py-2.5 px-3">Formulation / Route</th>
-                        <th className="py-2.5 px-3">Views</th>
-                        <th className="py-2.5 px-3">Bounce Rate</th>
-                        <th className="py-2.5 px-3 text-right">Trend</th>
+                        <th className="py-2.5 px-3">Category</th>
+                        <th className="py-2.5 px-3">Price</th>
+                        <th className="py-2.5 px-3 text-right">Inventory</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-ry-ash/40">
-                      <tr>
-                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">Hair</span>
-                          <span>L’Huile Sublime Regenerative Hair Nectar</span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono">2,410</td>
-                        <td className="py-2.5 px-3 text-emerald-700 font-mono">19.8%</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+28%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">Hair</span>
-                          <span>Bespoke HD Lace Wavy Bob Wig</span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono">1,420</td>
-                        <td className="py-2.5 px-3 text-emerald-700 font-mono">22.0%</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+34%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">Hair</span>
-                          <span>Crème de Soie Keratin Hair Mask</span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono">960</td>
-                        <td className="py-2.5 px-3 text-emerald-700 font-mono">24.5%</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+19%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 bg-ry-onyx text-ry-white text-[9px] uppercase font-mono">Scent</span>
-                          <span>Santal Noir Extrait de Parfum</span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono">890</td>
-                        <td className="py-2.5 px-3 font-mono">29.1%</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+12%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 bg-ry-stone text-ry-white text-[9px] uppercase font-mono">Cart</span>
-                          <span>Checkout & Klarna 4-Pay Gateway</span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono">620</td>
-                        <td className="py-2.5 px-3 text-emerald-700 font-mono">12.4%</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">+15%</td>
-                      </tr>
+                      {productsList.slice(0, 5).map((p) => (
+                        <tr key={p.id}>
+                          <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">
+                              {p.category}
+                            </span>
+                            <span className="truncate max-w-[240px]">{p.title}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-ry-stone">{p.category}</td>
+                          <td className="py-2.5 px-3 font-mono font-medium">£{p.basePrice.toFixed(2)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700">
+                            {p.variants?.reduce((acc, v) => acc + (v.inventory || 0), 0) || 0} in stock
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1060,33 +971,48 @@ export default function AdminDashboard() {
                 {/* Device Split */}
                 <div className="bg-ry-white border border-ry-ash p-5">
                   <h4 className="font-serif text-base text-ry-onyx mb-1">Device Breakdown</h4>
-                  <p className="text-xs text-ry-stone mb-3">Luxury shoppers predominantly on mobile.</p>
+                  <p className="text-xs text-ry-stone mb-3">Visitor breakdown by browser viewport.</p>
                   <div className="space-y-2 text-xs font-sans">
                     <div>
                       <div className="flex justify-between mb-1">
                         <span>Mobile (iOS & Android)</span>
-                        <span className="font-mono font-medium">69%</span>
+                        <span className="font-mono font-medium">
+                          {trafficData?.deviceBreakdown?.[0]?.percentage ?? 0}%
+                        </span>
                       </div>
                       <div className="w-full bg-ry-ash/40 h-1.5">
-                        <div className="bg-ry-onyx h-full w-[69%]" />
+                        <div
+                          className="bg-ry-onyx h-full transition-all"
+                          style={{ width: `${trafficData?.deviceBreakdown?.[0]?.percentage ?? 0}%` }}
+                        />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between mb-1">
                         <span>Desktop (macOS & Windows)</span>
-                        <span className="font-mono font-medium">26%</span>
+                        <span className="font-mono font-medium">
+                          {trafficData?.deviceBreakdown?.[1]?.percentage ?? 0}%
+                        </span>
                       </div>
                       <div className="w-full bg-ry-ash/40 h-1.5">
-                        <div className="bg-ry-stone h-full w-[26%]" />
+                        <div
+                          className="bg-ry-stone h-full transition-all"
+                          style={{ width: `${trafficData?.deviceBreakdown?.[1]?.percentage ?? 0}%` }}
+                        />
                       </div>
                     </div>
                     <div>
                       <div className="flex justify-between mb-1">
                         <span>Tablet (iPad)</span>
-                        <span className="font-mono font-medium">5%</span>
+                        <span className="font-mono font-medium">
+                          {trafficData?.deviceBreakdown?.[2]?.percentage ?? 0}%
+                        </span>
                       </div>
                       <div className="w-full bg-ry-ash/40 h-1.5">
-                        <div className="bg-ry-ash h-full w-[5%]" />
+                        <div
+                          className="bg-ry-ash h-full transition-all"
+                          style={{ width: `${trafficData?.deviceBreakdown?.[2]?.percentage ?? 0}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1096,29 +1022,31 @@ export default function AdminDashboard() {
 
             {/* Klarna & Payment Conversion Impact Section */}
             <div className="bg-ry-white border border-ry-ash p-6">
-              <h3 className="font-serif text-lg mb-2 text-ry-onyx">Klarna 4-Pay Conversion Telemetry</h3>
+              <h3 className="font-serif text-lg mb-2 text-ry-onyx">Klarna 4-Pay Gateway Telemetry</h3>
               <p className="text-xs text-ry-stone mb-4">
-                Impact of flexible Klarna payments on high-ticket hair extensions, elixirs, and rare extraits.
+                Real-time installment settlement monitoring for high-ticket hair and luxury perfumery.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans">
                 <div className="p-4 bg-ry-pearl border border-ry-ash">
                   <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
-                    Cart Abandonment Reduction
+                    Klarna Gateway Status
                   </span>
-                  <div className="font-serif text-2xl text-emerald-700">-28.4%</div>
+                  <div className="font-serif text-2xl text-emerald-700">Active</div>
                   <p className="text-[11px] text-ry-stone mt-1">
-                    Klarna on-site badge lowers checkout drop-off
+                    Stripe + Klarna payment intent pipeline operational
                   </p>
                 </div>
 
                 <div className="p-4 bg-ry-pearl border border-ry-ash">
                   <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
-                    AOV Uplift on Hair & Fragrance
+                    Klarna GMV Volume
                   </span>
-                  <div className="font-serif text-2xl text-ry-onyx">+34.2%</div>
+                  <div className="font-serif text-2xl text-ry-onyx">
+                    £{klarnaVolume.toFixed(2)}
+                  </div>
                   <p className="text-[11px] text-ry-stone mt-1">
-                    Shoppers add both nectar and mask when paying in 4
+                    Direct merchant settlement with 0% liability
                   </p>
                 </div>
 
@@ -1126,9 +1054,11 @@ export default function AdminDashboard() {
                   <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
                     Klarna Checkout Share
                   </span>
-                  <div className="font-serif text-2xl text-[#992255]">42.8%</div>
+                  <div className="font-serif text-2xl text-[#992255]">
+                    {totalGMV > 0 ? ((klarnaVolume / totalGMV) * 100).toFixed(1) + '%' : '0.0%'}
+                  </div>
                   <p className="text-[11px] text-ry-stone mt-1">
-                    Of all completed checkouts use 4-Pay installments
+                    Proportion of completed orders using 4-Pay
                   </p>
                 </div>
               </div>

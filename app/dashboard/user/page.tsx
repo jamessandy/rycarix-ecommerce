@@ -24,91 +24,8 @@ import {
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 
-const MOCK_ORDERS = [
-  {
-    id: 'ord-1',
-    orderNumber: 'RY-84920',
-    date: 'September 14, 2026',
-    status: 'In Transit',
-    fulfillmentStatus: 'Out for delivery',
-    carrier: 'FedEx Priority',
-    trackingNumber: '7829-1092-4821',
-    total: 280.0,
-    items: [
-      {
-        title: 'Santal Noir Extrait de Parfum',
-        variantTitle: '100ml / 3.4 fl. oz.',
-        quantity: 1,
-        price: 280.0,
-        image:
-          'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
-      },
-    ],
-    klarna: {
-      planType: 'Pay in 4',
-      totalInstallments: 4,
-      installmentAmount: 70.0,
-      installmentsPaid: 2,
-      schedule: [
-        { index: 1, amount: 70.0, date: 'Sep 14, 2026', status: 'PAID' },
-        { index: 2, amount: 70.0, date: 'Sep 28, 2026', status: 'PAID' },
-        { index: 3, amount: 70.0, date: 'Oct 12, 2026', status: 'PENDING' },
-        { index: 4, amount: 70.0, date: 'Oct 26, 2026', status: 'SCHEDULED' },
-      ],
-    },
-  },
-  {
-    id: 'ord-2',
-    orderNumber: 'RY-77218',
-    date: 'August 02, 2026',
-    status: 'Delivered',
-    fulfillmentStatus: 'Delivered',
-    carrier: 'DHL Express',
-    trackingNumber: 'DHL-9840-2811',
-    total: 135.0,
-    items: [
-      {
-        title: 'L’Huile Sublime Regenerative Hair Nectar',
-        variantTitle: '100ml / 3.4 fl. oz.',
-        quantity: 1,
-        price: 135.0,
-        image:
-          'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
-      },
-    ],
-    klarna: {
-      planType: 'Pay in 4',
-      totalInstallments: 4,
-      installmentAmount: 33.75,
-      installmentsPaid: 4,
-      schedule: [
-        { index: 1, amount: 33.75, date: 'Aug 02, 2026', status: 'PAID' },
-        { index: 2, amount: 33.75, date: 'Aug 16, 2026', status: 'PAID' },
-        { index: 3, amount: 33.75, date: 'Aug 30, 2026', status: 'PAID' },
-        { index: 4, amount: 33.75, date: 'Sep 13, 2026', status: 'PAID' },
-      ],
-    },
-  },
-];
-
-const MOCK_WISHLIST = [
-  {
-    id: 'prod-hair-2',
-    title: 'Crème de Soie Keratin Restorative Mask',
-    price: 110.0,
-    category: 'Hair',
-    image:
-      'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=600&auto=format&fit=crop',
-  },
-  {
-    id: 'prod-perfume-2',
-    title: 'Ambre Céleste Extrait de Parfum',
-    price: 260.0,
-    category: 'Perfume',
-    image:
-      'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?q=80&w=600&auto=format&fit=crop',
-  },
-];
+const MOCK_ORDERS: any[] = [];
+const MOCK_WISHLIST: any[] = [];
 
 function UserDashboardContent() {
   const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses' | 'profile'>(
@@ -129,9 +46,9 @@ function UserDashboardContent() {
 
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileForm, setProfileForm] = useState({
-    name: user?.name || 'Éléonore de Vance',
-    email: user?.email || 'eleonore.devance@luxury-atelier.com',
-    phone: user?.phone || '+1 (212) 555-0194',
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
   });
 
   const handleProfileSave = (e: React.FormEvent) => {
@@ -303,7 +220,22 @@ function UserDashboardContent() {
         {/* Tab 1: Orders & Klarna Tracking */}
         {activeTab === 'orders' && (
           <div className="space-y-8 animate-fade-in">
-            {MOCK_ORDERS.map((order) => (
+            {MOCK_ORDERS.length === 0 ? (
+              <div className="bg-ry-white border border-ry-ash/70 p-12 text-center shadow-sm">
+                <Package className="w-8 h-8 text-ry-stone/60 mx-auto mb-3 stroke-[1.4]" />
+                <h3 className="font-serif text-xl text-ry-onyx mb-2">No Orders Placed Yet</h3>
+                <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
+                  You have not placed any orders yet. Discover our bespoke hair formulations and luxury perfumery.
+                </p>
+                <Link
+                  href="/#catalog"
+                  className="inline-block px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors"
+                >
+                  Explore Boutique Catalog
+                </Link>
+              </div>
+            ) : (
+              MOCK_ORDERS.map((order: any) => (
               <div
                 key={order.id}
                 className="bg-ry-white border border-ry-ash/70 overflow-hidden shadow-sm"
@@ -345,7 +277,7 @@ function UserDashboardContent() {
 
                 {/* Items in Order */}
                 <div className="p-6 divide-y divide-ry-ash/40">
-                  {order.items.map((item, idx) => (
+                  {order.items?.map((item: any, idx: number) => (
                     <div key={idx} className="flex gap-4 py-3 first:pt-0 last:pb-0">
                       <div className="relative w-16 h-20 bg-ry-oatmeal overflow-hidden border border-ry-ash/50 shrink-0">
                         <Image
@@ -387,7 +319,7 @@ function UserDashboardContent() {
 
                     {/* Installments Visual Timeline */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {order.klarna.schedule.map((step) => (
+                      {order.klarna.schedule?.map((step: any) => (
                         <div
                           key={step.index}
                           className={`p-3 border text-xs font-sans transition-all ${
@@ -443,92 +375,113 @@ function UserDashboardContent() {
                 </div>
 
               </div>
-            ))}
+            )))}
           </div>
         )}
 
         {/* Tab 2: Wishlist */}
         {activeTab === 'wishlist' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-fade-in">
-            {MOCK_WISHLIST.map((item) => (
-              <div
-                key={item.id}
-                className="bg-ry-white border border-ry-ash p-4 flex flex-col justify-between"
-              >
-                <div className="relative aspect-[3/4] bg-ry-oatmeal overflow-hidden mb-3">
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    sizes="300px"
-                    className="object-cover"
-                  />
-                  <span className="absolute top-2 left-2 bg-ry-white/90 text-[8px] uppercase tracking-editorial px-2 py-0.5 text-ry-stone">
-                    {item.category}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="font-serif text-base text-ry-onyx">{item.title}</h4>
-                  <div className="font-serif text-sm text-ry-onyx mt-1 mb-4">
-                    ${item.price.toFixed(2)}
-                  </div>
-                  <button
-                    onClick={() => {
-                      addItem({
-                        id: `${item.id}-default`,
-                        productId: item.id,
-                        variantId: 'default',
-                        title: item.title,
-                        variantTitle: 'Standard Edition',
-                        sku: 'RY-WL-01',
-                        price: item.price,
-                        quantity: 1,
-                        image: item.image,
-                      });
-                      openCart();
-                    }}
-                    className="w-full py-2.5 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial hover:bg-ry-burgundyLight transition-colors"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
+          <div>
+            {MOCK_WISHLIST.length === 0 ? (
+              <div className="bg-ry-white border border-ry-ash/70 p-12 text-center shadow-sm">
+                <Sparkles className="w-8 h-8 text-ry-stone/60 mx-auto mb-3 stroke-[1.4]" />
+                <h3 className="font-serif text-xl text-ry-onyx mb-2">Your Wishlist is Empty</h3>
+                <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
+                  Save your favorite botanical hair elixirs and fragrances to access them here anytime.
+                </p>
+                <Link
+                  href="/#catalog"
+                  className="inline-block px-6 py-3 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors"
+                >
+                  Discover Formulations
+                </Link>
               </div>
-            ))}
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 animate-fade-in">
+                {MOCK_WISHLIST.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className="bg-ry-white border border-ry-ash p-4 flex flex-col justify-between"
+                  >
+                    <div className="relative aspect-[3/4] bg-ry-oatmeal overflow-hidden mb-3">
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        sizes="300px"
+                        className="object-cover"
+                      />
+                      <span className="absolute top-2 left-2 bg-ry-white/90 text-[8px] uppercase tracking-editorial px-2 py-0.5 text-ry-stone">
+                        {item.category}
+                      </span>
+                    </div>
+                    <div>
+                      <h4 className="font-serif text-base text-ry-onyx">{item.title}</h4>
+                      <div className="font-serif text-sm text-ry-onyx mt-1 mb-4">
+                        ${item.price.toFixed(2)}
+                      </div>
+                      <button
+                        onClick={() => {
+                          addItem({
+                            id: `${item.id}-default`,
+                            productId: item.id,
+                            variantId: 'default',
+                            title: item.title,
+                            variantTitle: 'Standard Edition',
+                            sku: 'RY-WL-01',
+                            price: item.price,
+                            quantity: 1,
+                            image: item.image,
+                          });
+                          openCart();
+                        }}
+                        className="w-full py-2.5 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial hover:bg-ry-burgundyLight transition-colors"
+                      >
+                        Add to Cart
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Tab 3: Shipping Addresses */}
         {activeTab === 'addresses' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-            <div className="bg-ry-white border border-ry-onyx p-6 relative">
-              <span className="absolute top-4 right-4 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial px-2 py-0.5">
-                Default Address
-              </span>
-              <h4 className="font-serif text-lg mb-2">Home Address</h4>
-              <p className="text-xs text-ry-stone leading-relaxed font-sans">
-                {user.addresses && user.addresses[0] ? (
-                  <>
+            {user.addresses && user.addresses.length > 0 ? (
+              user.addresses.map((addr) => (
+                <div key={addr.id} className="bg-ry-white border border-ry-onyx p-6 relative">
+                  {addr.isDefault && (
+                    <span className="absolute top-4 right-4 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial px-2 py-0.5">
+                      Default Address
+                    </span>
+                  )}
+                  <h4 className="font-serif text-lg mb-2">{addr.type || 'Primary Address'}</h4>
+                  <p className="text-xs text-ry-stone leading-relaxed font-sans">
                     {user.name} <br />
-                    {user.addresses[0].street} <br />
-                    {user.addresses[0].city}, {user.addresses[0].state} {user.addresses[0].postalCode} <br />
-                    {user.addresses[0].country} <br />
+                    {addr.street} <br />
+                    {addr.city}, {addr.state} {addr.postalCode} <br />
+                    {addr.country} <br />
                     {user.phone}
-                  </>
-                ) : (
-                  <>
-                    {user.name} <br />
-                    740 Park Avenue, Apt 11B <br />
-                    New York, NY 10021 <br />
-                    United States <br />
-                    {user.phone}
-                  </>
-                )}
-              </p>
-              <div className="mt-6 pt-4 border-t border-ry-ash/50 flex gap-4 text-xs">
-                <button className="underline text-ry-stone hover:text-ry-onyx">Edit</button>
-                <button className="underline text-ry-stone hover:text-red-700">Delete</button>
+                  </p>
+                  <div className="mt-6 pt-4 border-t border-ry-ash/50 flex gap-4 text-xs">
+                    <button className="underline text-ry-stone hover:text-ry-onyx">Edit</button>
+                    <button className="underline text-ry-stone hover:text-red-700">Delete</button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="bg-ry-white border border-ry-ash p-6 flex flex-col justify-between">
+                <div>
+                  <h4 className="font-serif text-lg mb-2 text-ry-onyx">Shipping Address</h4>
+                  <p className="text-xs text-ry-stone leading-relaxed font-sans italic">
+                    No primary shipping address saved yet. Save an address to enable one-click courier checkout.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="bg-ry-pearl border border-dashed border-ry-ash p-6 flex flex-col items-center justify-center text-center">
               <MapPin className="w-8 h-8 text-ry-stone mb-2 stroke-1" />
