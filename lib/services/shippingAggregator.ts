@@ -15,7 +15,7 @@ export interface TrackingMilestone {
 export interface ShippingLabelData {
   trackingNumber: string;
   orderNumber: string;
-  carrier: 'FedEx' | 'DHL' | 'UPS';
+  carrier: 'Royal Mail' | 'Evri' | 'FedEx' | 'DHL' | 'UPS';
   serviceLevel: string;
   senderAddress: {
     name: string;
@@ -56,10 +56,10 @@ export interface ShippingLabelData {
 // Initial shipments for live tracking
 export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
   '7829-1092-4821': {
-    trackingNumber: '7829-1092-4821',
+    trackingNumber: 'RY-RM-84920GB',
     orderNumber: 'RY-84920',
-    carrier: 'FedEx',
-    serviceLevel: 'FedEx Priority Overnight',
+    carrier: 'Royal Mail',
+    serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
     senderAddress: {
       name: 'Rycarix Fulfillment Atelier',
       company: 'Rycarix Luxury Fragrance Co.',
@@ -70,47 +70,47 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     },
     recipientAddress: {
       name: 'Éléonore de Vance',
-      street: '740 Park Avenue, Apt 11B',
-      city: 'New York',
-      state: 'NY',
-      postalCode: '10021',
-      country: 'United States',
+      street: '42 Kensington Palace Gardens',
+      city: 'London',
+      state: 'Greater London',
+      postalCode: 'W8 4QP',
+      country: 'United Kingdom',
     },
     weightKg: 0.85,
     isHazardous: true,
     unNumber: 'UN 1266',
     hazardClass: 'Class 3 Flammable Liquid (LQ)',
-    properShippingName: 'Perfumery Products with Flammable Solvents',
+    properShippingName: 'Perfumery Products with Flammable Solvents (UN 1266)',
     lqCompliant: true,
-    estimatedDelivery: 'Today by 4:30 PM',
+    estimatedDelivery: 'Today by 1:00 PM',
     currentStatus: 'OUT_FOR_DELIVERY',
     milestones: [
       {
         timestamp: 'Sep 28, 2026 • 08:30 AM',
         status: 'Out for Delivery',
-        location: 'New York, NY',
-        description: 'Package sorted onto FedEx courier vehicle for direct residential delivery.',
+        location: 'London North Delivery Office (Royal Mail)',
+        description: 'Package sorted onto Royal Mail postal delivery van for direct residential doorstep delivery.',
         isCompleted: true,
       },
       {
         timestamp: 'Sep 27, 2026 • 11:15 PM',
         status: 'Arrived at Regional Hub',
-        location: 'Newark Hub, NJ',
-        description: 'Cleared customs and dangerous goods (LQ) visual compliance inspection.',
+        location: 'Royal Mail London Central Mail Centre',
+        description: 'Cleared dangerous goods (UN 1266 LQ) compliance inspection and sorted to local delivery depot.',
         isCompleted: true,
       },
       {
         timestamp: 'Sep 26, 2026 • 06:40 PM',
         status: 'Departed Export Facility',
         location: 'Paris Charles de Gaulle (CDG)',
-        description: 'International air manifest sealed with Limited Quantity (LQ) marking.',
+        description: 'International air manifest sealed with Limited Quantity (LQ) marking and handed over to Royal Mail customs clearance.',
         isCompleted: true,
       },
       {
         timestamp: 'Sep 25, 2026 • 02:15 PM',
         status: 'Dispatched via ShipStation',
         location: 'Rycarix Atelier, Paris',
-        description: 'Shipping label printed with UN 1266 Limited Quantity diamond marking.',
+        description: 'Royal Mail Tracked 24 thermal label printed with UN 1266 Limited Quantity diamond marking.',
         isCompleted: true,
       },
       {
@@ -132,11 +132,11 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
       },
     ],
   },
-  'DHL-9840-2811': {
-    trackingNumber: 'DHL-9840-2811',
+  'EVRI-9840-2811': {
+    trackingNumber: 'RY-EVRI-98402811',
     orderNumber: 'RY-77218',
-    carrier: 'DHL',
-    serviceLevel: 'DHL Express Worldwide',
+    carrier: 'Evri',
+    serviceLevel: 'Evri Express Tracked Delivery (48h Doorstep)',
     senderAddress: {
       name: 'Rycarix Fulfillment Atelier',
       company: 'Rycarix Luxury Fragrance Co.',
@@ -146,12 +146,12 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
       country: 'France',
     },
     recipientAddress: {
-      name: 'Éléonore de Vance',
-      street: '740 Park Avenue, Apt 11B',
-      city: 'New York',
-      state: 'NY',
-      postalCode: '10021',
-      country: 'United States',
+      name: 'Lord Alistair Sterling',
+      street: '14 Berkeley Square',
+      city: 'London',
+      state: 'Mayfair',
+      postalCode: 'W1J 6ER',
+      country: 'United Kingdom',
     },
     weightKg: 0.65,
     isHazardous: false,
@@ -162,22 +162,22 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
       {
         timestamp: 'Aug 02, 2026 • 01:20 PM',
         status: 'Delivered',
-        location: 'New York, NY',
-        description: 'Package handed directly to concierge. Signature recorded.',
+        location: 'London Mayfair Safe Place',
+        description: 'Delivered to recipient safe place with GPS digital photo verification by local Evri courier.',
         isCompleted: true,
       },
       {
         timestamp: 'Aug 02, 2026 • 07:45 AM',
         status: 'Out for Delivery',
-        location: 'New York, NY',
-        description: 'Courier assigned for standard delivery.',
+        location: 'Evri London Central Depot',
+        description: 'With your local Evri delivery courier for delivery today.',
         isCompleted: true,
       },
       {
         timestamp: 'Aug 01, 2026 • 09:00 PM',
-        status: 'Customs Cleared',
-        location: 'JFK International Airport, NY',
-        description: 'Import clearance approved.',
+        status: 'Hub Arrival & Sorted',
+        location: 'Evri Rugby SuperHub',
+        description: 'Parcel processed through automated sorting network.',
         isCompleted: true,
       },
     ],
@@ -193,6 +193,13 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     ],
   },
 };
+
+// Aliases for resilient search lookup
+SHIPMENT_DATABASE['RY-84920'] = SHIPMENT_DATABASE['7829-1092-4821'];
+SHIPMENT_DATABASE['RY-RM-84920GB'] = SHIPMENT_DATABASE['7829-1092-4821'];
+SHIPMENT_DATABASE['DHL-9840-2811'] = SHIPMENT_DATABASE['EVRI-9840-2811'];
+SHIPMENT_DATABASE['RY-77218'] = SHIPMENT_DATABASE['EVRI-9840-2811'];
+SHIPMENT_DATABASE['RY-EVRI-98402811'] = SHIPMENT_DATABASE['EVRI-9840-2811'];
 
 /**
  * Address validation simulator (in the style of ShipStation / Sendcloud address verification)
@@ -221,13 +228,14 @@ export function validateDeliveryAddress(address: {
 /**
  * Carrier Selector & LQ Hazard Evaluation:
  * Perfumes with alcohol require UN 1266 Limited Quantity (LQ) diamond labeling.
+ * Defaults to Royal Mail Tracked 24 (LQ Compliant) for Perfumes, and Evri for Hair/Body care.
  */
 export function evaluateShipmentPackaging(items: { title: string; category?: string }[]): {
   isHazardous: boolean;
   unNumber: string | null;
   hazardClass: string | null;
   lqLabelRequired: boolean;
-  recommendedCarrier: 'FedEx' | 'DHL' | 'UPS';
+  recommendedCarrier: 'Royal Mail' | 'Evri' | 'FedEx' | 'DHL';
   serviceLevel: string;
 } {
   const hasPerfume = items.some(
@@ -244,8 +252,8 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
       unNumber: 'UN 1266',
       hazardClass: 'Class 3 Flammable Liquid (PG II/III)',
       lqLabelRequired: true,
-      recommendedCarrier: 'FedEx',
-      serviceLevel: 'FedEx Priority Overnight (Dangerous Goods LQ Compliant)',
+      recommendedCarrier: 'Royal Mail',
+      serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
     };
   }
 
@@ -254,13 +262,13 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
     unNumber: null,
     hazardClass: null,
     lqLabelRequired: false,
-    recommendedCarrier: 'DHL',
-    serviceLevel: 'DHL Express Worldwide (Standard Non-Regulated)',
+    recommendedCarrier: 'Evri',
+    serviceLevel: 'Evri Express Tracked Delivery (48h Doorstep)',
   };
 }
 
 /**
- * Generate a new shipping label via aggregator simulation
+ * Generate a new shipping label via aggregator simulation with Evri or Royal Mail
  */
 export function createAggregatorDispatch(params: {
   orderNumber: string;
@@ -270,6 +278,8 @@ export function createAggregatorDispatch(params: {
   state: string;
   postalCode: string;
   country: string;
+  carrier?: 'Royal Mail' | 'Evri' | 'FedEx' | 'DHL' | 'UPS';
+  serviceLevel?: string;
   items: {
     title: string;
     variant: string;
@@ -279,14 +289,35 @@ export function createAggregatorDispatch(params: {
   }[];
 }): ShippingLabelData {
   const packaging = evaluateShipmentPackaging(params.items);
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  const trackingNumber = `RY-${packaging.recommendedCarrier.toUpperCase()}-${randomSuffix}`;
+  const chosenCarrier = params.carrier || packaging.recommendedCarrier;
+
+  let chosenService = params.serviceLevel;
+  if (!chosenService) {
+    if (chosenCarrier === 'Royal Mail') {
+      chosenService = packaging.isHazardous
+        ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)'
+        : 'Royal Mail Tracked 24';
+    } else if (chosenCarrier === 'Evri') {
+      chosenService = 'Evri Express Tracked Delivery (48h Doorstep)';
+    } else {
+      chosenService = packaging.serviceLevel;
+    }
+  }
+
+  let trackingNumber = '';
+  if (chosenCarrier === 'Royal Mail') {
+    trackingNumber = `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`;
+  } else if (chosenCarrier === 'Evri') {
+    trackingNumber = `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
+  } else {
+    trackingNumber = `RY-${chosenCarrier.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
 
   const newShipment: ShippingLabelData = {
     trackingNumber,
     orderNumber: params.orderNumber,
-    carrier: packaging.recommendedCarrier,
-    serviceLevel: packaging.serviceLevel,
+    carrier: chosenCarrier,
+    serviceLevel: chosenService,
     senderAddress: {
       name: 'Rycarix Fulfillment Atelier',
       company: 'Rycarix Luxury Fragrance Co.',
@@ -309,23 +340,23 @@ export function createAggregatorDispatch(params: {
     hazardClass: packaging.hazardClass || undefined,
     properShippingName: packaging.isHazardous ? 'Perfumery Products (UN 1266)' : undefined,
     lqCompliant: true,
-    estimatedDelivery: 'In 2-3 Business Days',
+    estimatedDelivery: chosenCarrier === 'Royal Mail' ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days',
     currentStatus: 'IN_TRANSIT',
     milestones: [
       {
         timestamp: 'Just now',
-        status: 'Label Printed & Manifest Dispatched',
+        status: `Label Printed via ${chosenCarrier}`,
         location: 'Rycarix Atelier, Paris',
         description: packaging.isHazardous
-          ? 'ShipStation generated commercial barcode with required UN 1266 Limited Quantity (LQ) hazard diamond.'
-          : 'ShipStation generated standard air express label.',
+          ? `${chosenCarrier} barcode generated with required UN 1266 Limited Quantity (LQ) hazard diamond.`
+          : `${chosenCarrier} express courier waybill generated.`,
         isCompleted: true,
       },
       {
         timestamp: 'Earlier today',
-        status: 'Order Verified',
+        status: 'Order Verified & Packed',
         location: 'Online Storefront',
-        description: 'Address validated and order processed.',
+        description: 'Customer delivery address validated and items prepared for courier pickup.',
         isCompleted: true,
       },
     ],
@@ -340,6 +371,7 @@ export function createAggregatorDispatch(params: {
 
   return newShipment;
 }
+
 
 /**
  * Retrieve tracking data by tracking number or order number

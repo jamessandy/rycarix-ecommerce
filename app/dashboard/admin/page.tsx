@@ -468,7 +468,67 @@ export default function AdminDashboard() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const [adminOrders, setAdminOrders] = useState<any[]>([]);
+  const INITIAL_ADMIN_ORDERS = [
+    {
+      id: 'RY-84920',
+      customer: 'Éléonore de Vance',
+      email: 'eleonore.vance@atelier-client.com',
+      items: 'Santal Noir Extrait de Parfum (100ml)',
+      itemCategory: 'Haute Parfumerie',
+      total: 280.0,
+      paymentMethod: 'Klarna Pay in 3',
+      fulfillment: 'In Transit via Royal Mail',
+      carrier: 'Royal Mail Tracked 24',
+      trackingNumber: '7829-1092-4821',
+      address: {
+        street: '42 Kensington Palace Gardens',
+        city: 'London',
+        state: 'Greater London',
+        postalCode: 'W8 4QP',
+        country: 'United Kingdom',
+      },
+    },
+    {
+      id: 'RY-91042',
+      customer: 'Lord Alistair Sterling',
+      email: 'alistair.sterling@mayfair.co.uk',
+      items: 'L’Huile Sublime Regenerative Hair Nectar (100ml)',
+      itemCategory: 'Hair',
+      total: 135.0,
+      paymentMethod: 'Clearpay Pay in 4',
+      fulfillment: 'Delivered via Evri',
+      carrier: 'Evri Express Tracked',
+      trackingNumber: 'EVRI-9840-2811',
+      address: {
+        street: '14 Berkeley Square',
+        city: 'London',
+        state: 'Mayfair',
+        postalCode: 'W1J 6ER',
+        country: 'United Kingdom',
+      },
+    },
+    {
+      id: 'RY-63821',
+      customer: 'Lady Genevieve Beaufort',
+      email: 'genevieve.b@chelsea-estates.com',
+      items: 'Baume Céleste Molecular Repair Balm',
+      itemCategory: 'Body & Bath',
+      total: 110.0,
+      paymentMethod: 'Stripe Card (1-Click)',
+      fulfillment: 'Ready for Dispatch',
+      carrier: 'Evri Express Tracked',
+      trackingNumber: '',
+      address: {
+        street: '88 King’s Road',
+        city: 'London',
+        state: 'Chelsea',
+        postalCode: 'SW3 4TZ',
+        country: 'United Kingdom',
+      },
+    },
+  ];
+
+  const [adminOrders, setAdminOrders] = useState<any[]>(INITIAL_ADMIN_ORDERS);
   const [trafficData, setTrafficData] = useState<any>(null);
 
   useEffect(() => {
@@ -515,10 +575,16 @@ export default function AdminDashboard() {
     const packaging = evaluateShipmentPackaging([
       { title: ord.items, category: ord.itemCategory },
     ]);
+    const carrier = packaging.recommendedCarrier; // 'Royal Mail' for perfume (LQ), 'Evri' for standard
+    const isRM = carrier === 'Royal Mail';
+    const trackingNumber = isRM
+      ? `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`
+      : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
+
     const simLabel: ShippingLabelData = {
-      trackingNumber: `RY-${packaging.recommendedCarrier.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      trackingNumber,
       orderNumber: ord.id,
-      carrier: packaging.recommendedCarrier,
+      carrier,
       serviceLevel: packaging.serviceLevel,
       senderAddress: {
         name: 'Rycarix Fulfillment Atelier',
@@ -530,11 +596,11 @@ export default function AdminDashboard() {
       },
       recipientAddress: {
         name: ord.customer,
-        street: ord.address.street,
-        city: ord.address.city,
-        state: ord.address.state,
-        postalCode: ord.address.postalCode,
-        country: ord.address.country,
+        street: ord.address?.street || '42 Kensington Palace Gardens',
+        city: ord.address?.city || 'London',
+        state: ord.address?.state || 'Greater London',
+        postalCode: ord.address?.postalCode || 'W8 4QP',
+        country: ord.address?.country || 'United Kingdom',
       },
       weightKg: 0.85,
       isHazardous: packaging.isHazardous,
@@ -542,16 +608,16 @@ export default function AdminDashboard() {
       hazardClass: packaging.hazardClass || undefined,
       properShippingName: packaging.isHazardous ? 'Perfumery Products (UN 1266)' : undefined,
       lqCompliant: true,
-      estimatedDelivery: 'In 2-3 Business Days',
+      estimatedDelivery: isRM ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days',
       currentStatus: 'IN_TRANSIT',
       milestones: [
         {
           timestamp: 'Just now',
-          status: 'Label Generated via ShipStation',
+          status: `Label Generated via ${carrier}`,
           location: 'Rycarix Atelier, Paris',
           description: packaging.isHazardous
-            ? 'Commercial shipping label printed with UN 1266 Limited Quantity (LQ) hazard marking.'
-            : 'Standard air express label generated.',
+            ? `${carrier} barcoded shipping label generated with mandatory UN 1266 Limited Quantity (LQ) diamond marking.`
+            : `${carrier} express doorstep tracking waybill generated.`,
           isCompleted: true,
         },
       ],
@@ -569,6 +635,28 @@ export default function AdminDashboard() {
     setActiveLabelData(simLabel);
   };
 
+  const handleSelectCarrier = (newCarrier: 'Royal Mail' | 'Evri') => {
+    if (!activeLabelData || !dispatchModalOrder) return;
+    const isRM = newCarrier === 'Royal Mail';
+    const newTracking = isRM
+      ? `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`
+      : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
+
+    const newService = isRM
+      ? activeLabelData.isHazardous
+        ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)'
+        : 'Royal Mail Tracked 24'
+      : 'Evri Express Tracked Delivery (48h Doorstep)';
+
+    setActiveLabelData({
+      ...activeLabelData,
+      carrier: newCarrier,
+      serviceLevel: newService,
+      trackingNumber: newTracking,
+      estimatedDelivery: isRM ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days',
+    });
+  };
+
   const handleConfirmDispatch = () => {
     if (!dispatchModalOrder || !activeLabelData) return;
     setIsDispatching(true);
@@ -578,11 +666,13 @@ export default function AdminDashboard() {
       createAggregatorDispatch({
         orderNumber: dispatchModalOrder.id,
         customerName: dispatchModalOrder.customer,
-        street: dispatchModalOrder.address.street,
-        city: dispatchModalOrder.address.city,
-        state: dispatchModalOrder.address.state,
-        postalCode: dispatchModalOrder.address.postalCode,
-        country: dispatchModalOrder.address.country,
+        street: dispatchModalOrder.address?.street || '42 Kensington Palace Gardens',
+        city: dispatchModalOrder.address?.city || 'London',
+        state: dispatchModalOrder.address?.state || 'Greater London',
+        postalCode: dispatchModalOrder.address?.postalCode || 'W8 4QP',
+        country: dispatchModalOrder.address?.country || 'United Kingdom',
+        carrier: activeLabelData.carrier,
+        serviceLevel: activeLabelData.serviceLevel,
         items: [
           {
             title: dispatchModalOrder.items,
@@ -600,8 +690,8 @@ export default function AdminDashboard() {
           o.id === dispatchModalOrder.id
             ? {
                 ...o,
-                fulfillment: 'Dispatched via ShipStation',
-                carrier: `${activeLabelData.carrier} Priority`,
+                fulfillment: `Dispatched via ${activeLabelData.carrier}`,
+                carrier: `${activeLabelData.carrier} Tracked`,
                 trackingNumber: activeLabelData.trackingNumber,
               }
             : o
@@ -610,7 +700,7 @@ export default function AdminDashboard() {
 
       setIsDispatching(false);
       setDispatchSuccessMsg(
-        `Order ${dispatchModalOrder.id} dispatched! Tracking #${activeLabelData.trackingNumber} is live.`
+        `Order ${dispatchModalOrder.id} dispatched via ${activeLabelData.carrier}! Tracking #${activeLabelData.trackingNumber} is live.`
       );
     }, 600);
   };
@@ -908,14 +998,14 @@ export default function AdminDashboard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-serif text-sm text-ry-onyx font-medium">
-                      Shipping Aggregator & Courier Gateway
+                      Evri & Royal Mail Courier Dispatch Gateway
                     </span>
                     <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[9px] font-medium uppercase tracking-wider">
-                      ShipStation / Sendcloud Active
+                      Evri & Royal Mail Active
                     </span>
                   </div>
                   <p className="text-[11px] text-ry-stone mt-0.5">
-                    Automated address normalization, hazardous materials (UN 1266 LQ) detection, rate calculation, and customer redirection to our branded tracking portal.
+                    Integrated parcel fulfillment via Evri and Royal Mail Tracked 24. Supports UN 1266 Limited Quantity (LQ) perfume hazmat marking, automatic address validation, and live GPS delivery tracking.
                   </p>
                 </div>
               </div>
@@ -1035,7 +1125,7 @@ export default function AdminDashboard() {
                                 className="px-3 py-1.5 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5 shadow-xs"
                               >
                                 <Package className="w-3.5 h-3.5" />
-                                <span>Dispatch via ShipStation</span>
+                                <span>Dispatch (Evri / Royal Mail)</span>
                               </button>
                             )}
                           </td>
@@ -2155,14 +2245,14 @@ export default function AdminDashboard() {
               <div className="border-b border-ry-ash/60 pb-4 mb-6">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial px-2 py-0.5">
-                    ShipStation / Sendcloud Integration
+                    Evri & Royal Mail Dispatch Gateway
                   </span>
                   <span className="text-xs text-ry-stone">
                     Order Ref: {dispatchModalOrder.id} • {dispatchModalOrder.customer}
                   </span>
                 </div>
                 <h3 className="font-serif text-2xl text-ry-onyx">
-                  Dispatch & Hazardous Goods Verification
+                  Courier Dispatch & Hazard Labeling
                 </h3>
               </div>
 
@@ -2173,13 +2263,87 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* Step 1: Address Validation & Dangerous Goods Verification */}
+              {/* Courier Selection Toggle: Royal Mail vs Evri */}
+              {!dispatchModalOrder.trackingNumber && (
+                <div className="mb-6 p-4 bg-ry-pearl border border-ry-ash">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
+                      1. Select Courier Partner
+                    </span>
+                    <span className="text-[10px] text-ry-stone/80 font-mono">
+                      Active Delivery Partners
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Royal Mail Option */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCarrier('Royal Mail')}
+                      className={`p-3 text-left border transition-all flex flex-col justify-between ${
+                        activeLabelData.carrier === 'Royal Mail'
+                          ? 'border-ry-onyx bg-white ring-1 ring-ry-onyx shadow-xs'
+                          : 'border-ry-ash/80 bg-white/60 hover:border-ry-onyx/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="font-serif font-bold text-sm text-ry-onyx flex items-center gap-1.5">
+                          <Truck className="w-4 h-4 text-red-700" />
+                          Royal Mail
+                        </span>
+                        {activeLabelData.carrier === 'Royal Mail' && (
+                          <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold border border-emerald-300">
+                            SELECTED
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] font-medium text-ry-onyx">
+                        Tracked 24 Priority
+                      </div>
+                      <div className="text-[10px] text-ry-stone mt-1">
+                        UN 1266 LQ Perfume Compliant • Guaranteed Next Day & Saturday Delivery
+                      </div>
+                    </button>
+
+                    {/* Evri Option */}
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCarrier('Evri')}
+                      className={`p-3 text-left border transition-all flex flex-col justify-between ${
+                        activeLabelData.carrier === 'Evri'
+                          ? 'border-ry-onyx bg-white ring-1 ring-ry-onyx shadow-xs'
+                          : 'border-ry-ash/80 bg-white/60 hover:border-ry-onyx/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="font-serif font-bold text-sm text-ry-onyx flex items-center gap-1.5">
+                          <Truck className="w-4 h-4 text-sky-700" />
+                          Evri
+                        </span>
+                        {activeLabelData.carrier === 'Evri' && (
+                          <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold border border-emerald-300">
+                            SELECTED
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] font-medium text-ry-onyx">
+                        Evri Express Tracked Delivery
+                      </div>
+                      <div className="text-[10px] text-ry-stone mt-1">
+                        GPS Safe Place Digital Photo Proof • 7-Day Residential Doorstep Courier
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Address Validation & Dangerous Goods Verification */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs">
                 {/* Address Check */}
                 <div className="p-4 bg-ry-pearl border border-ry-ash/70">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
-                      1. Address Normalization
+                      2. Address Normalization
                     </span>
                     <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 border border-emerald-300 font-mono">
                       VALIDATED
@@ -2201,7 +2365,7 @@ export default function AdminDashboard() {
                 }`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
-                      2. Dangerous Goods (LQ) Check
+                      3. Dangerous Goods (LQ) Check
                     </span>
                     <span className={`text-[9px] px-1.5 py-0.2 border font-mono ${
                       activeLabelData.isHazardous
@@ -2218,24 +2382,24 @@ export default function AdminDashboard() {
                         Perfumery Products (Alcohol Denat &gt;24% ABV)
                       </div>
                       <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
-                        Class 3 Flammable Liquid PG II/III. Package automatically tagged with mandatory Limited Quantity (LQ) diamond marking for air & road transport.
+                        Class 3 Flammable Liquid PG II/III. Package automatically tagged with mandatory Limited Quantity (LQ) diamond marking for {activeLabelData.carrier} transport.
                       </p>
                     </div>
                   ) : (
                     <div>
                       <div className="font-medium text-ry-onyx">Standard Cosmetic Goods</div>
                       <p className="text-[11px] text-ry-stone mt-1">
-                        Formulation does not exceed solvent flashpoint thresholds. Standard shipping documentation accepted.
+                        Formulation does not exceed solvent flashpoint thresholds. Standard shipping documentation accepted by {activeLabelData.carrier}.
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Step 2: Commercial Shipping Label Simulation */}
+              {/* Step 3: Commercial Shipping Label Simulation */}
               <div className="mb-6">
                 <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-2 font-semibold">
-                  3. Generated Thermal Shipping Label & Barcode
+                  4. Generated Thermal Shipping Label & Barcode
                 </span>
 
                 <div className="border-2 border-ry-onyx p-4 sm:p-6 bg-white text-black font-sans relative">
@@ -2246,14 +2410,20 @@ export default function AdminDashboard() {
                         RYCARIX ATELIER
                       </span>
                       <span className="text-[9px] uppercase tracking-wider text-neutral-600 block">
-                        ShipStation Carrier Gateway • Paris, FR
+                        {activeLabelData.carrier === 'Royal Mail'
+                          ? 'Royal Mail Delivery Network • UK & Worldwide'
+                          : 'Evri National Parcel Hub • Express Doorstep'}
                       </span>
                     </div>
 
                     <div className="text-right">
-                      <div className="text-sm font-bold uppercase">{activeLabelData.carrier} EXPRESS</div>
-                      <span className="text-[9px] font-mono text-neutral-600">
-                        {activeLabelData.serviceLevel.split('(')[0]}
+                      <div className="text-sm font-bold uppercase">
+                        {activeLabelData.carrier === 'Royal Mail'
+                          ? 'ROYAL MAIL TRACKED 24'
+                          : 'EVRI EXPRESS'}
+                      </div>
+                      <span className="text-[9px] font-mono text-neutral-600 block">
+                        {activeLabelData.serviceLevel}
                       </span>
                     </div>
                   </div>
@@ -2359,7 +2529,7 @@ export default function AdminDashboard() {
                       ) : (
                         <>
                           <Package className="w-4 h-4" />
-                          <span>Confirm Courier Dispatch</span>
+                          <span>Confirm Dispatch via {activeLabelData.carrier}</span>
                         </>
                       )}
                     </button>
