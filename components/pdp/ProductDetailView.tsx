@@ -96,6 +96,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                     alt={img.alt}
                     fill
                     sizes="80px"
+                    unoptimized={img.url?.startsWith('data:')}
                     className="object-cover object-center"
                   />
                   {img.isTexture && (
@@ -115,6 +116,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 60vw"
+                unoptimized={activeImage.url?.startsWith('data:')}
                 className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
               />
 
@@ -150,8 +152,8 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
               <p className="text-[10px] uppercase tracking-subtle mt-0.5">Eco-Certified & Recyclable</p>
             </div>
             <div>
-              <p className="font-serif italic text-ry-onyx text-sm">Klarna Verified</p>
-              <p className="text-[10px] uppercase tracking-subtle mt-0.5">Split Into 4 Payments</p>
+              <p className="font-serif italic text-ry-onyx text-sm">Klarna & Clearpay</p>
+              <p className="text-[10px] uppercase tracking-subtle mt-0.5">Pay in 3 (Klarna) or 4 (Clearpay)</p>
             </div>
           </div>
         </div>

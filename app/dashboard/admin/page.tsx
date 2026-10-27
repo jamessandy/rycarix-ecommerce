@@ -37,8 +37,14 @@ import {
   ArrowUpRight,
   BarChart3,
   LogOut,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw,
+  Save,
+  Check,
 } from 'lucide-react';
 import { PRODUCTS } from '@/lib/data/mockData';
+import { ProductItem } from '@/lib/types/ecommerce';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import {
   createAggregatorDispatch,
@@ -53,12 +59,71 @@ interface AdminProductForm {
   category: string;
   subtitle: string;
   basePrice: number;
+  compareAtPrice: number;
   stock: number;
   sku: string;
   size: string;
   inci: string;
   terroir: string;
+  howToUse: string;
+  summary: string;
+  description: string;
+  imageUrl: string;
+  secondaryImageUrl: string;
 }
+
+interface EditProductFormState {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  subtitle: string;
+  basePrice: number;
+  compareAtPrice: number;
+  stock: number;
+  sku: string;
+  size: string;
+  inci: string;
+  terroir: string;
+  howToUse: string;
+  summary: string;
+  description: string;
+  imageUrl: string;
+  secondaryImageUrl: string;
+}
+
+const PRESET_IMAGES = [
+  {
+    name: 'Hair Nectar Elixir',
+    category: 'Hair',
+    url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    name: 'Grasse Perfume Flacon',
+    category: 'Haute Parfumerie',
+    url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    name: 'Botanical Cellular Serum',
+    category: 'Botanical Skincare',
+    url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    name: 'Artisanal Body Balm',
+    category: 'Body & Bath',
+    url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    name: 'Hand-Poured Soy Candle',
+    category: 'Home & Living',
+    url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    name: 'Fine Accessories & Horn',
+    category: 'Accessories',
+    url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=800&auto=format&fit=crop',
+  },
+];
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -83,37 +148,182 @@ export default function AdminDashboard() {
   }, [hasHydrated, isAuthenticated, user, router]);
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'analytics'>('inventory');
-  const [productsList, setProductsList] = useState(PRODUCTS);
+  const [productsList, setProductsList] = useState<ProductItem[]>(PRODUCTS);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
-  // Dynamic Product Form State
-  const [formData, setFormData] = useState<AdminProductForm>({
+  // Hydrate custom or edited products from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('rycarix_catalog_products');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProductsList(parsed);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load saved products', e);
+      }
+    }
+  }, []);
+
+  const saveCatalog = (newList: ProductItem[]) => {
+    setProductsList(newList);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('rycarix_catalog_products', JSON.stringify(newList));
+      } catch (err) {
+        console.warn('Could not persist products', err);
+      }
+    }
+  };
+
+  const handleResetCatalog = () => {
+    if (confirm('Restore factory default product catalog (all initial formulations)?')) {
+      saveCatalog(PRODUCTS);
+      setNotification({ message: 'Catalog reset to atelier factory presets.', type: 'info' });
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
+  // Dynamic Product Form State for New Product
+  const initialFormData: AdminProductForm = {
     title: '',
     category: 'Hair',
     subtitle: '',
     basePrice: 195,
+    compareAtPrice: 0,
     stock: 50,
     sku: 'RY-NEW-01',
     size: '100ml / 3.4 fl. oz.',
-    inci: 'Alcohol Denat, Parfum, Santalum Album Oil...',
-    terroir: 'Murano Glass & Grasse Botanicals',
+    inci: 'Alcohol Denat, Parfum, Santalum Album Oil, Rosa Damascena Flower Water, Tocopherol.',
+    terroir: 'Murano Hand-Blown Flacon & Grasse Botanicals',
+    howToUse: 'Apply 2-3 drops to pulse points or smooth through damp hair lengths.',
+    summary: 'Dynamic atelier formulation handcrafted with rare botanical essences and molecular extracts.',
+    description: 'Extracted and blended according to Rycarix strict artisanal quality protocols in limited batch reserves.',
+    imageUrl: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=800&auto=format&fit=crop',
+    secondaryImageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
+  };
+
+  const [formData, setFormData] = useState<AdminProductForm>(initialFormData);
+
+  // Edit Product Form State
+  const [editFormData, setEditFormData] = useState<EditProductFormState>({
+    id: '',
+    title: '',
+    slug: '',
+    category: 'Hair',
+    subtitle: '',
+    basePrice: 0,
+    compareAtPrice: 0,
+    stock: 0,
+    sku: '',
+    size: '',
+    inci: '',
+    terroir: '',
+    howToUse: '',
+    summary: '',
+    description: '',
+    imageUrl: '',
+    secondaryImageUrl: '',
   });
+
+  // Handle local image upload via FileReader
+  const handleImageFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: 'add-primary' | 'add-secondary' | 'edit-primary' | 'edit-secondary'
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert('File size exceeds 8MB. Please select a smaller image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const dataUrl = uploadEvent.target?.result as string;
+      if (target === 'add-primary') {
+        setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+      } else if (target === 'add-secondary') {
+        setFormData((prev) => ({ ...prev, secondaryImageUrl: dataUrl }));
+      } else if (target === 'edit-primary') {
+        setEditFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+      } else if (target === 'edit-secondary') {
+        setEditFormData((prev) => ({ ...prev, secondaryImageUrl: dataUrl }));
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleStartEdit = (product: ProductItem) => {
+    setEditingProduct(product);
+    setEditFormData({
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      category: product.category,
+      subtitle: product.subtitle || '',
+      basePrice: product.basePrice,
+      compareAtPrice: product.compareAtPrice || 0,
+      stock: product.variants[0]?.inventory ?? 45,
+      sku: product.variants[0]?.sku || `RY-${product.id.slice(-6).toUpperCase()}`,
+      size: product.variants[0]?.title || '100ml / 3.4 fl. oz.',
+      inci: product.ingredients || '',
+      terroir: product.sourcingEthics || '',
+      howToUse: product.howToUse || '',
+      summary: product.summary || '',
+      description: product.description || '',
+      imageUrl: product.images[0]?.url || '',
+      secondaryImageUrl: product.images[1]?.url || '',
+    });
+    setShowEditModal(true);
+  };
 
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    const newProduct = {
+    if (!formData.title.trim()) {
+      alert('Please enter a formulation title.');
+      return;
+    }
+
+    const primaryImgUrl =
+      formData.imageUrl.trim() ||
+      'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=800&auto=format&fit=crop';
+
+    const newSlug =
+      formData.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') || `product-${Date.now()}`;
+
+    const newProduct: ProductItem = {
       id: `prod-${Date.now()}`,
       title: formData.title,
-      slug: formData.title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      slug: newSlug,
       subtitle: formData.subtitle || `${formData.category} Formulation`,
-      summary: 'Dynamic atelier formulation with bespoke molecular extract.',
-      description: 'Extracted and blended according to Rycarix quality protocols.',
+      summary:
+        formData.summary ||
+        'Dynamic atelier formulation handcrafted with rare botanical essences and molecular extracts.',
+      description:
+        formData.description ||
+        'Extracted and blended according to Rycarix strict artisanal quality protocols in limited batch reserves.',
       category: formData.category,
-      basePrice: Number(formData.basePrice),
+      basePrice: Number(formData.basePrice) || 0,
+      compareAtPrice:
+        formData.compareAtPrice && Number(formData.compareAtPrice) > 0
+          ? Number(formData.compareAtPrice)
+          : undefined,
       rating: 5.0,
       reviewCount: 0,
       ingredients: formData.inci,
-      howToUse: 'Apply to pulse points or hair tips as desired.',
+      howToUse: formData.howToUse || 'Apply 2-3 drops to pulse points or smooth through hair as desired.',
       sourcingEthics: formData.terroir,
       attributes: {
         categoryType: formData.category,
@@ -121,32 +331,141 @@ export default function AdminDashboard() {
       images: [
         {
           id: `img-${Date.now()}-1`,
-          url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop',
+          url: primaryImgUrl,
           alt: formData.title,
           isHero: true,
         },
-        {
-          id: `img-${Date.now()}-2`,
-          url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
-          alt: `${formData.title} Texture`,
-          isTexture: true,
-        },
+        ...(formData.secondaryImageUrl.trim()
+          ? [
+              {
+                id: `img-${Date.now()}-2`,
+                url: formData.secondaryImageUrl.trim(),
+                alt: `${formData.title} Texture`,
+                isTexture: true,
+              },
+            ]
+          : [
+              {
+                id: `img-${Date.now()}-2`,
+                url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
+                alt: `${formData.title} Texture`,
+                isTexture: true,
+              },
+            ]),
       ],
       variants: [
         {
           id: `var-${Date.now()}`,
-          sku: formData.sku,
-          title: formData.size,
-          price: Number(formData.basePrice),
-          inventory: Number(formData.stock),
-          attributes: { size: formData.size },
+          sku: formData.sku || `RY-${Date.now().toString().slice(-4)}`,
+          title: formData.size || '100ml / 3.4 fl. oz.',
+          price: Number(formData.basePrice) || 0,
+          compareAtPrice:
+            formData.compareAtPrice && Number(formData.compareAtPrice) > 0
+              ? Number(formData.compareAtPrice)
+              : undefined,
+          inventory: Number(formData.stock) || 0,
+          attributes: { size: formData.size || '100ml' },
         },
       ],
     };
 
-    setProductsList([newProduct as any, ...productsList]);
+    const updatedList = [newProduct, ...productsList];
+    saveCatalog(updatedList);
     setShowAddModal(false);
-    alert(`Product "${formData.title}" added to catalog.`);
+    setFormData(initialFormData);
+    setNotification({
+      message: `Product "${newProduct.title}" created and published to catalog.`,
+      type: 'success',
+    });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleUpdateProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    if (!editFormData.title.trim()) {
+      alert('Product title cannot be empty.');
+      return;
+    }
+
+    const primaryImgUrl =
+      editFormData.imageUrl.trim() ||
+      editingProduct.images[0]?.url ||
+      'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop';
+
+    const updatedImages = [
+      {
+        id: editingProduct.images[0]?.id || `img-${Date.now()}-1`,
+        url: primaryImgUrl,
+        alt: editFormData.title,
+        isHero: true,
+      },
+      ...(editFormData.secondaryImageUrl.trim()
+        ? [
+            {
+              id: editingProduct.images[1]?.id || `img-${Date.now()}-2`,
+              url: editFormData.secondaryImageUrl.trim(),
+              alt: `${editFormData.title} Texture`,
+              isTexture: true,
+            },
+          ]
+        : editingProduct.images.slice(1)),
+    ];
+
+    const updatedVariants = [
+      {
+        id: editingProduct.variants[0]?.id || `var-${Date.now()}`,
+        sku: editFormData.sku || `RY-${Date.now().toString().slice(-4)}`,
+        title: editFormData.size || '100ml / 3.4 fl. oz.',
+        price: Number(editFormData.basePrice) || 0,
+        compareAtPrice:
+          editFormData.compareAtPrice && Number(editFormData.compareAtPrice) > 0
+            ? Number(editFormData.compareAtPrice)
+            : undefined,
+        inventory: Number(editFormData.stock) || 0,
+        attributes: {
+          ...editingProduct.variants[0]?.attributes,
+          size: editFormData.size || '100ml',
+        },
+      },
+      ...editingProduct.variants.slice(1),
+    ];
+
+    const updatedProduct: ProductItem = {
+      ...editingProduct,
+      title: editFormData.title,
+      slug:
+        editFormData.slug.trim() ||
+        editFormData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      category: editFormData.category,
+      subtitle: editFormData.subtitle || `${editFormData.category} Formulation`,
+      summary: editFormData.summary || editingProduct.summary,
+      description: editFormData.description || editingProduct.description,
+      basePrice: Number(editFormData.basePrice) || 0,
+      compareAtPrice:
+        editFormData.compareAtPrice && Number(editFormData.compareAtPrice) > 0
+          ? Number(editFormData.compareAtPrice)
+          : undefined,
+      ingredients: editFormData.inci,
+      sourcingEthics: editFormData.terroir,
+      howToUse: editFormData.howToUse,
+      images: updatedImages,
+      variants: updatedVariants,
+      attributes: {
+        ...editingProduct.attributes,
+        categoryType: editFormData.category,
+      },
+    };
+
+    const updatedList = productsList.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
+    saveCatalog(updatedList);
+    setShowEditModal(false);
+    setEditingProduct(null);
+    setNotification({
+      message: `Product "${updatedProduct.title}" updated successfully.`,
+      type: 'success',
+    });
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const [adminOrders, setAdminOrders] = useState<any[]>([]);
@@ -329,6 +648,14 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-3">
             <button
+              onClick={handleResetCatalog}
+              className="px-4 py-3 border border-ry-ash text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-xs uppercase tracking-editorial flex items-center gap-1.5 transition-colors"
+              title="Reset catalog to atelier factory presets"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Reset Defaults</span>
+            </button>
+            <button
               onClick={() => setShowAddModal(true)}
               className="px-5 py-3 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial flex items-center gap-2 hover:bg-ry-charcoal transition-colors shadow-luxury"
             >
@@ -467,7 +794,7 @@ export default function AdminDashboard() {
                       <th className="py-3 px-4">Primary Variant</th>
                       <th className="py-3 px-4">Price</th>
                       <th className="py-3 px-4">Stock</th>
-                      <th className="py-3 px-4">Klarna 4-Pay</th>
+                      <th className="py-3 px-4">Clearpay (x4) / Klarna (x3)</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -477,12 +804,13 @@ export default function AdminDashboard() {
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <div className="relative w-10 h-12 bg-ry-oatmeal overflow-hidden border border-ry-ash/60 shrink-0">
-                              <Image
-                                src={product.images[0]?.url}
+                              <img
+                                src={
+                                  product.images[0]?.url ||
+                                  'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop'
+                                }
                                 alt={product.title}
-                                fill
-                                sizes="40px"
-                                className="object-cover"
+                                className="w-full h-full object-cover"
                               />
                             </div>
                             <div>
@@ -502,7 +830,12 @@ export default function AdminDashboard() {
                           {product.variants[0]?.title}
                         </td>
                         <td className="py-3.5 px-4 font-mono font-medium text-ry-onyx">
-                          £{product.basePrice.toFixed(2)}
+                          <div>£{product.basePrice.toFixed(2)}</div>
+                          {product.compareAtPrice && product.compareAtPrice > product.basePrice && (
+                            <div className="text-[10px] text-ry-stone line-through">
+                              £{product.compareAtPrice.toFixed(2)}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3.5 px-4">
                           <span
@@ -516,7 +849,8 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-mono text-ry-stone">
-                          £{(product.basePrice / 4).toFixed(2)}/mo
+                          <div>£{(product.basePrice / 4).toFixed(2)} <span className="text-[10px] text-ry-stone/70">x4</span></div>
+                          <div className="text-[10px] text-ry-stone/60">or £{(product.basePrice / 3).toFixed(2)} x3</div>
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -528,19 +862,25 @@ export default function AdminDashboard() {
                               <Eye className="w-4 h-4" />
                             </Link>
                             <button
-                              onClick={() => alert(`Editing: ${product.title}`)}
-                              className="p-1.5 text-ry-stone hover:text-ry-onyx"
-                              title="Edit Variant Attributes"
+                              onClick={() => handleStartEdit(product)}
+                              className="p-1.5 text-ry-stone hover:text-ry-onyx transition-colors"
+                              title="Edit Formulation, Image & Pricing"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => {
                                 if (confirm(`Archive formulation "${product.title}"?`)) {
-                                  setProductsList(productsList.filter((p) => p.id !== product.id));
+                                  const updated = productsList.filter((p) => p.id !== product.id);
+                                  saveCatalog(updated);
+                                  setNotification({
+                                    message: `Formulation "${product.title}" removed from catalog.`,
+                                    type: 'info',
+                                  });
+                                  setTimeout(() => setNotification(null), 4000);
                                 }
                               }}
-                              className="p-1.5 text-ry-stone hover:text-red-700"
+                              className="p-1.5 text-ry-stone hover:text-red-700 transition-colors"
                               title="Archive Formulation"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1073,27 +1413,143 @@ export default function AdminDashboard() {
         {/* Dynamic Product Creation Modal */}
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-ry-pearl border border-ry-ash w-full max-w-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
               <div className="flex justify-between items-center pb-4 mb-6 border-b border-ry-ash">
                 <div>
                   <h3 className="font-serif text-2xl">Add Dynamic Product Formulation</h3>
                   <p className="text-xs text-ry-stone font-sans">
-                    Extensible architecture ready for Haircare, Perfume, or future categories.
+                    Extensible architecture ready for Haircare, Perfume, Skincare, or future categories.
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="text-ry-stone hover:text-ry-onyx"
+                  className="text-ry-stone hover:text-ry-onyx p-1"
                 >
-                  ✕
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleCreateProduct} className="space-y-4 text-xs font-sans">
+              <form onSubmit={handleCreateProduct} className="space-y-5 text-xs font-sans">
+                {/* Product Imagery Section */}
+                <div className="bg-ry-white border border-ry-ash p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
+                      Primary Product Image (Hero)
+                    </label>
+                    <span className="text-[10px] text-ry-stone/70">
+                      Upload from device, paste image URL, or choose preset
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    {/* Live Thumbnail Preview */}
+                    <div className="relative w-24 h-28 bg-ry-oatmeal border border-ry-ash/70 overflow-hidden shrink-0 flex items-center justify-center group">
+                      {formData.imageUrl ? (
+                        <>
+                          <img
+                            src={formData.imageUrl}
+                            alt="Primary Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                            className="absolute top-1 right-1 p-1 bg-ry-onyx/80 text-ry-white rounded-full hover:bg-red-700 transition-colors"
+                            title="Remove image"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center text-ry-stone text-center p-2">
+                          <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
+                          <span className="text-[9px] uppercase tracking-subtle">No Image</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Inputs & Controls */}
+                    <div className="flex-1 space-y-2.5 w-full">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          placeholder="Paste image URL (https://...)"
+                          value={formData.imageUrl}
+                          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                          className="flex-1 bg-ry-pearl border border-ry-ash p-2.5 text-xs focus:border-ry-onyx outline-none font-mono"
+                        />
+                        <label className="cursor-pointer px-4 py-2.5 bg-ry-onyx text-ry-white text-[11px] uppercase tracking-editorial flex items-center justify-center gap-1.5 hover:bg-ry-charcoal transition-colors shrink-0">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload File</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleImageFileUpload(e, 'add-primary')}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Quick Luxury Presets */}
+                      <div>
+                        <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
+                          Curated Atelier Presets:
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PRESET_IMAGES.map((preset) => (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, imageUrl: preset.url })}
+                              className={`px-2 py-1 text-[10px] border transition-all ${
+                                formData.imageUrl === preset.url
+                                  ? 'border-ry-onyx bg-ry-onyx text-ry-white'
+                                  : 'border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx'
+                              }`}
+                            >
+                              {preset.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secondary Texture Image */}
+                  <div className="pt-2 border-t border-ry-ash/40">
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Secondary / Sensory Texture Image URL (Optional)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. macro texture shot or unboxing photograph URL"
+                        value={formData.secondaryImageUrl}
+                        onChange={(e) =>
+                          setFormData({ ...formData, secondaryImageUrl: e.target.value })
+                        }
+                        className="flex-1 bg-ry-white border border-ry-ash p-2 focus:border-ry-onyx outline-none font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 border border-ry-ash bg-ry-pearl text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-[10px] uppercase tracking-editorial flex items-center gap-1 transition-colors shrink-0">
+                        <Upload className="w-3 h-3" />
+                        <span>Upload File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageFileUpload(e, 'add-secondary')}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form fields: Title, Category, Subtitle */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Product Title
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Product Title *
                     </label>
                     <input
                       type="text"
@@ -1106,8 +1562,8 @@ export default function AdminDashboard() {
                   </div>
 
                   <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Category (Extensible)
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Category
                     </label>
                     <select
                       value={formData.category}
@@ -1124,24 +1580,54 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                    Atelier Subtitle / Tagline
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Rare Murano Flacon Concentrated Extrait"
+                    value={formData.subtitle}
+                    onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
+                {/* Pricing & Inventory */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Base Price (£)
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Price (£) *
                     </label>
                     <input
                       type="number"
+                      step="0.01"
                       required
                       value={formData.basePrice}
                       onChange={(e) =>
                         setFormData({ ...formData, basePrice: Number(e.target.value) })
                       }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
                     />
                   </div>
                   <div>
                     <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Initial Inventory
+                      Compare Price (£)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Optional"
+                      value={formData.compareAtPrice || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, compareAtPrice: Number(e.target.value) })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Inventory Units *
                     </label>
                     <input
                       type="number"
@@ -1150,11 +1636,11 @@ export default function AdminDashboard() {
                       onChange={(e) =>
                         setFormData({ ...formData, stock: Number(e.target.value) })
                       }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
                       SKU Code
                     </label>
                     <input
@@ -1162,13 +1648,13 @@ export default function AdminDashboard() {
                       required
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
                     Primary Variant Size / Volume
                   </label>
                   <input
@@ -1180,9 +1666,34 @@ export default function AdminDashboard() {
                   />
                 </div>
 
+                {/* Summary & Description */}
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                    Short Summary (PDP Header)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.summary}
+                    onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
                 <div>
                   <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Ingredients (INCI) / Scent Notes JSON
+                    Full Formulation Narrative & Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                    Ingredients (INCI) / Scent Notes Profile
                   </label>
                   <textarea
                     rows={2}
@@ -1192,16 +1703,29 @@ export default function AdminDashboard() {
                   />
                 </div>
 
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Ethical Sourcing & Terroir Notes
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.terroir}
-                    onChange={(e) => setFormData({ ...formData, terroir: e.target.value })}
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Ethical Sourcing & Terroir Notes
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.terroir}
+                      onChange={(e) => setFormData({ ...formData, terroir: e.target.value })}
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Application Ritual / How To Use
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.howToUse}
+                      onChange={(e) => setFormData({ ...formData, howToUse: e.target.value })}
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="pt-4 flex justify-end gap-3 border-t border-ry-ash">
@@ -1214,9 +1738,398 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-ry-onyx text-ry-white uppercase tracking-editorial text-[11px] hover:bg-ry-charcoal transition-colors"
+                    className="px-6 py-2.5 bg-ry-onyx text-ry-white uppercase tracking-editorial text-[11px] hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
                   >
-                    Publish to Catalog
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Publish to Catalog</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Formulation & Product Modal */}
+        {showEditModal && editingProduct && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-center pb-4 mb-6 border-b border-ry-ash">
+                <div>
+                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">
+                    Product Ref: {editingProduct.id}
+                  </span>
+                  <h3 className="font-serif text-2xl text-ry-onyx">Edit Formulation: {editingProduct.title}</h3>
+                  <p className="text-xs text-ry-stone font-sans">
+                    Modify product imagery, pricing, inventory count, and formulation stories.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingProduct(null);
+                  }}
+                  className="text-ry-stone hover:text-ry-onyx p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateProduct} className="space-y-5 text-xs font-sans">
+                {/* Product Imagery Section */}
+                <div className="bg-ry-white border border-ry-ash p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
+                      Primary Product Image (Hero)
+                    </label>
+                    <span className="text-[10px] text-ry-stone/70">
+                      Upload from device, paste image URL, or choose preset
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    {/* Live Thumbnail Preview */}
+                    <div className="relative w-24 h-28 bg-ry-oatmeal border border-ry-ash/70 overflow-hidden shrink-0 flex items-center justify-center group">
+                      {editFormData.imageUrl ? (
+                        <>
+                          <img
+                            src={editFormData.imageUrl}
+                            alt="Edit Primary Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setEditFormData({ ...editFormData, imageUrl: '' })}
+                            className="absolute top-1 right-1 p-1 bg-ry-onyx/80 text-ry-white rounded-full hover:bg-red-700 transition-colors"
+                            title="Remove image"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center text-ry-stone text-center p-2">
+                          <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
+                          <span className="text-[9px] uppercase tracking-subtle">No Image</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Inputs & Controls */}
+                    <div className="flex-1 space-y-2.5 w-full">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          placeholder="Paste image URL (https://...)"
+                          value={editFormData.imageUrl}
+                          onChange={(e) =>
+                            setEditFormData({ ...editFormData, imageUrl: e.target.value })
+                          }
+                          className="flex-1 bg-ry-pearl border border-ry-ash p-2.5 text-xs focus:border-ry-onyx outline-none font-mono"
+                        />
+                        <label className="cursor-pointer px-4 py-2.5 bg-ry-onyx text-ry-white text-[11px] uppercase tracking-editorial flex items-center justify-center gap-1.5 hover:bg-ry-charcoal transition-colors shrink-0">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload File</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleImageFileUpload(e, 'edit-primary')}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Quick Luxury Presets */}
+                      <div>
+                        <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
+                          Curated Atelier Presets:
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PRESET_IMAGES.map((preset) => (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              onClick={() =>
+                                setEditFormData({ ...editFormData, imageUrl: preset.url })
+                              }
+                              className={`px-2 py-1 text-[10px] border transition-all ${
+                                editFormData.imageUrl === preset.url
+                                  ? 'border-ry-onyx bg-ry-onyx text-ry-white'
+                                  : 'border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx'
+                              }`}
+                            >
+                              {preset.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Secondary Texture Image */}
+                  <div className="pt-2 border-t border-ry-ash/40">
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Secondary / Sensory Texture Image URL (Optional)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. macro texture shot or unboxing photograph URL"
+                        value={editFormData.secondaryImageUrl}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, secondaryImageUrl: e.target.value })
+                        }
+                        className="flex-1 bg-ry-white border border-ry-ash p-2 focus:border-ry-onyx outline-none font-mono"
+                      />
+                      <label className="cursor-pointer px-3 py-2 border border-ry-ash bg-ry-pearl text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-[10px] uppercase tracking-editorial flex items-center gap-1 transition-colors shrink-0">
+                        <Upload className="w-3 h-3" />
+                        <span>Upload File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleImageFileUpload(e, 'edit-secondary')}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Core Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Product Title *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFormData.title}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, title: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-serif text-sm font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Category
+                    </label>
+                    <select
+                      value={editFormData.category}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, category: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                    >
+                      <option value="Hair">Hair (Main Seller)</option>
+                      <option value="Haute Parfumerie">Haute Parfumerie</option>
+                      <option value="Botanical Skincare">Botanical Skincare</option>
+                      <option value="Body & Bath">Body & Bath</option>
+                      <option value="Home & Living">Home & Living</option>
+                      <option value="Accessories">Accessories & Fine Goods</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      URL Slug
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.slug}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, slug: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Atelier Subtitle / Tagline
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.subtitle}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, subtitle: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Pricing & Stock */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Price (£) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={editFormData.basePrice}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, basePrice: Number(e.target.value) })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Compare Price (£)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Optional"
+                      value={editFormData.compareAtPrice || ''}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          compareAtPrice: Number(e.target.value),
+                        })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      Inventory Units *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={editFormData.stock}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, stock: Number(e.target.value) })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                      SKU Code
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFormData.sku}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, sku: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                    Primary Variant Size / Volume
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.size}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, size: e.target.value })
+                    }
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
+                {/* Summary & Description */}
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
+                    Short Summary (PDP Header)
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.summary}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, summary: e.target.value })
+                    }
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                    Full Formulation Narrative & Description
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editFormData.description}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, description: e.target.value })
+                    }
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                    Ingredients (INCI) / Scent Notes Profile
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editFormData.inci}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, inci: e.target.value })
+                    }
+                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Ethical Sourcing & Terroir Notes
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.terroir}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, terroir: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
+                      Application Ritual / How To Use
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.howToUse}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, howToUse: e.target.value })
+                      }
+                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-ry-ash">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingProduct(null);
+                    }}
+                    className="px-5 py-2.5 border border-ry-ash text-ry-stone hover:text-ry-onyx uppercase tracking-editorial text-[11px]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-ry-onyx text-ry-white uppercase tracking-editorial text-[11px] hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Changes to Catalog</span>
                   </button>
                 </div>
               </form>
@@ -1454,6 +2367,25 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Floating Atelier Admin Notification Toast */}
+        {notification && (
+          <div className="fixed bottom-6 right-6 z-50 bg-ry-onyx text-ry-white px-5 py-3.5 border border-ry-ash/40 shadow-2xl flex items-center gap-3 animate-fade-in font-sans">
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
+            )}
+            <span className="text-xs font-medium tracking-wide">{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="text-ry-ash hover:text-ry-white transition-colors ml-2"
+              title="Dismiss notification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 

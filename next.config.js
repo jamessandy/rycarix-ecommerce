@@ -6,13 +6,11 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
-        pathname: '/**',
+        hostname: '**',
       },
       {
-        protocol: 'https',
-        hostname: 'cdn.rycarix.com',
-        pathname: '/**',
+        protocol: 'http',
+        hostname: '**',
       },
     ],
   },
