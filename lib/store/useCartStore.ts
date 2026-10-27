@@ -24,20 +24,7 @@ const FREE_SHIPPING_THRESHOLD = 180; // $180 luxury free shipping bar
 
 export const useCartStore = create<CartState>((set, get) => ({
   isOpen: false,
-  items: [
-    // Pre-populate with 1 euro test product for instant payment verification
-    {
-      id: 'prod-demo-1eur-v1',
-      productId: 'prod-demo-1eur',
-      variantId: 'v-demo-1eur',
-      title: 'Atelier Discovery Sample • 1€ Live Checkout Test',
-      variantTitle: '2ml Test Vial (€1.00 / £1.00)',
-      sku: 'RY-TEST-1EUR',
-      price: 1,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=900&auto=format&fit=crop',
-    },
-  ],
+  items: [],
 
   openCart: () => set({ isOpen: true }),
   closeCart: () => set({ isOpen: false }),

@@ -13,8 +13,7 @@ export default function CheckoutPage() {
   const { user, isAuthenticated } = useAuthStore();
 
   const subtotal = getCartSubtotal();
-  const isDemoOrder = items.some((item) => item.price <= 1 || item.productId === 'prod-demo-1eur');
-  const shipping = (subtotal >= 150 || isDemoOrder) ? 0 : 15;
+  const shipping = subtotal >= 150 ? 0 : 15;
   const total = subtotal + shipping;
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,6 +58,44 @@ export default function CheckoutPage() {
     e.preventDefault();
     setIsProcessing(true);
 
+    const newOrderId = `RY-${Math.floor(10000 + Math.random() * 90000)}`;
+    const newOrder = {
+      id: newOrderId,
+      customer: `${firstName} ${lastName}`.trim() || 'Valued Client',
+      email: email || user?.email || 'client@rycarix.com',
+      items: items.map((i) => `${i.title} (${i.variantTitle})`).join(', '),
+      itemsList: items,
+      itemCategory: items[0]?.title?.toLowerCase().includes('parfum') ? 'Haute Parfumerie' : 'Hair',
+      total: total,
+      paymentMethod:
+        paymentMethod === 'klarna'
+          ? 'Klarna Pay in 3'
+          : paymentMethod === 'clearpay'
+          ? 'Clearpay Pay in 4'
+          : 'Stripe Card (1-Click)',
+      fulfillment: 'Ready for Dispatch',
+      carrier: 'Pending Courier Assignment',
+      trackingNumber: '',
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      address: {
+        street,
+        city,
+        state,
+        postalCode,
+        country,
+      },
+    };
+
+    try {
+      if (typeof window !== 'undefined') {
+        const existingRaw = localStorage.getItem('rycarix_orders');
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        localStorage.setItem('rycarix_orders', JSON.stringify([newOrder, ...existing]));
+      }
+    } catch (saveErr) {
+      console.warn('Could not persist order locally', saveErr);
+    }
+
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -95,11 +132,11 @@ export default function CheckoutPage() {
 
       // Successful simulated checkout
       clearCart();
-      router.push(`/dashboard/user?checkout_simulated=true&method=${paymentMethod}`);
+      router.push(`/dashboard/user?checkout_simulated=true&method=${paymentMethod}&orderId=${newOrderId}`);
     } catch (err: any) {
       console.error('Checkout error:', err);
       clearCart();
-      router.push('/dashboard/user?checkout_simulated=true');
+      router.push(`/dashboard/user?checkout_simulated=true&orderId=${newOrderId}`);
     }
   };
 
@@ -468,10 +505,6 @@ export default function CheckoutPage() {
                 <span className="font-mono text-ry-onyx">
                   {shipping === 0 ? 'FREE' : `£${shipping.toFixed(2)}`}
                 </span>
-              </div>
-              <div className="flex justify-between text-ry-stone">
-                <span>Complimentary Samples (x2)</span>
-                <span className="text-emerald-700 font-medium">Included</span>
               </div>
               <div className="border-t border-ry-ash/60 pt-3 flex justify-between text-base font-serif text-ry-onyx font-medium">
                 <span>Total</span>

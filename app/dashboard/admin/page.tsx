@@ -154,7 +154,7 @@ export default function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
-  // Hydrate custom or edited products from localStorage on mount
+  // Hydrate custom or edited products and real customer orders from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -162,11 +162,31 @@ export default function AdminDashboard() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setProductsList(parsed);
+            // Filter out any stale dummy or demo products
+            const cleaned = parsed.filter(
+              (p: any) => p.id !== 'prod-demo-1eur' && p.slug !== 'atelier-discovery-sample-1-euro'
+            );
+            setProductsList(cleaned);
+            localStorage.setItem('rycarix_catalog_products', JSON.stringify(cleaned));
+          } else {
+            setProductsList(PRODUCTS.filter((p) => p.id !== 'prod-demo-1eur'));
           }
+        } else {
+          setProductsList(PRODUCTS.filter((p) => p.id !== 'prod-demo-1eur'));
+        }
+
+        // Hydrate actual client orders
+        const savedOrders = localStorage.getItem('rycarix_orders');
+        if (savedOrders) {
+          const parsedOrders = JSON.parse(savedOrders);
+          if (Array.isArray(parsedOrders)) {
+            setAdminOrders(parsedOrders);
+          }
+        } else {
+          setAdminOrders([]);
         }
       } catch (e) {
-        console.warn('Failed to load saved products', e);
+        console.warn('Failed to load saved products/orders', e);
       }
     }
   }, []);
@@ -468,67 +488,8 @@ export default function AdminDashboard() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const INITIAL_ADMIN_ORDERS = [
-    {
-      id: 'RY-84920',
-      customer: 'Éléonore de Vance',
-      email: 'eleonore.vance@atelier-client.com',
-      items: 'Santal Noir Extrait de Parfum (100ml)',
-      itemCategory: 'Haute Parfumerie',
-      total: 280.0,
-      paymentMethod: 'Klarna Pay in 3',
-      fulfillment: 'In Transit via Royal Mail',
-      carrier: 'Royal Mail Tracked 24',
-      trackingNumber: '7829-1092-4821',
-      address: {
-        street: '42 Kensington Palace Gardens',
-        city: 'London',
-        state: 'Greater London',
-        postalCode: 'W8 4QP',
-        country: 'United Kingdom',
-      },
-    },
-    {
-      id: 'RY-91042',
-      customer: 'Lord Alistair Sterling',
-      email: 'alistair.sterling@mayfair.co.uk',
-      items: 'L’Huile Sublime Regenerative Hair Nectar (100ml)',
-      itemCategory: 'Hair',
-      total: 135.0,
-      paymentMethod: 'Clearpay Pay in 4',
-      fulfillment: 'Delivered via Evri',
-      carrier: 'Evri Express Tracked',
-      trackingNumber: 'EVRI-9840-2811',
-      address: {
-        street: '14 Berkeley Square',
-        city: 'London',
-        state: 'Mayfair',
-        postalCode: 'W1J 6ER',
-        country: 'United Kingdom',
-      },
-    },
-    {
-      id: 'RY-63821',
-      customer: 'Lady Genevieve Beaufort',
-      email: 'genevieve.b@chelsea-estates.com',
-      items: 'Baume Céleste Molecular Repair Balm',
-      itemCategory: 'Body & Bath',
-      total: 110.0,
-      paymentMethod: 'Stripe Card (1-Click)',
-      fulfillment: 'Ready for Dispatch',
-      carrier: 'Evri Express Tracked',
-      trackingNumber: '',
-      address: {
-        street: '88 King’s Road',
-        city: 'London',
-        state: 'Chelsea',
-        postalCode: 'SW3 4TZ',
-        country: 'United Kingdom',
-      },
-    },
-  ];
-
-  const [adminOrders, setAdminOrders] = useState<any[]>(INITIAL_ADMIN_ORDERS);
+  // Real store orders hydrated from localStorage or empty
+  const [adminOrders, setAdminOrders] = useState<any[]>([]);
   const [trafficData, setTrafficData] = useState<any>(null);
 
   useEffect(() => {
@@ -684,9 +645,9 @@ export default function AdminDashboard() {
         ],
       });
 
-      // Update in local admin orders state
-      setAdminOrders((prev) =>
-        prev.map((o) =>
+      // Update in local admin orders state and persist to rycarix_orders
+      setAdminOrders((prev) => {
+        const next = prev.map((o) =>
           o.id === dispatchModalOrder.id
             ? {
                 ...o,
@@ -695,8 +656,16 @@ export default function AdminDashboard() {
                 trackingNumber: activeLabelData.trackingNumber,
               }
             : o
-        )
-      );
+        );
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('rycarix_orders', JSON.stringify(next));
+          } catch (e) {
+            console.warn('Could not persist dispatched order', e);
+          }
+        }
+        return next;
+      });
 
       setIsDispatching(false);
       setDispatchSuccessMsg(
