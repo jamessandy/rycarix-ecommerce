@@ -13,7 +13,8 @@ export default function CheckoutPage() {
   const { user, isAuthenticated } = useAuthStore();
 
   const subtotal = getCartSubtotal();
-  const shipping = subtotal >= 150 ? 0 : 15;
+  const isDemoOrder = items.some((item) => item.price <= 1 || item.productId === 'prod-demo-1eur');
+  const shipping = (subtotal >= 150 || isDemoOrder) ? 0 : 15;
   const total = subtotal + shipping;
 
   const [isProcessing, setIsProcessing] = useState(false);

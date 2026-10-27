@@ -2,7 +2,6 @@
 
 import React, { Suspense } from 'react';
 import ProductCatalog from '@/components/home/ProductCatalog';
-import PerksBanner from '@/components/home/PerksBanner';
 import Link from 'next/link';
 import { ChevronRight, Sparkles, Truck, CreditCard, Gift } from 'lucide-react';
 import { CATEGORIES } from '@/lib/data/mockData';
@@ -49,9 +48,6 @@ export default function ShopAllProductsPage() {
           </div>
         </div>
       </section>
-
-      {/* Perks Banner */}
-      <PerksBanner />
 
       {/* Main Interactive Product Catalog */}
       <ProductCatalog selectedCategory="ALL" />

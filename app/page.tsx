@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Hero from '@/components/home/Hero';
-import PerksBanner from '@/components/home/PerksBanner';
 import CategoryGrid from '@/components/home/CategoryGrid';
 import ProductCatalog from '@/components/home/ProductCatalog';
 import FeaturedEditorial from '@/components/home/FeaturedEditorial';
@@ -26,10 +25,7 @@ export default function HomePage() {
       {/* 1. E-Commerce Flagship Hero */}
       <Hero onSelectCategory={handleSelectCategory} />
 
-      {/* 2. E-Commerce Perks & Trust Guarantees */}
-      <PerksBanner />
-
-      {/* 3. Curated Departments Grid */}
+      {/* 2. Curated Departments Grid */}
       <CategoryGrid onSelectCategory={handleSelectCategory} />
 
       {/* 4. Complete Interactive Product Catalog & Shop */}

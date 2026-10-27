@@ -36,7 +36,7 @@ export const CATEGORIES: CategoryItem[] = [
     slug: 'hair',
     description: 'Biomimetic ceramides, vegan silk polypeptides, and restorative nectar elixirs.',
     image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=1200&auto=format&fit=crop',
-    productCount: 3,
+    productCount: 4,
     featuredTag: 'Bestseller',
   },
   {
@@ -84,6 +84,59 @@ export const CATEGORIES: CategoryItem[] = [
 ];
 
 export const PRODUCTS: ProductItem[] = [
+  // -------------------------------------------------------------
+  // DEMO PRODUCT (1€ / £1 LIVE TEST CHECKOUT)
+  // -------------------------------------------------------------
+  {
+    id: 'prod-demo-1eur',
+    title: 'Atelier Discovery Sample • 1€ Live Checkout Test',
+    slug: 'atelier-discovery-sample-1-euro',
+    subtitle: '1€ / £1 Verification Sample • Botanical Hair & Fragrance Discovery Flacon',
+    summary: 'An artisanal 2ml discovery sample for testing live checkout, instant payment authorization, and courier dispatch milestones for exactly 1€ / £1.',
+    description: 'Created specifically for client verification and live transaction testing. Experience the smooth checkout and instant milestone tracking of Rycarix with a single nominal payment of €1.00 / £1.00. Includes sample vial of our flagship botanical hair nectar.',
+    category: 'Hair',
+    basePrice: 1,
+    compareAtPrice: 15,
+    rating: 5.0,
+    reviewCount: 98,
+    ingredients: 'Camellia Japonica Seed Oil, Citrullus Lanatus Seed Oil, Ceramide NG, Squalane, Natural Botanical Isolates. 100% Biodegradable.',
+    howToUse: 'Dispense 1 drop into palms and smooth over hair ends or pulse points.',
+    sourcingEthics: 'Hand-filled in Murano glass 2ml sample flacons with recyclable brass caps.',
+    attributes: {
+      badge: '1€ Test Order',
+      hairType: ['All Hair Types', 'Straight', 'Wavy', 'Curly', 'Coiled'],
+      siliconeFree: true,
+      sulfateFree: true,
+      volumeMl: 2,
+      ritualTime: 'Instant Trial',
+    },
+    images: [
+      {
+        id: 'img-demo-hero',
+        url: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=1200&auto=format&fit=crop',
+        alt: 'Atelier Discovery Sample 1 euro test product',
+        isHero: true,
+      },
+      {
+        id: 'img-demo-texture',
+        url: 'https://images.unsplash.com/photo-1617897903246-719242758050?q=80&w=1200&auto=format&fit=crop',
+        alt: 'Botanical nectar droplet texture',
+        isTexture: true,
+      },
+    ],
+    variants: [
+      {
+        id: 'v-demo-1eur',
+        sku: 'RY-TEST-1EUR',
+        title: '2ml Test Vial (€1.00 / £1.00)',
+        price: 1,
+        compareAtPrice: 15,
+        inventory: 999,
+        attributes: { size: '2ml' },
+      },
+    ],
+  },
+
   // HAIR (TOP SELLER)
   // -------------------------------------------------------------
   {

@@ -25,17 +25,17 @@ const FREE_SHIPPING_THRESHOLD = 180; // $180 luxury free shipping bar
 export const useCartStore = create<CartState>((set, get) => ({
   isOpen: false,
   items: [
-    // Pre-populate with one item for instant live visual fidelity
+    // Pre-populate with 1 euro test product for instant payment verification
     {
-      id: 'prod-hair-1-v1',
-      productId: 'prod-hair-1',
-      variantId: 'v1-100ml',
-      title: 'L’Huile Sublime Regenerative Hair Nectar',
-      variantTitle: '100ml / 3.4 fl. oz.',
-      sku: 'RY-HN-100',
-      price: 135,
+      id: 'prod-demo-1eur-v1',
+      productId: 'prod-demo-1eur',
+      variantId: 'v-demo-1eur',
+      title: 'Atelier Discovery Sample • 1€ Live Checkout Test',
+      variantTitle: '2ml Test Vial (€1.00 / £1.00)',
+      sku: 'RY-TEST-1EUR',
+      price: 1,
       quantity: 1,
-      image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=900&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=900&auto=format&fit=crop',
     },
   ],
 
