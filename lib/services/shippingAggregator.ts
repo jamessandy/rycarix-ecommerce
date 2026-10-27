@@ -117,7 +117,7 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
         timestamp: 'Sep 24, 2026 • 10:00 AM',
         status: 'Order Placed & Confirmed',
         location: 'Online Storefront',
-        description: 'Payment authorized via Klarna Pay in 4. Order dispatched to fulfillment.',
+        description: 'Payment authorized via Klarna (Pay in 3) / Clearpay (Pay in 4). Order dispatched to fulfillment.',
         isCompleted: true,
       },
     ],

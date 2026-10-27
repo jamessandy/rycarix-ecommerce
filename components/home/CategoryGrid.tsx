@@ -33,16 +33,9 @@ export default function CategoryGrid({ onSelectCategory }: CategoryGridProps) {
         {/* 6 Category Tiles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {CATEGORIES.map((category) => (
-            <div
+            <Link
               key={category.id}
-              onClick={() => {
-                if (onSelectCategory) {
-                  onSelectCategory(category.name);
-                } else {
-                  const catalogEl = document.getElementById('catalog');
-                  if (catalogEl) catalogEl.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
+              href={`/category/${category.slug}`}
               className="group cursor-pointer relative overflow-hidden bg-ry-oatmeal border border-ry-ash/60 transition-all duration-500 hover:shadow-luxury hover:border-ry-onyx/40 flex flex-col justify-between"
             >
               {/* Category Image with Zoom Effect */}
@@ -84,11 +77,11 @@ export default function CategoryGrid({ onSelectCategory }: CategoryGridProps) {
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-ry-ash/30 flex items-center justify-between text-[10px] uppercase tracking-editorial text-ry-onyx font-medium">
-                  <span>Shop Now</span>
+                  <span>Explore {category.name}</span>
                   <span className="group-hover:translate-x-1 transition-transform">→</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 

@@ -68,12 +68,12 @@ export default function Header() {
   }, [searchOpen]);
 
   const navLinks = [
-    { name: 'Shop All', href: '/#catalog' },
-    { name: 'Hair', href: '/#catalog' },
-    { name: 'Perfume', href: '/#catalog' },
-    { name: 'Skincare', href: '/#catalog' },
-    { name: 'Home & Candles', href: '/#catalog' },
-    { name: 'Accessories', href: '/#catalog' },
+    { name: 'Shop All', href: '/products' },
+    { name: 'Hair', href: '/category/hair' },
+    { name: 'Perfume', href: '/category/fragrance' },
+    { name: 'Skincare', href: '/category/skincare' },
+    { name: 'Home & Candles', href: '/category/candles' },
+    { name: 'Accessories', href: '/category/accessories' },
     { name: 'About Us', href: '/#philosophy' },
   ];
 
@@ -95,7 +95,7 @@ export default function Header() {
         <span>Free UK Shipping via Evri & Royal Mail (Over £150)</span>
         <span className="hidden sm:inline opacity-40">•</span>
         <span className="hidden sm:inline">
-          Pay in 4 with <strong className="text-ry-white">Klarna</strong> (0% APR)
+          Pay in 3 with <strong className="text-ry-white">Klarna</strong> or 4 with <strong className="text-ry-white">Clearpay</strong> (0% APR)
         </span>
         <span className="hidden md:inline opacity-40">•</span>
         <span className="hidden md:inline">2 Free Samples with Every Order</span>

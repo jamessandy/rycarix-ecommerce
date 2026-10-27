@@ -12,8 +12,8 @@ export default function PerksBanner() {
     },
     {
       icon: CreditCard,
-      title: 'Klarna Pay in 4',
-      description: 'Split your purchase into 4 interest-free payments.',
+      title: 'Klarna & Clearpay',
+      description: 'Pay in 3 with Klarna or 4 with Clearpay (0% interest).',
       badge: '0% APR',
     },
     {

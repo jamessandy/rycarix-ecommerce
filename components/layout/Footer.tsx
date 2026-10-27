@@ -77,7 +77,7 @@ export default function Footer() {
             <div className="flex items-center gap-3 text-[10px] text-ry-ash/80">
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Klarna Official Partner
+                Klarna & Clearpay Partner
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
@@ -94,37 +94,37 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-ry-stone">
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/products" className="hover:text-ry-white transition-colors">
                   Shop All Products
                 </Link>
               </li>
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/category/hair" className="hover:text-ry-white transition-colors">
                   Hair
                 </Link>
               </li>
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/category/fragrance" className="hover:text-ry-white transition-colors">
                   Perfume & Fragrance
                 </Link>
               </li>
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/category/skincare" className="hover:text-ry-white transition-colors">
                   Skincare
                 </Link>
               </li>
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/category/body-bath" className="hover:text-ry-white transition-colors">
                   Body & Bath
                 </Link>
               </li>
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/category/candles" className="hover:text-ry-white transition-colors">
                   Home & Candles
                 </Link>
               </li>
               <li>
-                <Link href="/#catalog" className="hover:text-ry-white transition-colors">
+                <Link href="/category/accessories" className="hover:text-ry-white transition-colors">
                   Accessories
                 </Link>
               </li>

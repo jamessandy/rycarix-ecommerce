@@ -199,7 +199,8 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
               product.images.find((img) => img.isTexture || !img.isHero) || heroImage;
             const isHovered = hoveredProductId === product.id;
             const isJustAdded = justAddedId === product.id;
-            const klarnaInstallment = (product.basePrice / 4).toFixed(2);
+            const klarnaInstallment = (product.basePrice / 3).toFixed(2);
+            const clearpayInstallment = (product.basePrice / 4).toFixed(2);
 
             return (
               <div
@@ -300,12 +301,17 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
                       </span>
                     </div>
 
-                    {/* Klarna Micro-installment */}
-                    <div className="flex items-center gap-1.5 text-[10px] text-ry-stone font-sans">
-                      <span>4 payments of £{klarnaInstallment} with</span>
+                    {/* Klarna & Clearpay Micro-installment */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-ry-stone font-sans">
                       <span className="bg-[#FFA8CD] text-black font-semibold text-[8px] px-1 py-0.2 rounded-sm">
                         Klarna.
                       </span>
+                      <span>3 x £{klarnaInstallment}</span>
+                      <span>•</span>
+                      <span className="bg-[#B2ECE1] text-black font-semibold text-[8px] px-1 py-0.2 rounded-sm">
+                        clearpay✦
+                      </span>
+                      <span>4 x £{clearpayInstallment}</span>
                     </div>
 
                     {/* Action Button: Quick Add or View Options */}

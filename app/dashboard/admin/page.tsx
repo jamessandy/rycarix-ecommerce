@@ -606,7 +606,7 @@ export default function AdminDashboard() {
                   <Package className="w-10 h-10 mx-auto mb-3 stroke-[1.4] text-ry-stone/60" />
                   <h4 className="font-serif text-lg text-ry-onyx mb-1">No Orders Placed Yet</h4>
                   <p className="text-xs text-ry-stone max-w-md mx-auto">
-                    When customers place orders using Stripe Card or Klarna Pay in 4, customer delivery addresses, parcel packaging classifications (UN 1266 LQ), and dispatch tracking will appear here in real time.
+                    When customers place orders using Stripe Card, Klarna (Pay in 3), or Clearpay (Pay in 4), customer delivery addresses, parcel packaging classifications (UN 1266 LQ), and dispatch tracking will appear here in real time.
                   </p>
                 </div>
               ) : (
@@ -644,9 +644,13 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-3.5 px-4 font-mono">£{ord.total?.toFixed(2)}</td>
                           <td className="py-3.5 px-4">
-                            {ord.paymentMethod?.includes('Klarna') ? (
+                            {ord.paymentMethod?.toLowerCase().includes('klarna') ? (
                               <span className="inline-flex items-center gap-1 bg-[#FFF0F5] border border-[#FFA8CD] text-[#801040] px-2 py-0.5 text-[10px] font-semibold">
-                                Klarna Pay in 4
+                                Klarna Pay in 3
+                              </span>
+                            ) : ord.paymentMethod?.toLowerCase().includes('clearpay') ? (
+                              <span className="inline-flex items-center gap-1 bg-[#E6F9F5] border border-[#B2ECE1] text-[#0A5C4E] px-2 py-0.5 text-[10px] font-semibold">
+                                Clearpay Pay in 4
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 bg-ry-oatmeal text-[10px]">

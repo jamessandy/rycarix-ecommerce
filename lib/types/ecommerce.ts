@@ -74,6 +74,14 @@ export interface CartItem {
 
 export interface KlarnaInstallmentPlan {
   total: number;
+  numberOfPayments: 3;
+  installmentAmount: number;
+  frequency: "Monthly (30 days)";
+  apr: "0% APR";
+}
+
+export interface ClearpayInstallmentPlan {
+  total: number;
   numberOfPayments: 4;
   installmentAmount: number;
   frequency: "Bi-weekly";

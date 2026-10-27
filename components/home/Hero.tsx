@@ -10,12 +10,12 @@ interface HeroProps {
 
 export default function Hero({ onSelectCategory }: HeroProps) {
   const quickCategories = [
-    { label: 'All Products', value: 'ALL' },
-    { label: 'Hair', value: 'Hair' },
-    { label: 'Perfume', value: 'Haute Parfumerie' },
-    { label: 'Skincare', value: 'Botanical Skincare' },
-    { label: 'Home & Candles', value: 'Home & Living' },
-    { label: 'Accessories', value: 'Accessories' },
+    { label: 'All Products', href: '/products' },
+    { label: 'Hair', href: '/category/hair' },
+    { label: 'Perfume', href: '/category/fragrance' },
+    { label: 'Skincare', href: '/category/skincare' },
+    { label: 'Home & Candles', href: '/category/candles' },
+    { label: 'Accessories', href: '/category/accessories' },
   ];
 
   const handleCategoryClick = (val: string) => {
@@ -85,26 +85,30 @@ export default function Hero({ onSelectCategory }: HeroProps) {
         {/* Category Quick Pills */}
         <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto mb-8">
           <span className="text-[10px] uppercase tracking-editorial text-ry-ash/60 mr-1 hidden sm:inline">
-            Quick Links:
+            Quick Categories:
           </span>
           {quickCategories.map((cat) => (
-            <button
+            <Link
               key={cat.label}
-              onClick={() => handleCategoryClick(cat.value)}
+              href={cat.href}
               className="px-3 py-1 bg-ry-white/10 hover:bg-ry-white/20 border border-ry-white/20 text-[10px] uppercase tracking-editorial text-ry-white transition-colors"
             >
               {cat.label}
-            </button>
+            </Link>
           ))}
         </div>
 
-        {/* Klarna Installment & Free Delivery Micro-Badge */}
+        {/* Klarna & Clearpay Installment & Free Delivery Micro-Badge */}
         <div className="text-[11px] text-ry-ash/80 font-sans flex flex-wrap items-center justify-center gap-2">
-          <span>Free UK delivery via Evri & Royal Mail over $150</span>
+          <span>Free UK delivery via Evri & Royal Mail over £150</span>
           <span>•</span>
-          <span>Pay in 4 installments with</span>
+          <span>Pay in 3 with</span>
           <span className="bg-[#FFA8CD] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">
             Klarna.
+          </span>
+          <span>or 4 with</span>
+          <span className="bg-[#B2ECE1] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">
+            clearpay✦
           </span>
           <span>•</span>
           <span>Signature gift packaging with 2 samples</span>

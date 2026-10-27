@@ -16,6 +16,7 @@ interface CartState {
   getCartSubtotal: () => number;
   getTotalCount: () => number;
   getKlarnaInstallment: () => number;
+  getClearpayInstallment: () => number;
   getFreeShippingProgress: () => { threshold: number; remaining: number; percent: number };
 }
 
@@ -91,6 +92,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   getKlarnaInstallment: () => {
+    const subtotal = get().getCartSubtotal();
+    return Math.round((subtotal / 3) * 100) / 100;
+  },
+
+  getClearpayInstallment: () => {
     const subtotal = get().getCartSubtotal();
     return Math.round((subtotal / 4) * 100) / 100;
   },

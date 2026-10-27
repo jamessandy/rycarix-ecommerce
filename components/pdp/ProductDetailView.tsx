@@ -479,7 +479,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                     Free UK delivery via Evri and Royal Mail on orders over £150. All orders include 2 free samples. Returns accepted within 30 days.
                   </p>
                   <p>
-                    Pay in 4 interest-free installments with Klarna.
+                    Pay in 3 interest-free monthly installments with Klarna, or 4 interest-free bi-weekly installments with Clearpay.
                   </p>
                 </div>
               )}

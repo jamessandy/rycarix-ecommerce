@@ -34,6 +34,12 @@ function LoginFormContent() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('United Kingdom');
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -76,7 +82,7 @@ function LoginFormContent() {
     setSuccessMessage('');
 
     if (!name || !email || !password) {
-      setErrorMessage('Please fill in all required fields.');
+      setErrorMessage('Please fill in your name, email, and password.');
       return;
     }
 
@@ -87,9 +93,17 @@ function LoginFormContent() {
 
     setIsLoading(true);
     try {
-      const res = await signup(name, email, password);
+      const deliveryAddress = street || postalCode ? {
+        street: street.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        postalCode: postalCode.trim(),
+        country,
+      } : undefined;
+
+      const res = await signup(name, email, password, deliveryAddress, phone);
       if (res.success) {
-        setSuccessMessage('Your account has been created successfully!');
+        setSuccessMessage('Your account and delivery profile have been registered!');
         setTimeout(() => {
           router.push(redirectUrl || '/dashboard/user');
         }, 450);
@@ -131,8 +145,8 @@ function LoginFormContent() {
               <div className="flex items-start gap-3">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Klarna & Stripe Payments</strong>
-                  <span className="text-ry-stone text-[11px]">Manage Pay in 4 installments and stored cards securely.</span>
+                  <strong className="text-ry-white font-medium block">Klarna & Clearpay Payments</strong>
+                  <span className="text-ry-stone text-[11px]">Pay in 3 with Klarna or 4 with Clearpay securely.</span>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -382,6 +396,49 @@ function LoginFormContent() {
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                  Delivery Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+44 7700 900077 (for courier SMS updates)"
+                  className="w-full px-4 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                />
+              </div>
+
+              {/* Delivery Address Section */}
+              <div className="pt-2 border-t border-ry-ash/40">
+                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                  Delivery Address (Street & Flat/Unit)
+                </label>
+                <input
+                  type="text"
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
+                  placeholder="Flat 4B, 18 Grosvenor Gardens"
+                  className="w-full px-4 py-2.5 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors mb-2"
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="City / Town (e.g. London)"
+                    className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                  />
+                  <input
+                    type="text"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    placeholder="Postcode (e.g. SW1W 0DH)"
+                    className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                  />
                 </div>
               </div>
 

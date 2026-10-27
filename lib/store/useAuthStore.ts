@@ -60,10 +60,23 @@ interface AuthState {
   isAuthenticated: boolean;
   registeredUsers: RegisteredAccount[];
   login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; role?: string }>;
-  signup: (name: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (
+    name: string,
+    email: string,
+    password?: string,
+    deliveryAddress?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    },
+    phone?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loginAsDemo: (roleKey: 'VIP_CLIENT' | 'ADMIN' | 'USER') => void;
   updateProfile: (data: Partial<UserProfile>) => void;
+  addAddress: (address: Omit<UserAddress, 'id'>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -149,7 +162,19 @@ export const useAuthStore = create<AuthState>()(
         return { success: true, role: 'USER' };
       },
 
-      signup: async (name: string, email: string, password?: string) => {
+      signup: async (
+        name: string,
+        email: string,
+        password?: string,
+        deliveryAddress?: {
+          street?: string;
+          city?: string;
+          state?: string;
+          postalCode?: string;
+          country?: string;
+        },
+        phone?: string
+      ) => {
         await new Promise((resolve) => setTimeout(resolve, 400));
 
         const trimmedName = name.trim();
@@ -182,17 +207,31 @@ export const useAuthStore = create<AuthState>()(
           };
         }
 
+        const initialAddresses: UserAddress[] = [];
+        if (deliveryAddress && (deliveryAddress.street || deliveryAddress.postalCode)) {
+          initialAddresses.push({
+            id: `addr-${Date.now().toString().slice(-6)}`,
+            type: 'Primary Delivery Address',
+            street: deliveryAddress.street || '',
+            city: deliveryAddress.city || '',
+            state: deliveryAddress.state || '',
+            postalCode: deliveryAddress.postalCode || '',
+            country: deliveryAddress.country || 'United Kingdom',
+            isDefault: true,
+          });
+        }
+
         const createdUser: UserProfile = {
           id: `usr-${Date.now().toString().slice(-6)}`,
           name: trimmedName || 'Customer',
           email: normalizedEmail,
           role: 'USER',
           title: 'Customer',
-          tier: 'Member • 10% Discount Applied',
+          tier: 'Member • 10% Welcome Discount',
           memberSince: new Date().getFullYear().toString(),
           avatarInitial: trimmedName ? trimmedName.charAt(0).toUpperCase() : 'C',
-          phone: '',
-          addresses: [],
+          phone: (phone || '').trim(),
+          addresses: initialAddresses,
         };
 
         const updated = [...(state.registeredUsers || []), { user: createdUser, password: trimmedPassword }];
@@ -213,6 +252,31 @@ export const useAuthStore = create<AuthState>()(
         set((state) => {
           if (!state.user) return state;
           const updatedUser = { ...state.user, ...data };
+          const updatedUsers = (state.registeredUsers || []).map((acc) =>
+            acc.user.email.toLowerCase() === updatedUser.email.toLowerCase()
+              ? { ...acc, user: updatedUser }
+              : acc
+          );
+          return {
+            user: updatedUser,
+            registeredUsers: updatedUsers,
+          };
+        });
+      },
+
+      addAddress: (addressData: Omit<UserAddress, 'id'>) => {
+        set((state) => {
+          if (!state.user) return state;
+          const newAddress: UserAddress = {
+            ...addressData,
+            id: `addr-${Date.now().toString().slice(-6)}`,
+          };
+          const existingAddresses = state.user.addresses || [];
+          const updatedAddresses = addressData.isDefault
+            ? [...existingAddresses.map((a) => ({ ...a, isDefault: false })), newAddress]
+            : [...existingAddresses, newAddress];
+
+          const updatedUser = { ...state.user, addresses: updatedAddresses };
           const updatedUsers = (state.registeredUsers || []).map((acc) =>
             acc.user.email.toLowerCase() === updatedUser.email.toLowerCase()
               ? { ...acc, user: updatedUser }

@@ -138,9 +138,13 @@ export default function FeaturedEditorial() {
                 </div>
 
                 <div className="text-right text-[10px] text-ry-stone">
-                  <span>Pay in 4 installments of £72 with</span>
-                  <div className="font-semibold text-black bg-[#FFA8CD] px-1 py-0.2 rounded inline-block ml-1">
+                  <span>Pay in 3 x £96 with</span>
+                  <div className="font-semibold text-black bg-[#FFA8CD] px-1 py-0.2 rounded inline-block mx-1">
                     Klarna.
+                  </div>
+                  <span>or 4 x £72 with</span>
+                  <div className="font-semibold text-black bg-[#B2ECE1] px-1 py-0.2 rounded inline-block ml-1">
+                    clearpay✦
                   </div>
                 </div>
               </div>
