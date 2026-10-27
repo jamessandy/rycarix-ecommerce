@@ -6,6 +6,7 @@ import CategoryGrid from '@/components/home/CategoryGrid';
 import ProductCatalog from '@/components/home/ProductCatalog';
 import FeaturedEditorial from '@/components/home/FeaturedEditorial';
 import Philosophy from '@/components/home/Philosophy';
+import CustomerReviews from '@/components/home/CustomerReviews';
 import TransparencySection from '@/components/home/TransparencySection';
 
 export default function HomePage() {
@@ -36,7 +37,10 @@ export default function HomePage() {
       {/* 6. Brand Pillars & Material Integrity */}
       <Philosophy />
 
-      {/* 7. Terroir & Workshop Transparency */}
+      {/* 7. Verified Customer Reviews & Press Accolades */}
+      <CustomerReviews />
+
+      {/* 8. Terroir & Workshop Transparency */}
       <TransparencySection />
     </main>
   );

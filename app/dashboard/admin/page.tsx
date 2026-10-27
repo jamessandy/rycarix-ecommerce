@@ -162,17 +162,12 @@ export default function AdminDashboard() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Filter out any stale dummy or demo products
-            const cleaned = parsed.filter(
-              (p: any) => p.id !== 'prod-demo-1eur' && p.slug !== 'atelier-discovery-sample-1-euro'
-            );
-            setProductsList(cleaned);
-            localStorage.setItem('rycarix_catalog_products', JSON.stringify(cleaned));
+            setProductsList(parsed);
           } else {
-            setProductsList(PRODUCTS.filter((p) => p.id !== 'prod-demo-1eur'));
+            setProductsList(PRODUCTS);
           }
         } else {
-          setProductsList(PRODUCTS.filter((p) => p.id !== 'prod-demo-1eur'));
+          setProductsList(PRODUCTS);
         }
 
         // Hydrate actual client orders

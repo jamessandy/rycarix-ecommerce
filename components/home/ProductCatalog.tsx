@@ -254,19 +254,17 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div>
                     {/* Rating & Reviews */}
-                    {product.reviewCount > 0 ? (
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <div className="flex items-center text-amber-500">
-                          <Star className="w-3 h-3 fill-current" />
-                        </div>
-                        <span className="text-[11px] font-medium text-ry-onyx">
-                          {product.rating.toFixed(1)}
-                        </span>
-                        <span className="text-[10px] text-ry-stone">
-                          ({product.reviewCount})
-                        </span>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="flex items-center text-amber-500">
+                        <Star className="w-3 h-3 fill-current" />
                       </div>
-                    ) : null}
+                      <span className="text-[11px] font-medium text-ry-onyx">
+                        {product.rating.toFixed(1)}
+                      </span>
+                      <span className="text-[10px] text-ry-stone">
+                        ({product.reviewCount})
+                      </span>
+                    </div>
 
                     {/* Title */}
                     <Link

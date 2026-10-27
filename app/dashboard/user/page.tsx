@@ -94,101 +94,61 @@ function UserDashboardContent() {
     });
   };
 
-  const [persistedOrders, setPersistedOrders] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('rycarix_orders');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            const userEmail = (user?.email || '').toLowerCase();
-            const filtered = parsed.filter(
-              (o: any) =>
-                !userEmail ||
-                !o.email ||
-                o.email.toLowerCase() === userEmail ||
-                o.customer?.toLowerCase() === (user?.name || '').toLowerCase()
-            );
-            setPersistedOrders(filtered.length > 0 ? filtered : parsed);
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read saved orders', e);
-      }
-    }
-  }, [user, showCheckoutSuccess]);
-
-  // Build active orders strictly from real persisted customer purchases
+  // Build active orders (including simulated purchase if checked out)
   const defaultAddr = user?.addresses?.find((a) => a.isDefault) || user?.addresses?.[0];
-  const userOrders = persistedOrders.map((ord: any) => {
-    const isKlarna = (ord.paymentMethod || '').toLowerCase().includes('klarna');
-    const isClearpay = (ord.paymentMethod || '').toLowerCase().includes('clearpay');
-    const orderTotal = Number(ord.total) || 0;
-    const klarnaPart = Math.max(1, Math.round((orderTotal / 3) * 100) / 100);
-    const clearpayPart = Math.max(1, Math.round((orderTotal / 4) * 100) / 100);
-
-    return {
-      id: ord.id,
-      orderNumber: ord.id,
-      date: ord.date || 'Recently Placed',
-      status: ord.fulfillment?.includes('Dispatched') ? 'DISPATCHED' : 'CONFIRMED',
-      fulfillmentStatus: ord.fulfillment?.includes('Dispatched')
-        ? 'IN_TRANSIT'
-        : 'PREPARING_DISPATCH',
-      carrier: ord.carrier || 'Royal Mail & Evri Tracked',
-      trackingNumber: ord.trackingNumber || '',
-      total: orderTotal,
-      currency: '£',
-      deliveryAddress: ord.address
-        ? `${ord.address.street || ''}, ${ord.address.city || ''} ${ord.address.postalCode || ''}, ${ord.address.country || ''}`
-        : defaultAddr
-        ? `${defaultAddr.street}, ${defaultAddr.city} ${defaultAddr.postalCode}, ${defaultAddr.country}`
-        : 'Storefront Delivery Address',
-      paymentMethod: ord.paymentMethod || 'Stripe Card',
-      items: Array.isArray(ord.itemsList) && ord.itemsList.length > 0
-        ? ord.itemsList.map((item: any) => ({
-            title: item.title,
-            variantTitle: item.variantTitle || 'Standard Flacon',
-            quantity: item.quantity || 1,
-            price: item.price || 0,
-            image: item.image || 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
-          }))
-        : [
+  const userOrders = showCheckoutSuccess
+    ? [
+        {
+          id: 'ord-live-01',
+          orderNumber: 'RY-84920',
+          date: 'Just now',
+          status: 'CONFIRMED',
+          fulfillmentStatus: 'PREPARING_DISPATCH',
+          carrier: 'Royal Mail Tracked 24 & Evri Express',
+          trackingNumber: '7829-1092-4821',
+          total: 135.0,
+          currency: '£',
+          deliveryAddress: defaultAddr
+            ? `${defaultAddr.street}, ${defaultAddr.city} ${defaultAddr.postalCode}, ${defaultAddr.country}`
+            : '18 Grosvenor Gardens, London SW1W 0DH, United Kingdom',
+          paymentMethod: paymentMethodParam,
+          items: [
             {
-              title: ord.items || 'Atelier Selection',
-              variantTitle: 'Curated Edition',
+              title: 'L’Huile Sublime Regenerative Hair Nectar',
+              variantTitle: '100ml / 3.4 fl. oz.',
               quantity: 1,
-              price: orderTotal,
+              price: 135.0,
               image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
             },
           ],
-      klarna: isKlarna
-        ? {
-            totalInstallments: 3,
-            installmentsPaid: 1,
-            schedule: [
-              { index: 1, amount: klarnaPart, status: 'PAID', date: 'Today' },
-              { index: 2, amount: klarnaPart, status: 'PENDING', date: 'In 30 days' },
-              { index: 3, amount: klarnaPart, status: 'SCHEDULED', date: 'In 60 days' },
-            ],
-          }
-        : null,
-      clearpay: isClearpay
-        ? {
-            totalInstallments: 4,
-            installmentsPaid: 1,
-            schedule: [
-              { index: 1, amount: clearpayPart, status: 'PAID', date: 'Today' },
-              { index: 2, amount: clearpayPart, status: 'PENDING', date: 'In 2 weeks' },
-              { index: 3, amount: clearpayPart, status: 'SCHEDULED', date: 'In 4 weeks' },
-              { index: 4, amount: clearpayPart, status: 'SCHEDULED', date: 'In 6 weeks' },
-            ],
-          }
-        : null,
-    };
-  });
+          klarna:
+            paymentMethodParam === 'klarna'
+              ? {
+                  totalInstallments: 3,
+                  installmentsPaid: 1,
+                  schedule: [
+                    { index: 1, amount: 45.0, status: 'PAID', date: 'Today' },
+                    { index: 2, amount: 45.0, status: 'PENDING', date: 'In 30 days' },
+                    { index: 3, amount: 45.0, status: 'SCHEDULED', date: 'In 60 days' },
+                  ],
+                }
+              : null,
+          clearpay:
+            paymentMethodParam === 'clearpay'
+              ? {
+                  totalInstallments: 4,
+                  installmentsPaid: 1,
+                  schedule: [
+                    { index: 1, amount: 33.75, status: 'PAID', date: 'Today' },
+                    { index: 2, amount: 33.75, status: 'PENDING', date: 'In 2 weeks' },
+                    { index: 3, amount: 33.75, status: 'SCHEDULED', date: 'In 4 weeks' },
+                    { index: 4, amount: 33.75, status: 'SCHEDULED', date: 'In 6 weeks' },
+                  ],
+                }
+              : null,
+        },
+      ]
+    : [];
 
   // If not authenticated, render welcoming prompt
   if (!isAuthenticated || !user) {
@@ -389,7 +349,7 @@ function UserDashboardContent() {
 
                   {/* Order Items */}
                   <div className="p-6 divide-y divide-ry-ash/40">
-                    {order.items.map((item: any, idx: number) => (
+                    {order.items.map((item, idx) => (
                       <div key={idx} className="flex gap-4 py-3 first:pt-0 last:pb-0">
                         <div className="relative w-16 h-20 bg-ry-oatmeal overflow-hidden border border-ry-ash/50 shrink-0">
                           <Image src={item.image} alt={item.title} fill sizes="64px" className="object-cover" />

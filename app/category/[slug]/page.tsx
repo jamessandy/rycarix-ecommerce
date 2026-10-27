@@ -331,21 +331,19 @@ export default function CategoryDetailPage() {
                     {/* Card Body */}
                     <div className="p-6">
                       {/* Rating */}
-                      {product.reviewCount > 0 ? (
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <div className="flex text-amber-500">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-current' : 'opacity-30'}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[10px] font-mono text-ry-stone">
-                            {product.rating} ({product.reviewCount})
-                          </span>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="flex text-amber-500">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-current' : 'opacity-30'}`}
+                            />
+                          ))}
                         </div>
-                      ) : null}
+                        <span className="text-[10px] font-mono text-ry-stone">
+                          {product.rating} ({product.reviewCount})
+                        </span>
+                      </div>
 
                       {/* Title & Subtitle */}
                       <Link href={`/products/${product.slug}`}>

@@ -31,32 +31,34 @@ import { useCartStore } from '@/lib/store/useCartStore';
 
 function TrackingPortalContent() {
   const searchParams = useSearchParams();
-  const initialRef = searchParams.get('ref') || searchParams.get('tracking') || '';
+  const initialRef = searchParams.get('ref') || searchParams.get('tracking') || '7829-1092-4821';
 
   const [searchQuery, setSearchQuery] = useState(initialRef);
   const [activeShipment, setActiveShipment] = useState<ShippingLabelData | null>(null);
-  const [hasSearched, setHasSearched] = useState(Boolean(initialRef));
   const [copied, setCopied] = useState(false);
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState(false);
-  const [smsPhone, setSmsPhone] = useState('');
+  const [smsPhone, setSmsPhone] = useState('+1 (212) 555-0194');
   const [smsSubmitted, setSmsSubmitted] = useState(false);
 
   const { addItem, openCart } = useCartStore();
 
   useEffect(() => {
-    if (initialRef) {
-      const found = lookupTracking(initialRef);
+    const found = lookupTracking(initialRef);
+    if (found) {
       setActiveShipment(found);
-      setHasSearched(true);
     }
   }, [initialRef]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    setHasSearched(true);
     const result = lookupTracking(searchQuery);
-    setActiveShipment(result);
+    if (result) {
+      setActiveShipment(result);
+    } else {
+      alert(`No shipment found matching "${searchQuery}". Showing demo shipment RY-84920.`);
+      setActiveShipment(SHIPMENT_DATABASE['7829-1092-4821']);
+    }
   };
 
   const handleCopyTracking = (num: string) => {
@@ -104,28 +106,32 @@ function TrackingPortalContent() {
             </button>
           </form>
 
+          {/* Demo sample pills */}
+          <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-ry-stone">
+            <span>Try sample order:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('7829-1092-4821');
+                setActiveShipment(SHIPMENT_DATABASE['7829-1092-4821']);
+              }}
+              className="underline hover:text-ry-onyx font-mono"
+            >
+              RY-84920 (Evri / Royal Mail)
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('DHL-9840-2811');
+                setActiveShipment(SHIPMENT_DATABASE['DHL-9840-2811']);
+              }}
+              className="underline hover:text-ry-onyx font-mono"
+            >
+              RY-77218 (DHL Express)
+            </button>
+          </div>
         </div>
-
-        {/* Not Found State */}
-        {hasSearched && !activeShipment && (
-          <div className="bg-ry-white border border-ry-ash/80 p-10 text-center max-w-xl mx-auto shadow-sm animate-fade-in mb-10">
-            <Package className="w-10 h-10 text-ry-stone mx-auto mb-3 stroke-[1.2]" />
-            <h3 className="font-serif text-lg text-ry-onyx mb-1">No Shipment Found</h3>
-            <p className="text-xs text-ry-stone leading-relaxed max-w-sm mx-auto">
-              No parcel matching &ldquo;{searchQuery}&rdquo; was found in our dispatch records. Please verify your order number (e.g. RY-XXXXX) or courier tracking number.
-            </p>
-          </div>
-        )}
-
-        {/* Prompt when not searched yet */}
-        {!hasSearched && !activeShipment && (
-          <div className="bg-ry-white/60 border border-ry-ash/60 p-8 text-center max-w-lg mx-auto shadow-xs mb-10">
-            <Truck className="w-8 h-8 text-ry-stone mx-auto mb-2 stroke-[1.2]" />
-            <p className="text-xs text-ry-stone leading-relaxed">
-              Enter your order number or tracking code above to access live transit milestones via Royal Mail and Evri.
-            </p>
-          </div>
-        )}
 
         {/* Active Shipment Display */}
         {activeShipment && (
