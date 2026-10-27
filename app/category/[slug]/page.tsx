@@ -16,11 +16,8 @@ import {
   Sparkles,
   ArrowRight,
   ShieldCheck,
-  Truck,
   RotateCcw,
   ChevronRight,
-  Gift,
-  CreditCard,
 } from 'lucide-react';
 import { PRODUCTS, CATEGORIES, CategoryItem } from '@/lib/data/mockData';
 import { useCartStore } from '@/lib/store/useCartStore';
@@ -213,24 +210,6 @@ export default function CategoryDetailPage() {
           <p className="text-xs sm:text-sm text-ry-ash/90 max-w-xl mx-auto leading-relaxed font-light">
             {category.description}
           </p>
-
-          {/* Sub-Banner Trust Pillars */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[10px] uppercase tracking-editorial text-ry-ash/80 pt-4 border-t border-ry-white/15">
-            <span className="flex items-center gap-1.5">
-              <Truck className="w-3.5 h-3.5 text-amber-200" />
-              Free UK Shipping Over £150
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-emerald-300" />
-              Klarna (Pay in 3) & Clearpay (Pay in 4)
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1.5">
-              <Gift className="w-3.5 h-3.5 text-amber-200" />
-              2 Free Deluxe Samples
-            </span>
-          </div>
         </div>
       </section>
 

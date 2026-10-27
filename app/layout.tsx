@@ -27,7 +27,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Rycarix | Luxury Botanical Hair, Perfumes & Skincare',
   description:
-    'Shop artisanal botanical hair, luxury fragrances, clean skincare, and scented candles. Free shipping on orders over £150 with Klarna Pay in 3 and Clearpay Pay in 4.',
+    'Shop artisanal botanical hair, luxury fragrances, clean skincare, and scented candles. Tracked delivery via Evri & Royal Mail.',
   keywords: [
     'Rycarix',
     'Luxury Hair',

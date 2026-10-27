@@ -244,8 +244,6 @@ export default function CartDrawer() {
                   <ShieldCheck className="w-3.5 h-3.5 text-ry-charcoal" />
                   Secure Checkout
                 </span>
-                <span>•</span>
-                <span>2 Free Samples with Order</span>
               </div>
             </div>
           )}

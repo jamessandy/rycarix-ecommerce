@@ -478,10 +478,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
               {openAccordion === 'shipping' && (
                 <div className="mt-3 text-xs leading-relaxed text-ry-stone font-sans animate-fade-in space-y-2">
                   <p>
-                    Free UK delivery via Evri and Royal Mail on orders over £150. All orders include 2 free samples. Returns accepted within 30 days.
-                  </p>
-                  <p>
-                    Pay in 3 interest-free monthly installments with Klarna, or 4 interest-free bi-weekly installments with Clearpay.
+                    Tracked delivery via Evri and Royal Mail. Hassle-free returns and exchanges accepted within 30 days.
                   </p>
                 </div>
               )}

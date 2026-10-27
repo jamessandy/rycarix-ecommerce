@@ -97,22 +97,6 @@ export default function Hero({ onSelectCategory }: HeroProps) {
             </Link>
           ))}
         </div>
-
-        {/* Klarna & Clearpay Installment & Free Delivery Micro-Badge */}
-        <div className="text-[11px] text-ry-ash/80 font-sans flex flex-wrap items-center justify-center gap-2">
-          <span>Free UK delivery via Evri & Royal Mail over £150</span>
-          <span>•</span>
-          <span>Pay in 3 with</span>
-          <span className="bg-[#FFA8CD] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">
-            Klarna.
-          </span>
-          <span>or 4 with</span>
-          <span className="bg-[#B2ECE1] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">
-            clearpay✦
-          </span>
-          <span>•</span>
-          <span>Signature gift packaging with 2 samples</span>
-        </div>
       </div>
 
       {/* Scroll Indicator */}

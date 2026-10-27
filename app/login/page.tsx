@@ -138,15 +138,15 @@ function LoginFormContent() {
               <div className="flex items-start gap-3">
                 <Crown className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Complimentary Shipping</strong>
-                  <span className="text-ry-stone text-[11px]">Free courier delivery on all orders over £150 with tracked transit.</span>
+                  <strong className="text-ry-white font-medium block">Tracked Dispatch</strong>
+                  <span className="text-ry-stone text-[11px]">Live shipment milestones via Evri and Royal Mail.</span>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Klarna & Clearpay Payments</strong>
-                  <span className="text-ry-stone text-[11px]">Pay in 3 with Klarna or 4 with Clearpay securely.</span>
+                  <strong className="text-ry-white font-medium block">Secure Checkout</strong>
+                  <span className="text-ry-stone text-[11px]">End-to-end encrypted transaction gateway.</span>
                 </div>
               </div>
               <div className="flex items-start gap-3">

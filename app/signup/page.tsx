@@ -118,24 +118,24 @@ function SignupFormContent() {
               <div className="flex items-start gap-3">
                 <Truck className="w-4 h-4 text-amber-200 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Complimentary UK Courier Delivery</strong>
-                  <span className="text-ry-ash/70 text-[11px]">Free delivery on orders over £150 with live milestone tracking.</span>
+                  <strong className="text-ry-white font-medium block">Tracked Courier Delivery</strong>
+                  <span className="text-ry-ash/70 text-[11px]">Milestone shipment tracking via Evri and Royal Mail.</span>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Klarna (Pay in 3) & Clearpay (Pay in 4)</strong>
-                  <span className="text-ry-ash/70 text-[11px]">0% interest split installments available at checkout.</span>
+                  <strong className="text-ry-white font-medium block">Secure Encrypted Checkout</strong>
+                  <span className="text-ry-ash/70 text-[11px]">Bank-grade encryption and privacy assurance.</span>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <Gift className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
+                <Crown className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">10% Welcome Gift & 2 Samples</strong>
-                  <span className="text-ry-ash/70 text-[11px]">Receive 10% off your inaugural order plus 2 complimentary samples.</span>
+                  <strong className="text-ry-white font-medium block">Atelier Member Access</strong>
+                  <span className="text-ry-ash/70 text-[11px]">Private invitations to limited botanical extractions.</span>
                 </div>
               </div>
             </div>
@@ -329,7 +329,7 @@ function SignupFormContent() {
                       onChange={(e) => setCountry(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border border-ry-ash focus:outline-none focus:border-ry-onyx text-ry-onyx transition-colors"
                     >
-                      <option value="United Kingdom">United Kingdom (Free over £150 via Evri & Royal Mail)</option>
+                      <option value="United Kingdom">United Kingdom (Evri & Royal Mail)</option>
                       <option value="United States">United States (FedEx Express)</option>
                       <option value="France">France (DHL Express EU)</option>
                       <option value="Germany">Germany (DHL Express EU)</option>

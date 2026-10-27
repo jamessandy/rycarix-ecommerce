@@ -242,7 +242,7 @@ export default function CheckoutPage() {
                     onChange={(e) => setCountry(e.target.value)}
                     className="w-full border border-ry-ash p-2.5 text-sm focus:outline-none focus:border-ry-onyx bg-ry-pearl/20 text-ry-onyx"
                   >
-                    <option value="United Kingdom">United Kingdom (Free over £150 via Evri & Royal Mail)</option>
+                    <option value="United Kingdom">United Kingdom (Evri & Royal Mail)</option>
                     <option value="United States">United States (FedEx International)</option>
                     <option value="France">France (DHL Express EU)</option>
                     <option value="Germany">Germany (DHL Express EU)</option>

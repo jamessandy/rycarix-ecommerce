@@ -4,22 +4,26 @@ import React from 'react';
 import { Truck, CreditCard, Gift, RotateCcw, ShieldCheck } from 'lucide-react';
 
 export default function PerksBanner() {
-  const perks = [
+  const perks: Array<{
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    description: string;
+    badge?: string;
+  }> = [
     {
       icon: Truck,
-      title: 'Free UK Delivery',
-      description: 'Free UK shipping via Evri & Royal Mail on orders over £150.',
+      title: 'Tracked UK Delivery',
+      description: 'Tracked shipping via Evri & Royal Mail with live milestones.',
     },
     {
-      icon: CreditCard,
-      title: 'Klarna & Clearpay',
-      description: 'Pay in 3 with Klarna or 4 with Clearpay (0% interest).',
-      badge: '0% APR',
+      icon: ShieldCheck,
+      title: 'Secure Checkout',
+      description: 'End-to-end encrypted payments and privacy protection.',
     },
     {
       icon: Gift,
-      title: '2 Free Samples',
-      description: 'Every order includes 2 complimentary samples and gift box.',
+      title: 'Atelier Packaging',
+      description: 'Recyclable amber glass vessels with presentation box.',
     },
     {
       icon: RotateCcw,

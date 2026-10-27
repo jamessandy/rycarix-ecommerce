@@ -90,17 +90,6 @@ export default function Header() {
 
   return (
     <>
-      {/* Top Announcement Bar */}
-      <div className="bg-ry-burgundy text-ry-ash py-2 px-4 text-center text-[10px] uppercase tracking-editorial font-sans border-b border-ry-burgundyDeep/80 flex items-center justify-center gap-3">
-        <span>Free UK Shipping via Evri & Royal Mail (Over £150)</span>
-        <span className="hidden sm:inline opacity-40">•</span>
-        <span className="hidden sm:inline">
-          Pay in 3 with <strong className="text-ry-white">Klarna</strong> or 4 with <strong className="text-ry-white">Clearpay</strong> (0% APR)
-        </span>
-        <span className="hidden md:inline opacity-40">•</span>
-        <span className="hidden md:inline">2 Free Samples with Every Order</span>
-      </div>
-
       <header
         className={`sticky top-0 left-0 right-0 z-40 transition-all duration-300 ${
           isScrolled
