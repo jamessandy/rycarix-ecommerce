@@ -13,7 +13,7 @@ const stripe =
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { items, customerEmail } = body;
+    const { items, customerEmail, customerName, customerPhone, shippingAddress } = body;
 
     if (!items || !items.length) {
       return NextResponse.json(
@@ -67,6 +67,9 @@ export async function POST(req: NextRequest) {
           line_items,
           mode: 'payment',
           customer_email: customerEmail || undefined,
+          phone_number_collection: {
+            enabled: true,
+          },
           billing_address_collection: 'required',
           shipping_address_collection: {
             allowed_countries: (currency === 'gbp'
@@ -105,7 +108,9 @@ export async function POST(req: NextRequest) {
             platform: 'Rycarix Haute E-Commerce',
             paymentChannel: 'Klarna_Clearpay_Installments_Preferred',
             orderId: `RY-${Date.now().toString().slice(-5)}`,
-            customerEmail: customerEmail || '',
+            customerEmail: customerEmail || shippingAddress?.email || '',
+            customerName: customerName || shippingAddress?.name || '',
+            customerPhone: customerPhone || shippingAddress?.phone || '',
           },
         });
 

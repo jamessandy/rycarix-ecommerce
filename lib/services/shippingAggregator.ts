@@ -27,12 +27,16 @@ export interface ShippingLabelData {
   };
   recipientAddress: {
     name: string;
+    email?: string;
+    phone?: string;
     street: string;
     city: string;
     state: string;
     postalCode: string;
     country: string;
   };
+  customerEmail?: string;
+  customerPhone?: string;
   weightKg: number;
   // Limited Quantity Hazardous Goods declaration for Perfumes (UN 1266)
   isHazardous: boolean;
@@ -70,12 +74,16 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     },
     recipientAddress: {
       name: 'Éléonore de Vance',
+      email: 'eleonore.devance@sanctuary.luxury',
+      phone: '+44 7946 0991',
       street: '42 Kensington Palace Gardens',
       city: 'London',
       state: 'Greater London',
       postalCode: 'W8 4QP',
       country: 'United Kingdom',
     },
+    customerEmail: 'eleonore.devance@sanctuary.luxury',
+    customerPhone: '+44 7946 0991',
     weightKg: 0.85,
     isHazardous: true,
     unNumber: 'UN 1266',
@@ -147,12 +155,16 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     },
     recipientAddress: {
       name: 'Lord Alistair Sterling',
+      email: 'alistair.sterling@mayfair.co.uk',
+      phone: '+44 7946 0992',
       street: '14 Berkeley Square',
       city: 'London',
       state: 'Mayfair',
       postalCode: 'W1J 6ER',
       country: 'United Kingdom',
     },
+    customerEmail: 'alistair.sterling@mayfair.co.uk',
+    customerPhone: '+44 7946 0992',
     weightKg: 0.65,
     isHazardous: false,
     lqCompliant: true,
@@ -273,6 +285,8 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
 export function createAggregatorDispatch(params: {
   orderNumber: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
   street: string;
   city: string;
   state: string;
@@ -334,12 +348,16 @@ export function createAggregatorDispatch(params: {
     },
     recipientAddress: {
       name: params.customerName,
+      email: params.customerEmail,
+      phone: params.customerPhone,
       street: params.street,
       city: params.city,
       state: params.state,
       postalCode: params.postalCode,
       country: params.country,
     },
+    customerEmail: params.customerEmail,
+    customerPhone: params.customerPhone,
     weightKg: 0.75,
     isHazardous: packaging.isHazardous,
     unNumber: packaging.unNumber || undefined,
@@ -406,7 +424,9 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
   const carrier = ord.carrier || (isPerfume ? 'Royal Mail' : 'Evri');
   const trackingNumber = ord.trackingNumber || ord.id || 'RY-TRACKING';
   const orderNumber = ord.orderNumber || ord.id || 'RY-ORDER';
-  const customerName = ord.customer || 'Valued Client';
+  const customerName = ord.customer || ord.address?.name || 'Valued Client';
+  const customerEmail = ord.email || ord.address?.email || '';
+  const customerPhone = ord.phone || ord.address?.phone || '';
   const city = ord.address?.city || 'London';
   const destination = `${city}, ${ord.address?.postalCode || ''}`.trim();
   const status = (ord.currentStatus as any) || (ord.fulfillment?.includes('Dispatched') ? 'IN_TRANSIT' : 'DISPATCH_PENDING');
@@ -497,12 +517,16 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
     },
     recipientAddress: {
       name: customerName,
+      email: customerEmail,
+      phone: customerPhone,
       street: ord.address?.street || 'Address on file',
       city: ord.address?.city || 'London',
       state: ord.address?.state || 'Greater London',
       postalCode: ord.address?.postalCode || '',
       country: ord.address?.country || 'United Kingdom',
     },
+    customerEmail,
+    customerPhone,
     weightKg: 0.85,
     isHazardous: isPerfume,
     unNumber: isPerfume ? 'UN 1266' : undefined,

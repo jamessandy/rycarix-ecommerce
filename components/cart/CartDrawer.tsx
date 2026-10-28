@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { X, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/lib/store/useCartStore';
+import { useAuthStore } from '@/lib/store/useAuthStore';
 import KlarnaWidget from '@/components/klarna/KlarnaWidget';
 
 export default function CartDrawer() {
@@ -19,6 +20,7 @@ export default function CartDrawer() {
     getFreeShippingProgress,
   } = useCartStore();
 
+  const { user } = useAuthStore();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const subtotal = getCartSubtotal();
@@ -34,6 +36,9 @@ export default function CartDrawer() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          customerEmail: user?.email || undefined,
+          customerName: user?.name || undefined,
+          customerPhone: user?.phone || undefined,
           items: items.map((item) => ({
             id: item.productId,
             variantId: item.variantId,

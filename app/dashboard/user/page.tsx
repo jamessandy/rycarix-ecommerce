@@ -117,6 +117,18 @@ function UserDashboardContent() {
           const data = await res.json();
           if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
             const combined = [...data.orders];
+            for (let i = 0; i < combined.length; i++) {
+              const c = combined[i];
+              const match = localList.find((l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId));
+              if (match && !c.phone && match.phone) {
+                c.phone = match.phone;
+                if (c.address) c.address.phone = match.phone;
+              }
+              if (!c.phone && user?.phone && c.email?.toLowerCase() === user?.email?.toLowerCase()) {
+                c.phone = user.phone;
+                if (c.address) c.address.phone = user.phone;
+              }
+            }
             for (const l of localList) {
               if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
                 combined.push(l);
@@ -454,20 +466,29 @@ function UserDashboardContent() {
                           <Truck className="w-4 h-4 text-ry-onyx" />
                           <span>Carrier: <strong>{orderCarrier}</strong></span>
                         </div>
-                        <div className="text-[11px] text-ry-stone mt-0.5">
-                          Delivering to: {orderAddress}
+                        <div className="text-[11px] text-ry-stone mt-1 space-y-0.5">
+                          <div>
+                            Recipient: <strong className="text-ry-onyx">{order.customer || order.address?.name || user.name}</strong>
+                            {(order.email || order.address?.email) && (
+                              <span className="ml-1.5 text-ry-stone">({order.email || order.address?.email})</span>
+                            )}
+                            {(order.phone || order.address?.phone) && (
+                              <span className="ml-1.5 text-ry-stone font-mono">• {order.phone || order.address?.phone}</span>
+                            )}
+                          </div>
+                          <div>Delivering to: {orderAddress}</div>
                         </div>
                       </div>
 
-                      {orderTracking && (
+                      <div className="flex items-center gap-2 shrink-0">
                         <Link
-                          href={`/track?ref=${encodeURIComponent(orderTracking)}`}
-                          className="px-4 py-2 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors shrink-0 flex items-center gap-1.5"
+                          href={`/track?ref=${encodeURIComponent(orderTracking || orderNumber)}`}
+                          className="px-4 py-2 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
                         >
-                          <span>Track Shipment #{orderTracking}</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Track Delivery</span>
                         </Link>
-                      )}
+                      </div>
                     </div>
                   </div>
                 );

@@ -60,10 +60,15 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     const newOrderId = `RY-${Math.floor(10000 + Math.random() * 90000)}`;
+    const customerFullName = `${firstName} ${lastName}`.trim() || 'Valued Client';
+    const customerEmailAddr = email || user?.email || 'client@rycarix.com';
+    const customerPhoneNumber = phone || user?.phone || '';
+
     const newOrder = {
       id: newOrderId,
-      customer: `${firstName} ${lastName}`.trim() || 'Valued Client',
-      email: email || user?.email || 'client@rycarix.com',
+      customer: customerFullName,
+      email: customerEmailAddr,
+      phone: customerPhoneNumber,
       items: items.map((i) => `${i.title} (${i.variantTitle})`).join(', '),
       itemsList: items,
       itemCategory: items[0]?.title?.toLowerCase().includes('parfum') ? 'Haute Parfumerie' : 'Hair',
@@ -79,6 +84,9 @@ export default function CheckoutPage() {
       trackingNumber: '',
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       address: {
+        name: customerFullName,
+        email: customerEmailAddr,
+        phone: customerPhoneNumber,
         street,
         city,
         state,
@@ -102,16 +110,19 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerEmail: email || undefined,
+          customerEmail: customerEmailAddr || undefined,
+          customerName: customerFullName || undefined,
+          customerPhone: customerPhoneNumber || undefined,
           paymentMethod,
           shippingAddress: {
-            name: `${firstName} ${lastName}`.trim(),
+            name: customerFullName,
+            email: customerEmailAddr,
+            phone: customerPhoneNumber,
             street,
             city,
             state,
             postalCode,
             country,
-            phone,
           },
           items: items.map((item) => ({
             id: item.productId,

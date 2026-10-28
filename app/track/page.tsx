@@ -38,8 +38,18 @@ function TrackingPortalContent() {
   const [activeShipment, setActiveShipment] = useState<ShippingLabelData | null>(null);
   const [copied, setCopied] = useState(false);
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState(false);
-  const [smsPhone, setSmsPhone] = useState('+1 (212) 555-0194');
+  const [smsPhone, setSmsPhone] = useState('');
   const [smsSubmitted, setSmsSubmitted] = useState(false);
+
+  // Sync phone number from activeShipment if available
+  useEffect(() => {
+    if (activeShipment) {
+      const ph = activeShipment.recipientAddress?.phone || activeShipment.customerPhone;
+      if (ph) {
+        setSmsPhone(ph);
+      }
+    }
+  }, [activeShipment]);
 
   const { addItem, openCart } = useCartStore();
 
@@ -428,14 +438,26 @@ function TrackingPortalContent() {
                     <MapPin className="w-4 h-4 text-ry-stone" />
                     <span>Delivery Address</span>
                   </h4>
-                  <div className="text-xs text-ry-charcoal leading-relaxed font-sans">
-                    <div className="font-medium text-ry-onyx">{activeShipment.recipientAddress.name}</div>
-                    <div>{activeShipment.recipientAddress.street}</div>
-                    <div>
-                      {activeShipment.recipientAddress.city}, {activeShipment.recipientAddress.state}{' '}
-                      {activeShipment.recipientAddress.postalCode}
+                  <div className="text-xs text-ry-charcoal leading-relaxed font-sans space-y-1">
+                    <div className="font-semibold text-ry-onyx text-sm">{activeShipment.recipientAddress.name}</div>
+                    {(activeShipment.recipientAddress.email || activeShipment.customerEmail) && (
+                      <div className="text-ry-stone text-[11px]">
+                        {activeShipment.recipientAddress.email || activeShipment.customerEmail}
+                      </div>
+                    )}
+                    {(activeShipment.recipientAddress.phone || activeShipment.customerPhone) && (
+                      <div className="text-ry-stone text-[11px] font-mono">
+                        {activeShipment.recipientAddress.phone || activeShipment.customerPhone}
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-ry-ash/40 mt-1.5 space-y-0.5 text-ry-charcoal">
+                      <div>{activeShipment.recipientAddress.street}</div>
+                      <div>
+                        {activeShipment.recipientAddress.city}, {activeShipment.recipientAddress.state}{' '}
+                        {activeShipment.recipientAddress.postalCode}
+                      </div>
+                      <div>{activeShipment.recipientAddress.country}</div>
                     </div>
-                    <div>{activeShipment.recipientAddress.country}</div>
                   </div>
                 </div>
 
@@ -490,8 +512,8 @@ function TrackingPortalContent() {
                         type="tel"
                         value={smsPhone}
                         onChange={(e) => setSmsPhone(e.target.value)}
-                        placeholder="+1 (555) 000-0000"
-                        className="w-full p-2.5 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx"
+                        placeholder="+44 7946 0991"
+                        className="w-full p-2.5 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx font-mono"
                         required
                       />
                       <button

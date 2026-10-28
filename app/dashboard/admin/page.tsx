@@ -190,6 +190,14 @@ export default function AdminDashboard() {
               if (data.orders && Array.isArray(data.orders)) {
                 // Merge live Stripe orders with any local orders, avoiding duplicates by id
                 const combined = [...data.orders];
+                for (let i = 0; i < combined.length; i++) {
+                  const c = combined[i];
+                  const match = localList.find((l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId));
+                  if (match && !c.phone && match.phone) {
+                    c.phone = match.phone;
+                    if (c.address) c.address.phone = match.phone;
+                  }
+                }
                 for (const l of localList) {
                   if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
                     combined.push(l);
@@ -580,13 +588,17 @@ export default function AdminDashboard() {
         country: 'France',
       },
       recipientAddress: {
-        name: ord.customer,
+        name: ord.customer || ord.address?.name || 'Valued Client',
+        email: ord.email || ord.address?.email || '',
+        phone: ord.phone || ord.address?.phone || '',
         street: ord.address?.street || '42 Kensington Palace Gardens',
         city: ord.address?.city || 'London',
         state: ord.address?.state || 'Greater London',
         postalCode: ord.address?.postalCode || 'W8 4QP',
         country: ord.address?.country || 'United Kingdom',
       },
+      customerEmail: ord.email || ord.address?.email || '',
+      customerPhone: ord.phone || ord.address?.phone || '',
       weightKg: 0.85,
       isHazardous: packaging.isHazardous,
       unNumber: packaging.unNumber || undefined,
@@ -680,6 +692,8 @@ export default function AdminDashboard() {
               <div>
                 <div class="section-label">DELIVER TO (RECIPIENT):</div>
                 <div class="recipient-name">${activeLabelData.recipientAddress.name}</div>
+                ${activeLabelData.recipientAddress.email ? `<div style="font-size: 8px; color: #444;">${activeLabelData.recipientAddress.email}</div>` : ''}
+                ${activeLabelData.recipientAddress.phone ? `<div style="font-size: 8px; font-family: monospace; color: #333; margin-bottom: 2px;">TEL: ${activeLabelData.recipientAddress.phone}</div>` : ''}
                 <div>${activeLabelData.recipientAddress.street}</div>
                 <div>${activeLabelData.recipientAddress.city}, ${activeLabelData.recipientAddress.postalCode}</div>
                 <div>${activeLabelData.recipientAddress.country}</div>
@@ -750,6 +764,8 @@ export default function AdminDashboard() {
       createAggregatorDispatch({
         orderNumber: dispatchModalOrder.id,
         customerName: dispatchModalOrder.customer,
+        customerEmail: dispatchModalOrder.email || dispatchModalOrder.address?.email,
+        customerPhone: dispatchModalOrder.phone || dispatchModalOrder.address?.phone,
         street: dispatchModalOrder.address?.street || '42 Kensington Palace Gardens',
         city: dispatchModalOrder.address?.city || 'London',
         state: dispatchModalOrder.address?.state || 'Greater London',
@@ -1172,8 +1188,11 @@ export default function AdminDashboard() {
                           <td className="py-3.5 px-4">
                             <div className="font-medium text-ry-onyx">{ord.customer}</div>
                             <div className="text-[10px] text-ry-stone">{ord.email}</div>
+                            {(ord.phone || ord.address?.phone) && (
+                              <div className="text-[10px] text-ry-stone font-mono">{ord.phone || ord.address?.phone}</div>
+                            )}
                             <div className="text-[10px] text-ry-stone/80 truncate max-w-[180px]">
-                              {ord.address?.city}, {ord.address?.country}
+                              {ord.address?.street ? `${ord.address.street}, ` : ''}{ord.address?.city}, {ord.address?.country}
                             </div>
                           </td>
                           <td className="py-3.5 px-4 text-ry-stone">
@@ -2465,6 +2484,12 @@ export default function AdminDashboard() {
                     </span>
                   </div>
                   <div className="font-medium text-ry-onyx">{dispatchModalOrder.customer}</div>
+                  {dispatchModalOrder.email && (
+                    <div className="text-[11px] text-ry-stone">{dispatchModalOrder.email}</div>
+                  )}
+                  {(dispatchModalOrder.phone || dispatchModalOrder.address?.phone) && (
+                    <div className="text-[11px] text-ry-stone font-mono">{dispatchModalOrder.phone || dispatchModalOrder.address?.phone}</div>
+                  )}
                   <div className="text-ry-stone mt-1 leading-relaxed">
                     {dispatchModalOrder.address?.street}<br />
                     {dispatchModalOrder.address?.city}, {dispatchModalOrder.address?.state} {dispatchModalOrder.address?.postalCode}<br />
@@ -2617,7 +2642,13 @@ export default function AdminDashboard() {
                     <div>
                       <span className="text-[9px] uppercase font-bold text-neutral-500 block">DELIVER TO:</span>
                       <div className="font-bold text-sm">{activeLabelData.recipientAddress.name}</div>
-                      <div className="text-neutral-700 leading-snug">
+                      {activeLabelData.recipientAddress.email && (
+                        <div className="text-[10px] text-neutral-600">{activeLabelData.recipientAddress.email}</div>
+                      )}
+                      {activeLabelData.recipientAddress.phone && (
+                        <div className="text-[10px] text-neutral-600 font-mono">TEL: {activeLabelData.recipientAddress.phone}</div>
+                      )}
+                      <div className="text-neutral-700 leading-snug mt-0.5">
                         {activeLabelData.recipientAddress.street}<br />
                         {activeLabelData.recipientAddress.city}, {activeLabelData.recipientAddress.state} {activeLabelData.recipientAddress.postalCode}<br />
                         {activeLabelData.recipientAddress.country}

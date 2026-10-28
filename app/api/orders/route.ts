@@ -74,11 +74,19 @@ export async function GET(req: NextRequest) {
           const isPerfume = itemsText.toLowerCase().includes('parfum') || itemsText.toLowerCase().includes('fragrance');
           const carrierName = override.carrier || s.metadata?.carrier || (isPerfume ? 'Royal Mail Tracked 24 (LQ Perfume)' : 'Evri Express');
 
+          const customerName =
+            s.customer_details?.name || s.shipping_details?.name || s.metadata?.customerName || 'Valued Client';
+          const customerEmail =
+            s.customer_details?.email || s.customer_email || s.metadata?.customerEmail || 'client@rycarix.com';
+          const customerPhone =
+            s.customer_details?.phone || s.shipping_details?.phone || s.metadata?.customerPhone || '';
+
           orders.push({
             id: orderId,
             stripeSessionId: s.id,
-            customer: s.customer_details?.name || s.shipping_details?.name || 'Valued Client',
-            email: s.customer_details?.email || s.customer_email || 'client@rycarix.com',
+            customer: customerName,
+            email: customerEmail,
+            phone: customerPhone,
             items: itemsText,
             itemsList,
             itemCategory: isPerfume ? 'Haute Parfumerie' : 'Hair',
@@ -109,6 +117,9 @@ export async function GET(req: NextRequest) {
               year: 'numeric',
             }),
             address: {
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone,
               street,
               city,
               state,
