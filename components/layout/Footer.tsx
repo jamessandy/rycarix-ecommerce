@@ -222,6 +222,9 @@ export default function Footer() {
             <span className="bg-[#FFA8CD] text-black font-semibold text-[8px] px-1 py-0.2 rounded-sm">
               Klarna.
             </span>
+            <span className="bg-[#B2ECE1] text-black font-semibold text-[8px] px-1 py-0.2 rounded-sm">
+              clearpay✦
+            </span>
             <span>Stripe</span>
             <span>Apple Pay</span>
             <span>Visa</span>

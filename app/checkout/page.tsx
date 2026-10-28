@@ -513,11 +513,16 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Installment Summary on side */}
-            <div className="mt-6 p-3 bg-ry-pearl/60 border border-ry-ash/60 text-[11px] text-ry-stone space-y-1">
-              <div className="font-medium text-ry-onyx">Flexible Payment Options:</div>
-              <div>• Klarna: 3 monthly installments of £{klarnaMonthly.toFixed(2)}</div>
-              <div>• Clearpay: 4 bi-weekly installments of £{clearpayBiweekly.toFixed(2)}</div>
+            {/* Installment Payment Notice */}
+            <div className="mt-6 p-3 bg-ry-pearl/60 border border-ry-ash/60 text-[11px] text-ry-stone space-y-2">
+              <div className="font-medium text-ry-onyx">Flexible Payment Options</div>
+              <p>
+                You can pay installmentally with{' '}
+                <span className="inline-flex items-center bg-[#FFA8CD] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">Klarna.</span>
+                {' '}and{' '}
+                <span className="inline-flex items-center bg-[#B2ECE1] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">clearpay✦</span>
+                . Interest-free, no hidden fees.
+              </p>
             </div>
           </div>
         </div>

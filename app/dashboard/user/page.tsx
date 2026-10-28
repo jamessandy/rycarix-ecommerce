@@ -13,7 +13,6 @@ import {
   User,
   ShieldCheck,
   CheckCircle2,
-  Clock,
   ArrowRight,
   ExternalLink,
   ChevronRight,
@@ -94,61 +93,68 @@ function UserDashboardContent() {
     });
   };
 
-  // Build active orders (including simulated purchase if checked out)
+  // Load persisted orders from localStorage
+  const [userOrders, setUserOrders] = useState<any[]>([]);
   const defaultAddr = user?.addresses?.find((a) => a.isDefault) || user?.addresses?.[0];
-  const userOrders = showCheckoutSuccess
-    ? [
-        {
-          id: 'ord-live-01',
-          orderNumber: 'RY-84920',
-          date: 'Just now',
-          status: 'CONFIRMED',
-          fulfillmentStatus: 'PREPARING_DISPATCH',
-          carrier: 'Royal Mail Tracked 24 & Evri Express',
-          trackingNumber: '7829-1092-4821',
-          total: 135.0,
-          currency: '£',
-          deliveryAddress: defaultAddr
-            ? `${defaultAddr.street}, ${defaultAddr.city} ${defaultAddr.postalCode}, ${defaultAddr.country}`
-            : '18 Grosvenor Gardens, London SW1W 0DH, United Kingdom',
-          paymentMethod: paymentMethodParam,
-          items: [
-            {
-              title: 'L’Huile Sublime Regenerative Hair Nectar',
-              variantTitle: '100ml / 3.4 fl. oz.',
-              quantity: 1,
-              price: 135.0,
-              image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('rycarix_orders');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setUserOrders(parsed);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load saved orders', err);
+    }
+    // If no saved orders but checkout was just simulated, create a fallback order
+    if (showCheckoutSuccess) {
+      const fallbackOrder = {
+        id: 'ord-live-01',
+        orderNumber: searchParams.get('orderId') || 'RY-84920',
+        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        status: 'CONFIRMED',
+        fulfillment: 'Ready for Dispatch',
+        carrier: 'Royal Mail Tracked 24 & Evri Express',
+        trackingNumber: '7829-1092-4821',
+        total: 135.00,
+        paymentMethod:
+          paymentMethodParam === 'klarna'
+            ? 'Klarna Pay in 3'
+            : paymentMethodParam === 'clearpay'
+            ? 'Clearpay Pay in 4'
+            : 'Stripe Card (1-Click)',
+        address: defaultAddr
+          ? {
+              street: defaultAddr.street,
+              city: defaultAddr.city,
+              state: defaultAddr.state,
+              postalCode: defaultAddr.postalCode,
+              country: defaultAddr.country,
+            }
+          : {
+              street: '18 Grosvenor Gardens',
+              city: 'London',
+              state: 'Greater London',
+              postalCode: 'SW1W 0DH',
+              country: 'United Kingdom',
             },
-          ],
-          klarna:
-            paymentMethodParam === 'klarna'
-              ? {
-                  totalInstallments: 3,
-                  installmentsPaid: 1,
-                  schedule: [
-                    { index: 1, amount: 45.0, status: 'PAID', date: 'Today' },
-                    { index: 2, amount: 45.0, status: 'PENDING', date: 'In 30 days' },
-                    { index: 3, amount: 45.0, status: 'SCHEDULED', date: 'In 60 days' },
-                  ],
-                }
-              : null,
-          clearpay:
-            paymentMethodParam === 'clearpay'
-              ? {
-                  totalInstallments: 4,
-                  installmentsPaid: 1,
-                  schedule: [
-                    { index: 1, amount: 33.75, status: 'PAID', date: 'Today' },
-                    { index: 2, amount: 33.75, status: 'PENDING', date: 'In 2 weeks' },
-                    { index: 3, amount: 33.75, status: 'SCHEDULED', date: 'In 4 weeks' },
-                    { index: 4, amount: 33.75, status: 'SCHEDULED', date: 'In 6 weeks' },
-                  ],
-                }
-              : null,
-        },
-      ]
-    : [];
+        itemsList: [
+          {
+            title: 'Order Item',
+            variantTitle: 'Standard',
+            quantity: 1,
+            price: 135.00,
+            image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
+          },
+        ],
+      };
+      setUserOrders([fallbackOrder]);
+    }
+  }, [showCheckoutSuccess, paymentMethodParam, defaultAddr, searchParams]);
 
   // If not authenticated, render welcoming prompt
   if (!isAuthenticated || !user) {
@@ -321,170 +327,117 @@ function UserDashboardContent() {
                 </div>
               </div>
             ) : (
-              userOrders.map((order) => (
-                <div key={order.id} className="bg-ry-white border border-ry-ash/70 overflow-hidden shadow-sm">
-                  {/* Order Top Bar */}
-                  <div className="p-6 bg-ry-pearl/50 border-b border-ry-ash/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                      <div>
-                        <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Order Date</span>
-                        <span className="font-medium text-ry-onyx">{order.date}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Order Number</span>
-                        <span className="font-mono font-medium text-ry-onyx">{order.orderNumber}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Total Amount</span>
-                        <span className="font-serif font-medium text-ry-onyx">£{order.total.toFixed(2)}</span>
-                      </div>
-                    </div>
+              userOrders.map((order: any, orderIdx: number) => {
+                const orderItems = order.itemsList || order.items || [];
+                const orderAddress = order.address
+                  ? `${order.address.street}, ${order.address.city} ${order.address.postalCode}, ${order.address.country}`
+                  : order.deliveryAddress || 'Address on file';
+                const orderNumber = order.orderNumber || order.id || `RY-${orderIdx + 1}`;
+                const orderDate = order.date || 'Recently';
+                const orderStatus = order.status || order.fulfillment || 'CONFIRMED';
+                const orderTotal = typeof order.total === 'number' ? order.total : 0;
+                const orderCarrier = order.carrier || 'Royal Mail Tracked 24 & Evri Express';
+                const orderTracking = order.trackingNumber || '';
+                const orderPayment = order.paymentMethod || 'Card';
 
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial font-medium">
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Order Items */}
-                  <div className="p-6 divide-y divide-ry-ash/40">
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="flex gap-4 py-3 first:pt-0 last:pb-0">
-                        <div className="relative w-16 h-20 bg-ry-oatmeal overflow-hidden border border-ry-ash/50 shrink-0">
-                          <Image src={item.image} alt={item.title} fill sizes="64px" className="object-cover" />
+                return (
+                  <div key={order.id || orderIdx} className="bg-ry-white border border-ry-ash/70 overflow-hidden shadow-sm">
+                    {/* Order Top Bar */}
+                    <div className="p-6 bg-ry-pearl/50 border-b border-ry-ash/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                        <div>
+                          <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Order Date</span>
+                          <span className="font-medium text-ry-onyx">{orderDate}</span>
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-serif text-base text-ry-onyx">{item.title}</h4>
-                          <p className="text-xs text-ry-stone">{item.variantTitle}</p>
-                          <div className="text-xs font-mono text-ry-charcoal mt-1">
-                            Qty: {item.quantity} • £{item.price.toFixed(2)}
-                          </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Order Number</span>
+                          <span className="font-mono font-medium text-ry-onyx">{orderNumber}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Total Amount</span>
+                          <span className="font-serif font-medium text-ry-onyx">£{orderTotal.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">Payment</span>
+                          <span className="font-medium text-ry-onyx">{orderPayment}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Klarna Installment Tracking Widget (3 Payments) */}
-                  {order.klarna && (
-                    <div className="p-6 bg-[#FFF2F7]/30 border-t border-ry-ash/60">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-[#FFA8CD] text-black font-bold text-xs px-2 py-0.5 rounded-sm">
-                            Klarna.
-                          </span>
-                          <h5 className="font-serif text-sm text-ry-onyx">
-                            Pay in 3 Schedule ({order.klarna.installmentsPaid} of {order.klarna.totalInstallments} Paid)
-                          </h5>
-                        </div>
-                        <span className="text-[11px] text-ry-stone font-sans">
-                          0% APR • Automated Auto-Debit
+                      <div className="flex items-center gap-3">
+                        <span className="px-3 py-1 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial font-medium">
+                          {orderStatus}
                         </span>
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {order.klarna.schedule.map((step) => (
-                          <div
-                            key={step.index}
-                            className={`p-3 border text-xs ${
-                              step.status === 'PAID'
-                                ? 'bg-ry-white border-emerald-300'
-                                : 'bg-ry-pearl border-ry-ash/60'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
-                                Payment {step.index} (of 3)
-                              </span>
-                              {step.status === 'PAID' ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              ) : (
-                                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              )}
-                            </div>
-                            <div className="font-mono text-sm font-semibold text-ry-onyx">
-                              £{step.amount.toFixed(2)}
-                            </div>
-                            <div className="text-[10px] text-ry-stone mt-1">
-                              {step.status === 'PAID' ? 'Paid' : 'Due'} {step.date}
+                    {/* Order Items */}
+                    <div className="p-6 divide-y divide-ry-ash/40">
+                      {orderItems.map((item: any, idx: number) => (
+                        <div key={idx} className="flex gap-4 py-3 first:pt-0 last:pb-0">
+                          <div className="relative w-16 h-20 bg-ry-oatmeal overflow-hidden border border-ry-ash/50 shrink-0">
+                            {item.image ? (
+                              <Image src={item.image} alt={item.title || 'Product'} fill sizes="64px" className="object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-ry-pearl" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-serif text-base text-ry-onyx">{item.title}</h4>
+                            <p className="text-xs text-ry-stone">{item.variantTitle}</p>
+                            <div className="text-xs font-mono text-ry-charcoal mt-1">
+                              Qty: {item.quantity} • £{(typeof item.price === 'number' ? item.price : 0).toFixed(2)}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Clearpay Installment Tracking Widget (4 Payments) */}
-                  {order.clearpay && (
-                    <div className="p-6 bg-[#E6F9F5]/30 border-t border-ry-ash/60">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-[#B2ECE1] text-black font-bold text-xs px-2 py-0.5 rounded-sm">
-                            clearpay✦
-                          </span>
-                          <h5 className="font-serif text-sm text-ry-onyx">
-                            Pay in 4 Schedule ({order.clearpay.installmentsPaid} of {order.clearpay.totalInstallments} Paid)
-                          </h5>
                         </div>
-                        <span className="text-[11px] text-ry-stone font-sans">
-                          0% APR • Bi-weekly Schedule
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {order.clearpay.schedule.map((step) => (
-                          <div
-                            key={step.index}
-                            className={`p-3 border text-xs ${
-                              step.status === 'PAID'
-                                ? 'bg-ry-white border-emerald-300'
-                                : 'bg-ry-pearl border-ry-ash/60'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
-                                Payment {step.index} (of 4)
-                              </span>
-                              {step.status === 'PAID' ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              ) : (
-                                <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              )}
-                            </div>
-                            <div className="font-mono text-sm font-semibold text-ry-onyx">
-                              £{step.amount.toFixed(2)}
-                            </div>
-                            <div className="text-[10px] text-ry-stone mt-1">
-                              {step.status === 'PAID' ? 'Paid' : 'Due'} {step.date}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Shipping & Courier Dispatch Footer */}
-                  <div className="p-4 bg-ry-oatmeal/60 border-t border-ry-ash/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div>
-                      <div className="flex items-center gap-2 text-ry-charcoal">
-                        <Truck className="w-4 h-4 text-ry-onyx" />
-                        <span>Carrier: <strong>{order.carrier}</strong></span>
-                      </div>
-                      <div className="text-[11px] text-ry-stone mt-0.5">
-                        Delivering to: {order.deliveryAddress}
-                      </div>
+                      ))}
                     </div>
 
-                    <Link
-                      href={`/track?ref=${encodeURIComponent(order.trackingNumber)}`}
-                      className="px-4 py-2 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors shrink-0 flex items-center gap-1.5"
-                    >
-                      <span>Track Shipment #{order.trackingNumber}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {/* Installment Payment Notice (simple message, no timeline) */}
+                    {(orderPayment.toLowerCase().includes('klarna') || orderPayment.toLowerCase().includes('clearpay')) && (
+                      <div className="px-6 py-4 bg-ry-pearl/40 border-t border-ry-ash/60 flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          {orderPayment.toLowerCase().includes('klarna') && (
+                            <span className="bg-[#FFA8CD] text-black font-bold text-xs px-2 py-0.5 rounded-sm">Klarna.</span>
+                          )}
+                          {orderPayment.toLowerCase().includes('clearpay') && (
+                            <span className="bg-[#B2ECE1] text-black font-bold text-xs px-2 py-0.5 rounded-sm">clearpay✦</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-ry-stone">
+                          You are paying installmentally with{' '}
+                          <strong className="text-ry-onyx">
+                            {orderPayment.toLowerCase().includes('klarna') ? 'Klarna (Pay in 3)' : 'Clearpay (Pay in 4)'}
+                          </strong>
+                          . 0% interest, no hidden fees.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Shipping & Courier Dispatch Footer */}
+                    <div className="p-4 bg-ry-oatmeal/60 border-t border-ry-ash/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2 text-ry-charcoal">
+                          <Truck className="w-4 h-4 text-ry-onyx" />
+                          <span>Carrier: <strong>{orderCarrier}</strong></span>
+                        </div>
+                        <div className="text-[11px] text-ry-stone mt-0.5">
+                          Delivering to: {orderAddress}
+                        </div>
+                      </div>
+
+                      {orderTracking && (
+                        <Link
+                          href={`/track?ref=${encodeURIComponent(orderTracking)}`}
+                          className="px-4 py-2 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors shrink-0 flex items-center gap-1.5"
+                        >
+                          <span>Track Shipment #{orderTracking}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

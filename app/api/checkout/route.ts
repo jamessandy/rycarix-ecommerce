@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
           0
         );
         const payment_method_types: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
-          totalCents >= 3500 ? ['card', 'klarna', 'link'] : ['card', 'link'];
+          totalCents >= 3500 ? ['card', 'klarna', 'afterpay_clearpay', 'link'] : ['card', 'link'];
 
         const session = await stripe.checkout.sessions.create({
           payment_method_types,
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
           cancel_url: `${host}/?checkout_canceled=true`,
           metadata: {
             platform: 'Rycarix Haute E-Commerce',
-            paymentChannel: 'Klarna_Installments_Preferred',
+            paymentChannel: 'Klarna_Clearpay_Installments_Preferred',
           },
         });
 
