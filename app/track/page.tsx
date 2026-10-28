@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import {
   lookupTracking,
+  buildShipmentFromOrder,
   SHIPMENT_DATABASE,
   ShippingLabelData,
 } from '@/lib/services/shippingAggregator';
@@ -43,21 +44,93 @@ function TrackingPortalContent() {
   const { addItem, openCart } = useCartStore();
 
   useEffect(() => {
-    const found = lookupTracking(initialRef);
-    if (found) {
-      setActiveShipment(found);
-    }
+    const resolveShipment = async () => {
+      // 1. Direct memory / local lookup
+      const local = lookupTracking(initialRef);
+      if (
+        local &&
+        (local.orderNumber.toUpperCase() === initialRef.toUpperCase() ||
+          local.trackingNumber.toUpperCase() === initialRef.toUpperCase() ||
+          local.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === initialRef.toUpperCase().replace(/[^a-zA-Z0-9]/g, ''))
+      ) {
+        setActiveShipment(local);
+        return;
+      }
+
+      // 2. Fetch live order from /api/orders
+      try {
+        const res = await fetch('/api/orders');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.orders && Array.isArray(data.orders)) {
+            const matched = data.orders.find(
+              (o: any) =>
+                o.id?.toUpperCase() === initialRef.toUpperCase() ||
+                o.orderNumber?.toUpperCase() === initialRef.toUpperCase() ||
+                o.trackingNumber?.toUpperCase() === initialRef.toUpperCase() ||
+                (o.trackingNumber &&
+                  o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') ===
+                    initialRef.toUpperCase().replace(/[^a-zA-Z0-9]/g, ''))
+            );
+            if (matched) {
+              setActiveShipment(buildShipmentFromOrder(matched));
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not query live orders', e);
+      }
+
+      if (local) {
+        setActiveShipment(local);
+      }
+    };
+
+    resolveShipment();
   }, [initialRef]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    const result = lookupTracking(searchQuery);
-    if (result) {
-      setActiveShipment(result);
-    } else {
-      alert(`No shipment found matching "${searchQuery}". Showing demo shipment RY-84920.`);
-      setActiveShipment(SHIPMENT_DATABASE['7829-1092-4821']);
+    const query = searchQuery.trim().toUpperCase();
+    if (!query) return;
+
+    // Check local lookup
+    const local = lookupTracking(query);
+    if (
+      local &&
+      (local.orderNumber.toUpperCase() === query ||
+        local.trackingNumber.toUpperCase() === query ||
+        local.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === query.replace(/[^a-zA-Z0-9]/g, ''))
+    ) {
+      setActiveShipment(local);
+      return;
+    }
+
+    // Check API orders
+    try {
+      const res = await fetch('/api/orders');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && Array.isArray(data.orders)) {
+          const matched = data.orders.find(
+            (o: any) =>
+              o.id?.toUpperCase() === query ||
+              o.orderNumber?.toUpperCase() === query ||
+              o.trackingNumber?.toUpperCase() === query ||
+              (o.trackingNumber &&
+                o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === query.replace(/[^a-zA-Z0-9]/g, ''))
+          );
+          if (matched) {
+            setActiveShipment(buildShipmentFromOrder(matched));
+            return;
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (local) {
+      setActiveShipment(local);
     }
   };
 

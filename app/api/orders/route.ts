@@ -6,8 +6,17 @@ const stripe = stripeSecretKey && !stripeSecretKey.includes('...')
   ? new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' as any })
   : null;
 
-// In-memory / cache store for fulfillment updates (e.g. dispatched carrier, tracking number)
-const fulfillmentOverrides: Record<string, { fulfillment: string; carrier: string; trackingNumber: string }> = {};
+// In-memory / cache store for fulfillment updates (e.g. dispatched carrier, tracking number, milestone status)
+const fulfillmentOverrides: Record<
+  string,
+  {
+    fulfillment?: string;
+    carrier?: string;
+    trackingNumber?: string;
+    currentStatus?: 'DISPATCH_PENDING' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
+    estimatedDelivery?: string;
+  }
+> = {};
 
 export async function GET(req: NextRequest) {
   try {
@@ -63,6 +72,7 @@ export async function GET(req: NextRequest) {
           }));
 
           const isPerfume = itemsText.toLowerCase().includes('parfum') || itemsText.toLowerCase().includes('fragrance');
+          const carrierName = override.carrier || s.metadata?.carrier || (isPerfume ? 'Royal Mail Tracked 24 (LQ Perfume)' : 'Evri Express');
 
           orders.push({
             id: orderId,
@@ -79,8 +89,14 @@ export async function GET(req: NextRequest) {
               : s.payment_method_types?.includes('afterpay_clearpay')
               ? 'Clearpay Pay in 4'
               : 'Stripe Card (1-Click)',
+            currentStatus:
+              override.currentStatus ||
+              (override.fulfillment?.includes('Dispatched') ? 'IN_TRANSIT' : 'DISPATCH_PENDING'),
+            estimatedDelivery:
+              override.estimatedDelivery ||
+              (carrierName.toLowerCase().includes('royal') ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days'),
             fulfillment: override.fulfillment || s.metadata?.fulfillment || 'Ready for Dispatch',
-            carrier: override.carrier || s.metadata?.carrier || (isPerfume ? 'Royal Mail Tracked 24 (LQ Perfume)' : 'Evri Express'),
+            carrier: carrierName,
             trackingNumber:
               override.trackingNumber ||
               s.metadata?.trackingNumber ||
@@ -116,13 +132,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { orderId, fulfillment, carrier, trackingNumber } = body;
+    const { orderId, fulfillment, carrier, trackingNumber, currentStatus, estimatedDelivery } = body;
 
-    if (orderId && (fulfillment || carrier || trackingNumber)) {
+    if (orderId && (fulfillment || carrier || trackingNumber || currentStatus)) {
       fulfillmentOverrides[orderId] = {
         fulfillment: fulfillment || 'Dispatched via Courier',
         carrier: carrier || 'Royal Mail Tracked 24',
         trackingNumber: trackingNumber || '',
+        currentStatus: currentStatus || 'IN_TRANSIT',
+        estimatedDelivery: estimatedDelivery || (carrier?.includes('Royal') ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days'),
       };
       return NextResponse.json({ success: true, updated: fulfillmentOverrides[orderId] });
     }

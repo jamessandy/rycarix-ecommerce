@@ -620,6 +620,105 @@ export default function AdminDashboard() {
     setActiveLabelData(simLabel);
   };
 
+  const handlePrintThermalLabel = () => {
+    if (!activeLabelData) return;
+    const printWindow = window.open('', '_blank', 'width=650,height=850');
+    if (!printWindow) {
+      alert('Please allow popups in your browser to print the shipping label.');
+      return;
+    }
+    const isLQ = activeLabelData.isHazardous;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Rycarix Shipping Label - ${activeLabelData.trackingNumber}</title>
+          <style>
+            @page { size: 4in 6in; margin: 0.15in; }
+            * { box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #000; background: #fff; }
+            .label-card { border: 3px solid #000; padding: 14px; width: 3.7in; margin: 0 auto; }
+            .top-bar { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
+            .brand { font-size: 15px; font-weight: 900; letter-spacing: 1.5px; }
+            .sub { font-size: 8px; text-transform: uppercase; color: #333; margin-top: 2px; }
+            .carrier-box { text-align: right; }
+            .carrier-title { font-size: 13px; font-weight: 900; text-transform: uppercase; }
+            .carrier-service { font-size: 8px; font-family: monospace; }
+            .address-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; font-size: 10px; }
+            .section-label { font-size: 8px; font-weight: 800; color: #444; margin-bottom: 2px; }
+            .recipient-name { font-size: 13px; font-weight: 800; margin-bottom: 2px; }
+            .tracking-wrap { margin-top: 6px; }
+            .tracking-title { font-size: 8px; font-weight: 800; color: #444; text-transform: uppercase; }
+            .tracking-code { font-size: 16px; font-weight: 900; font-family: monospace; letter-spacing: 1px; margin: 4px 0; word-break: break-all; }
+            .barcode-lines { height: 44px; display: flex; align-items: stretch; gap: 2px; margin: 6px 0; background: #f5f5f5; padding: 2px; border: 1px solid #ddd; }
+            .diamond-wrap { text-align: center; margin-top: 10px; border-top: 1px dashed #000; padding-top: 8px; }
+            .lq-diamond { width: 44px; height: 44px; border: 2px solid #000; transform: rotate(45deg); margin: 8px auto; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+            .lq-bar { height: 11px; background: #000; width: 100%; }
+            .lq-txt { font-size: 7px; font-weight: 900; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="label-card">
+            <div class="top-bar">
+              <div>
+                <div class="brand">RYCARIX ATELIER</div>
+                <div class="sub">Haute Parfumerie & Care • Dispatch Facility</div>
+              </div>
+              <div class="carrier-box">
+                <div class="carrier-title">${activeLabelData.carrier} Priority</div>
+                <div class="carrier-service">${activeLabelData.serviceLevel}</div>
+              </div>
+            </div>
+
+            <div class="address-grid">
+              <div>
+                <div class="section-label">FROM (SENDER):</div>
+                <div style="font-weight: 700;">Rycarix Atelier</div>
+                <div>18 Place Vendôme</div>
+                <div>75001 Paris, France</div>
+              </div>
+              <div>
+                <div class="section-label">DELIVER TO (RECIPIENT):</div>
+                <div class="recipient-name">${activeLabelData.recipientAddress.name}</div>
+                <div>${activeLabelData.recipientAddress.street}</div>
+                <div>${activeLabelData.recipientAddress.city}, ${activeLabelData.recipientAddress.postalCode}</div>
+                <div>${activeLabelData.recipientAddress.country}</div>
+              </div>
+            </div>
+
+            <div class="tracking-wrap">
+              <div class="tracking-title">WAYBILL / TRACKING NUMBER:</div>
+              <div class="tracking-code">${activeLabelData.trackingNumber}</div>
+              <div class="barcode-lines">
+                ${Array.from({ length: 44 }).map((_, i) => `<div style="background: #000; width: ${(i % 3) + 2}px;"></div>`).join('')}
+              </div>
+            </div>
+
+            ${isLQ ? `
+              <div class="diamond-wrap">
+                <div class="lq-diamond">
+                  <div class="lq-bar"></div>
+                  <div class="lq-txt">LQ</div>
+                  <div class="lq-bar"></div>
+                </div>
+                <div style="font-size: 8px; font-family: monospace; font-weight: 800;">
+                  UN 1266 LIMITED QUANTITY (PERFUMES WITH FLAMMABLE SOLVENTS)
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const handleSelectCarrier = (newCarrier: 'Royal Mail' | 'Evri') => {
     if (!activeLabelData || !dispatchModalOrder) return;
     const isRM = newCarrier === 'Royal Mail';
@@ -658,6 +757,8 @@ export default function AdminDashboard() {
         country: dispatchModalOrder.address?.country || 'United Kingdom',
         carrier: activeLabelData.carrier,
         serviceLevel: activeLabelData.serviceLevel,
+        trackingNumber: activeLabelData.trackingNumber,
+        currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
         items: [
           {
             title: dispatchModalOrder.items,
@@ -678,6 +779,8 @@ export default function AdminDashboard() {
                   fulfillment: `Dispatched via ${activeLabelData.carrier}`,
                   carrier: `${activeLabelData.carrier} Tracked`,
                   trackingNumber: activeLabelData.trackingNumber,
+                  currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
+                  estimatedDelivery: activeLabelData.estimatedDelivery,
                 }
               : o
           );
@@ -701,6 +804,8 @@ export default function AdminDashboard() {
               fulfillment: `Dispatched via ${activeLabelData.carrier}`,
               carrier: `${activeLabelData.carrier} Tracked`,
               trackingNumber: activeLabelData.trackingNumber,
+              currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
+              estimatedDelivery: activeLabelData.estimatedDelivery,
             }),
           }).catch((err) => console.warn('Could not update order dispatch on server', err));
         } catch (e) {}
@@ -2406,10 +2511,74 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Step 3: Commercial Shipping Label Simulation */}
+              {/* Step 3: Courier Tracking Number & Live Delivery Status Input */}
+              <div className="mb-6 p-4 bg-ry-pearl/60 border border-ry-ash/80 text-xs">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] uppercase tracking-editorial text-ry-onyx font-bold">
+                    4. Live Courier Tracking Details & Customer Milestone
+                  </span>
+                  <span className="text-[9px] text-ry-stone">
+                    Paste real carrier waybill or use Rycarix reference
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="sm:col-span-1">
+                    <label className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1">
+                      Carrier
+                    </label>
+                    <select
+                      value={activeLabelData.carrier}
+                      onChange={(e) => handleSelectCarrier(e.target.value as any)}
+                      className="w-full bg-white border border-ry-ash p-2 text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx"
+                    >
+                      <option value="Royal Mail">Royal Mail</option>
+                      <option value="Evri">Evri</option>
+                      <option value="DHL">DHL Express</option>
+                      <option value="FedEx">FedEx</option>
+                      <option value="UPS">UPS</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-1">
+                    <label className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1">
+                      Tracking / Waybill Number
+                    </label>
+                    <input
+                      type="text"
+                      value={activeLabelData.trackingNumber}
+                      onChange={(e) =>
+                        setActiveLabelData({ ...activeLabelData, trackingNumber: e.target.value.trim() })
+                      }
+                      placeholder="e.g. GB123456789 or 16-digit"
+                      className="w-full bg-white border border-ry-ash p-2 text-xs font-mono text-ry-onyx focus:outline-none focus:border-ry-onyx"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-1">
+                    <label className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1">
+                      Current Milestone Shown to Customer
+                    </label>
+                    <select
+                      value={activeLabelData.currentStatus}
+                      onChange={(e) =>
+                        setActiveLabelData({ ...activeLabelData, currentStatus: e.target.value as any })
+                      }
+                      className="w-full bg-white border border-ry-ash p-2 text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx"
+                    >
+                      <option value="IN_TRANSIT">In Transit (Collected & En Route to Hub)</option>
+                      <option value="OUT_FOR_DELIVERY">Out for Delivery (With Doorstep Courier)</option>
+                      <option value="DELIVERED">Delivered to Recipient Doorstep</option>
+                      <option value="DISPATCH_PENDING">Order Placed & Packed (Pending Collection)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4: Commercial Shipping Label Simulation */}
               <div className="mb-6">
                 <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-2 font-semibold">
-                  4. Generated Thermal Shipping Label & Barcode
+                  5. Generated Thermal Shipping Label & Barcode
                 </span>
 
                 <div className="border-2 border-ry-onyx p-4 sm:p-6 bg-white text-black font-sans relative">
@@ -2430,7 +2599,7 @@ export default function AdminDashboard() {
                       <div className="text-sm font-bold uppercase">
                         {activeLabelData.carrier === 'Royal Mail'
                           ? 'ROYAL MAIL TRACKED 24'
-                          : 'EVRI EXPRESS'}
+                          : `${activeLabelData.carrier.toUpperCase()} EXPRESS`}
                       </div>
                       <span className="text-[9px] font-mono text-neutral-600 block">
                         {activeLabelData.serviceLevel}
@@ -2500,7 +2669,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => alert(`Simulated printing thermal shipping label for ${activeLabelData.trackingNumber}`)}
+                    onClick={handlePrintThermalLabel}
                     className="px-4 py-2.5 bg-ry-pearl hover:bg-ry-oatmeal border border-ry-ash text-xs uppercase tracking-editorial font-medium flex items-center gap-2 transition-colors"
                   >
                     <Printer className="w-4 h-4 text-ry-stone" />
@@ -2527,23 +2696,25 @@ export default function AdminDashboard() {
                     Close
                   </button>
 
-                  {!dispatchModalOrder.trackingNumber && (
-                    <button
-                      type="button"
-                      disabled={isDispatching}
-                      onClick={handleConfirmDispatch}
-                      className="px-6 py-2.5 bg-ry-onyx text-ry-white uppercase tracking-editorial text-xs hover:bg-ry-charcoal transition-colors flex items-center gap-2 disabled:opacity-50"
-                    >
-                      {isDispatching ? (
-                        <span>Processing Dispatch...</span>
-                      ) : (
-                        <>
-                          <Package className="w-4 h-4" />
-                          <span>Confirm Dispatch via {activeLabelData.carrier}</span>
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={isDispatching}
+                    onClick={handleConfirmDispatch}
+                    className="px-6 py-2.5 bg-ry-burgundy text-ry-white uppercase tracking-editorial text-xs font-semibold hover:bg-ry-burgundyLight transition-colors flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                  >
+                    {isDispatching ? (
+                      <span>Saving Dispatch Details...</span>
+                    ) : (
+                      <>
+                        <Package className="w-4 h-4" />
+                        <span>
+                          {dispatchModalOrder.fulfillment?.includes('Dispatched')
+                            ? 'Update Live Tracking Details'
+                            : `Confirm Dispatch via ${activeLabelData.carrier}`}
+                        </span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
