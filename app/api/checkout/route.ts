@@ -59,12 +59,8 @@ export async function POST(req: NextRequest) {
     // If Stripe API key is configured, create an authentic Stripe + Klarna session
     if (stripe) {
       try {
-        const totalCents = line_items.reduce(
-          (sum: number, it: any) => sum + (it.price_data.unit_amount * it.quantity),
-          0
-        );
         const payment_method_types: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
-          totalCents >= 3500 ? ['card', 'klarna', 'afterpay_clearpay', 'link'] : ['card', 'link'];
+          ['card', 'klarna', 'afterpay_clearpay', 'link'];
 
         const session = await stripe.checkout.sessions.create({
           payment_method_types,
