@@ -18,6 +18,7 @@ import {
   AlertCircle,
   ExternalLink,
   ArrowRight,
+  ArrowLeft,
   Flame,
   Sparkles,
 } from 'lucide-react';
@@ -29,17 +30,22 @@ import {
 } from '@/lib/services/shippingAggregator';
 import { PRODUCTS } from '@/lib/data/mockData';
 import { useCartStore } from '@/lib/store/useCartStore';
+import { useAuthStore } from '@/lib/store/useAuthStore';
 
 function TrackingPortalContent() {
   const searchParams = useSearchParams();
-  const initialRef = searchParams.get('ref') || searchParams.get('tracking') || '7829-1092-4821';
+  const initialRef = searchParams.get('ref') || searchParams.get('tracking') || '';
 
+  const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState(initialRef);
   const [activeShipment, setActiveShipment] = useState<ShippingLabelData | null>(null);
   const [copied, setCopied] = useState(false);
   const [smsAlertsEnabled, setSmsAlertsEnabled] = useState(false);
   const [smsPhone, setSmsPhone] = useState('');
   const [smsSubmitted, setSmsSubmitted] = useState(false);
+  const [availableOrders, setAvailableOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [searchNotFound, setSearchNotFound] = useState(false);
 
   // Sync phone number from activeShipment if available
   useEffect(() => {
@@ -54,76 +60,137 @@ function TrackingPortalContent() {
   const { addItem, openCart } = useCartStore();
 
   useEffect(() => {
-    const resolveShipment = async () => {
-      // 1. Direct memory / local lookup
-      const local = lookupTracking(initialRef);
-      if (
-        local &&
-        (local.orderNumber.toUpperCase() === initialRef.toUpperCase() ||
-          local.trackingNumber.toUpperCase() === initialRef.toUpperCase() ||
-          local.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === initialRef.toUpperCase().replace(/[^a-zA-Z0-9]/g, ''))
-      ) {
-        setActiveShipment(local);
-        return;
+    let localList: any[] = [];
+    try {
+      const raw = localStorage.getItem('rycarix_orders');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) localList = parsed;
       }
+    } catch (e) {}
 
-      // 2. Fetch live order from /api/orders
+    const loadOrdersAndResolve = async () => {
+      setIsLoadingOrders(true);
+      let allOrders = [...localList];
+
       try {
-        const res = await fetch('/api/orders');
+        const query = user?.role === 'ADMIN' ? '' : user?.email ? `?email=${encodeURIComponent(user.email)}` : '';
+        const res = await fetch(`/api/orders${query}`);
         if (res.ok) {
           const data = await res.json();
           if (data.orders && Array.isArray(data.orders)) {
-            const matched = data.orders.find(
-              (o: any) =>
-                o.id?.toUpperCase() === initialRef.toUpperCase() ||
-                o.orderNumber?.toUpperCase() === initialRef.toUpperCase() ||
-                o.trackingNumber?.toUpperCase() === initialRef.toUpperCase() ||
-                (o.trackingNumber &&
-                  o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') ===
-                    initialRef.toUpperCase().replace(/[^a-zA-Z0-9]/g, ''))
-            );
-            if (matched) {
-              setActiveShipment(buildShipmentFromOrder(matched));
-              return;
+            const combined = [...data.orders];
+            for (let i = 0; i < combined.length; i++) {
+              const c = combined[i];
+              const match = localList.find(
+                (l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId)
+              );
+              if (match) {
+                if (!c.phone && match.phone) {
+                  c.phone = match.phone;
+                  if (c.address) c.address.phone = match.phone;
+                }
+                if (
+                  match.fulfillment &&
+                  match.fulfillment.toLowerCase().includes('dispatched') &&
+                  (!c.fulfillment || !c.fulfillment.toLowerCase().includes('dispatched'))
+                ) {
+                  c.fulfillment = match.fulfillment;
+                  c.carrier = match.carrier || c.carrier;
+                  c.trackingNumber = match.trackingNumber || c.trackingNumber;
+                  c.currentStatus = match.currentStatus || 'IN_TRANSIT';
+                  c.estimatedDelivery = match.estimatedDelivery || c.estimatedDelivery;
+                }
+              }
             }
+            for (const l of localList) {
+              if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
+                combined.push(l);
+              }
+            }
+            allOrders = combined;
           }
         }
       } catch (e) {
-        console.warn('Could not query live orders', e);
+        console.warn('Could not fetch orders in tracking portal', e);
       }
 
-      if (local) {
-        setActiveShipment(local);
+      setAvailableOrders(allOrders);
+      setIsLoadingOrders(false);
+
+      // If initialRef exists in URL, attempt to resolve it
+      if (initialRef) {
+        const target = initialRef.trim().toUpperCase();
+        const matched = allOrders.find(
+          (o: any) =>
+            o.id?.toUpperCase() === target ||
+            o.orderNumber?.toUpperCase() === target ||
+            o.trackingNumber?.toUpperCase() === target ||
+            (o.trackingNumber &&
+              o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === target.replace(/[^a-zA-Z0-9]/g, ''))
+        );
+        if (matched) {
+          setActiveShipment(buildShipmentFromOrder(matched));
+          setSearchNotFound(false);
+          return;
+        }
+
+        const local = lookupTracking(target);
+        if (local) {
+          setActiveShipment(local);
+          setSearchNotFound(false);
+          return;
+        }
+
+        setSearchNotFound(true);
+      } else {
+        setActiveShipment(null);
+        setSearchNotFound(false);
       }
     };
 
-    resolveShipment();
-  }, [initialRef]);
+    loadOrdersAndResolve();
+  }, [initialRef, user?.email, user?.role]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim().toUpperCase();
-    if (!query) return;
-
-    // Check local lookup
-    const local = lookupTracking(query);
-    if (
-      local &&
-      (local.orderNumber.toUpperCase() === query ||
-        local.trackingNumber.toUpperCase() === query ||
-        local.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === query.replace(/[^a-zA-Z0-9]/g, ''))
-    ) {
-      setActiveShipment(local);
+    if (!query) {
+      setActiveShipment(null);
+      setSearchNotFound(false);
       return;
     }
 
-    // Check API orders
+    // 1. Check in loaded orders
+    const matched = availableOrders.find(
+      (o: any) =>
+        o.id?.toUpperCase() === query ||
+        o.orderNumber?.toUpperCase() === query ||
+        o.trackingNumber?.toUpperCase() === query ||
+        (o.trackingNumber &&
+          o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === query.replace(/[^a-zA-Z0-9]/g, ''))
+    );
+    if (matched) {
+      setActiveShipment(buildShipmentFromOrder(matched));
+      setSearchNotFound(false);
+      return;
+    }
+
+    // 2. Check local lookup
+    const local = lookupTracking(query);
+    if (local) {
+      setActiveShipment(local);
+      setSearchNotFound(false);
+      return;
+    }
+
+    // 3. Fallback direct API check
     try {
       const res = await fetch('/api/orders');
       if (res.ok) {
         const data = await res.json();
         if (data.orders && Array.isArray(data.orders)) {
-          const matched = data.orders.find(
+          const apiMatch = data.orders.find(
             (o: any) =>
               o.id?.toUpperCase() === query ||
               o.orderNumber?.toUpperCase() === query ||
@@ -131,17 +198,17 @@ function TrackingPortalContent() {
               (o.trackingNumber &&
                 o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === query.replace(/[^a-zA-Z0-9]/g, ''))
           );
-          if (matched) {
-            setActiveShipment(buildShipmentFromOrder(matched));
+          if (apiMatch) {
+            setActiveShipment(buildShipmentFromOrder(apiMatch));
+            setSearchNotFound(false);
             return;
           }
         }
       }
     } catch (e) {}
 
-    if (local) {
-      setActiveShipment(local);
-    }
+    setActiveShipment(null);
+    setSearchNotFound(true);
   };
 
   const handleCopyTracking = (num: string) => {
@@ -177,8 +244,8 @@ function TrackingPortalContent() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Enter tracking # or order # (e.g. RY-84920)"
-                className="w-full pl-10 pr-4 py-3 bg-ry-white border border-ry-ash text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx transition-colors placeholder-ry-stone"
+                placeholder="Enter tracking # or order # (e.g. RY-96130)"
+                className="w-full pl-10 pr-4 py-3 bg-ry-white border border-ry-ash text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx transition-colors placeholder-ry-stone font-mono"
               />
             </div>
             <button
@@ -188,37 +255,30 @@ function TrackingPortalContent() {
               Track Package
             </button>
           </form>
-
-          {/* Demo sample pills */}
-          <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-ry-stone">
-            <span>Try sample order:</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('7829-1092-4821');
-                setActiveShipment(SHIPMENT_DATABASE['7829-1092-4821']);
-              }}
-              className="underline hover:text-ry-onyx font-mono"
-            >
-              RY-84920 (Evri / Royal Mail)
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('DHL-9840-2811');
-                setActiveShipment(SHIPMENT_DATABASE['DHL-9840-2811']);
-              }}
-              className="underline hover:text-ry-onyx font-mono"
-            >
-              RY-77218 (DHL Express)
-            </button>
-          </div>
         </div>
 
         {/* Active Shipment Display */}
-        {activeShipment && (
+        {activeShipment ? (
           <div className="space-y-8 animate-fade-in">
+            {/* Back to All Orders Button */}
+            <div className="flex items-center justify-between pb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveShipment(null);
+                  setSearchQuery('');
+                  setSearchNotFound(false);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-ry-white border border-ry-ash text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-colors text-ry-onyx shadow-xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>← View All Orders & Deliveries</span>
+              </button>
+
+              <span className="text-[11px] font-mono text-ry-stone">
+                Tracking Waybill: <strong className="text-ry-onyx">{activeShipment.trackingNumber || activeShipment.orderNumber}</strong>
+              </span>
+            </div>
             
             {/* Primary Status Card */}
             <div className="bg-ry-white border border-ry-ash/80 shadow-md p-6 sm:p-10">
@@ -603,6 +663,134 @@ function TrackingPortalContent() {
               </div>
             </div>
 
+          </div>
+        ) : (
+          <div className="space-y-8 animate-fade-in">
+            {/* Search not found warning */}
+            {searchNotFound && (
+              <div className="p-4 bg-amber-50 border border-amber-300 text-xs text-amber-900 flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  No tracking information found matching &ldquo;{searchQuery}&rdquo;. Please verify the order reference or waybill number, or select from your active orders below.
+                </span>
+              </div>
+            )}
+
+            {/* Orders List Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ry-ash/70 pb-4">
+              <div>
+                <h2 className="font-serif text-xl sm:text-2xl text-ry-onyx">Your Orders & Deliveries</h2>
+                <p className="text-xs text-ry-stone mt-0.5">
+                  Select any order below to view real-time courier checkpoints, GPS transit milestones, and estimated delivery.
+                </p>
+              </div>
+
+              <div className="text-xs text-ry-stone">
+                {availableOrders.length} {availableOrders.length === 1 ? 'Order' : 'Orders'} on record
+              </div>
+            </div>
+
+            {/* Orders Cards List */}
+            {isLoadingOrders ? (
+              <div className="p-12 text-center text-ry-stone bg-ry-white border border-ry-ash/60">
+                <div className="w-8 h-8 rounded-full border-2 border-ry-onyx border-t-transparent animate-spin mx-auto mb-3" />
+                <span className="text-xs uppercase tracking-editorial">Retrieving delivery records...</span>
+              </div>
+            ) : availableOrders.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {availableOrders.map((ord: any) => {
+                  const isDispatched = (ord.fulfillment || '').toLowerCase().includes('dispatched');
+                  const trackingNum = ord.trackingNumber || (isDispatched ? 'Waybill Assigned' : '');
+                  const orderAddress = ord.address
+                    ? `${ord.address.street ? `${ord.address.street}, ` : ''}${ord.address.city || ''}, ${ord.address.country || ''}`
+                    : 'Delivery address on file';
+
+                  return (
+                    <div
+                      key={ord.id}
+                      className="bg-ry-white border border-ry-ash/80 p-5 sm:p-6 hover:border-ry-onyx/60 transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5 group"
+                    >
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="font-mono font-bold text-sm text-ry-onyx">{ord.id}</span>
+                          <span className="text-ry-stone text-xs">•</span>
+                          <span className="text-xs text-ry-stone">{ord.date || 'Recent order'}</span>
+                          <span className="text-ry-stone text-xs">•</span>
+                          <span className="font-serif font-medium text-xs text-ry-onyx">£{Number(ord.total || 0).toFixed(2)}</span>
+                          <span
+                            className={`px-2 py-0.5 text-[9px] uppercase tracking-editorial font-bold ${
+                              isDispatched
+                                ? 'bg-ry-onyx text-ry-white'
+                                : 'bg-amber-100 text-amber-900 border border-amber-300'
+                            }`}
+                          >
+                            {ord.fulfillment || 'Order Confirmed'}
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-ry-onyx font-medium truncate">
+                          {ord.items || 'Atelier Selection'}
+                        </div>
+
+                        <div className="text-[11px] text-ry-stone flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <div>
+                            Recipient: <strong className="text-ry-onyx font-normal">{ord.customer}</strong>
+                          </div>
+                          <div>Destination: {orderAddress}</div>
+                          <div>
+                            Courier: <strong className="text-ry-onyx font-normal">{ord.carrier || 'Priority Courier'}</strong>
+                          </div>
+                          {trackingNum && (
+                            <div className="font-mono text-ry-onyx">
+                              Tracking #: {trackingNum}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const shipment = buildShipmentFromOrder(ord);
+                            setActiveShipment(shipment);
+                            setSearchQuery(ord.trackingNumber || ord.id);
+                            setSearchNotFound(false);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="w-full sm:w-auto px-4 py-2.5 bg-ry-onyx hover:bg-ry-charcoal text-ry-white text-xs uppercase tracking-editorial font-medium transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Track Delivery &rarr;</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="bg-ry-white border border-ry-ash/70 p-12 text-center shadow-xs">
+                <Package className="w-10 h-10 text-ry-stone/50 mx-auto mb-3 stroke-[1.4]" />
+                <h3 className="font-serif text-lg text-ry-onyx mb-1">No Orders on Record</h3>
+                <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
+                  Enter your order reference (e.g. RY-96130) or carrier waybill in the search box above to track any live delivery.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Link
+                    href="/products"
+                    className="px-5 py-2.5 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors"
+                  >
+                    Explore Sanctuary Formulations
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="px-5 py-2.5 bg-ry-white border border-ry-ash text-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-colors"
+                  >
+                    Sign In to My Account
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

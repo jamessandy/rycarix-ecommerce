@@ -605,6 +605,6 @@ export function lookupTracking(query: string): ShippingLabelData | null {
     } catch (e) {}
   }
 
-  // Fallback default shipment for demo resilience
-  return SHIPMENT_DATABASE['7829-1092-4821'];
+  // No matching shipment found
+  return null;
 }
