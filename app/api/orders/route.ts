@@ -1,12 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import fs from 'fs';
+import path from 'path';
 
 const stripeSecretKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
 const stripe = stripeSecretKey && !stripeSecretKey.includes('...')
   ? new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' as any })
   : null;
 
-// In-memory / cache store for fulfillment updates (e.g. dispatched carrier, tracking number, milestone status)
+const CACHE_FILE = path.join('/tmp', 'rycarix_fulfillment_overrides.json');
+
+function loadOverrides(): Record<
+  string,
+  {
+    fulfillment?: string;
+    carrier?: string;
+    trackingNumber?: string;
+    currentStatus?: 'DISPATCH_PENDING' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
+    estimatedDelivery?: string;
+  }
+> {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+    }
+  } catch (e) {}
+  return {};
+}
+
+function saveOverrides(data: Record<string, any>) {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+// In-memory + persistent cache store for fulfillment updates
 const fulfillmentOverrides: Record<
   string,
   {
@@ -16,7 +44,7 @@ const fulfillmentOverrides: Record<
     currentStatus?: 'DISPATCH_PENDING' | 'IN_TRANSIT' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
     estimatedDelivery?: string;
   }
-> = {};
+> = loadOverrides();
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,6 +58,7 @@ export async function GET(req: NextRequest) {
         const sessions = await stripe.checkout.sessions.list({
           limit: 50,
           status: 'complete',
+          expand: ['data.payment_intent'],
         });
 
         for (const s of sessions.data) {
@@ -46,7 +75,10 @@ export async function GET(req: NextRequest) {
             console.warn(`Could not fetch line items for session ${s.id}`, e);
           }
 
-          const orderId = s.metadata?.orderId || `RY-${s.created.toString().slice(-5)}`;
+          const pi = typeof s.payment_intent === 'object' ? (s.payment_intent as any) : null;
+          const piMeta = pi?.metadata || {};
+
+          const orderId = s.metadata?.orderId || piMeta.orderId || `RY-${s.created.toString().slice(-5)}`;
           const override = fulfillmentOverrides[orderId] || fulfillmentOverrides[s.id] || {};
 
           const street = [
@@ -72,7 +104,36 @@ export async function GET(req: NextRequest) {
           }));
 
           const isPerfume = itemsText.toLowerCase().includes('parfum') || itemsText.toLowerCase().includes('fragrance');
-          const carrierName = override.carrier || s.metadata?.carrier || (isPerfume ? 'Royal Mail Tracked 24 (LQ Perfume)' : 'Evri Express');
+
+          const fulfillmentStatus =
+            override.fulfillment ||
+            piMeta.fulfillment ||
+            s.metadata?.fulfillment ||
+            'Ready for Dispatch';
+
+          const carrierName =
+            override.carrier ||
+            piMeta.carrier ||
+            s.metadata?.carrier ||
+            (isPerfume ? 'Royal Mail Tracked 24 (LQ Perfume)' : 'Evri Express');
+
+          const trackingNum =
+            override.trackingNumber ||
+            piMeta.trackingNumber ||
+            s.metadata?.trackingNumber ||
+            (fulfillmentStatus.toLowerCase().includes('dispatched')
+              ? `RY-EVRI-${s.created.toString().slice(-4)}`
+              : '');
+
+          const currentStatus =
+            override.currentStatus ||
+            piMeta.currentStatus ||
+            (fulfillmentStatus.toLowerCase().includes('dispatched') ? 'IN_TRANSIT' : 'DISPATCH_PENDING');
+
+          const estDelivery =
+            override.estimatedDelivery ||
+            piMeta.estimatedDelivery ||
+            (carrierName.toLowerCase().includes('royal') ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days');
 
           const customerName =
             s.customer_details?.name || s.shipping_details?.name || s.metadata?.customerName || 'Valued Client';
@@ -97,20 +158,11 @@ export async function GET(req: NextRequest) {
               : s.payment_method_types?.includes('afterpay_clearpay')
               ? 'Clearpay Pay in 4'
               : 'Stripe Card (1-Click)',
-            currentStatus:
-              override.currentStatus ||
-              (override.fulfillment?.includes('Dispatched') ? 'IN_TRANSIT' : 'DISPATCH_PENDING'),
-            estimatedDelivery:
-              override.estimatedDelivery ||
-              (carrierName.toLowerCase().includes('royal') ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days'),
-            fulfillment: override.fulfillment || s.metadata?.fulfillment || 'Ready for Dispatch',
+            currentStatus,
+            estimatedDelivery: estDelivery,
+            fulfillment: fulfillmentStatus,
             carrier: carrierName,
-            trackingNumber:
-              override.trackingNumber ||
-              s.metadata?.trackingNumber ||
-              (override.fulfillment?.includes('Dispatched')
-                ? `7829-${s.created.toString().slice(-4)}-${s.id.slice(-4).toUpperCase()}`
-                : ''),
+            trackingNumber: trackingNum,
             date: new Date(s.created * 1000).toLocaleDateString('en-GB', {
               day: 'numeric',
               month: 'short',
@@ -143,17 +195,53 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { orderId, fulfillment, carrier, trackingNumber, currentStatus, estimatedDelivery } = body;
+    const { orderId, stripeSessionId, fulfillment, carrier, trackingNumber, currentStatus, estimatedDelivery } = body;
 
     if (orderId && (fulfillment || carrier || trackingNumber || currentStatus)) {
-      fulfillmentOverrides[orderId] = {
+      const updateData = {
         fulfillment: fulfillment || 'Dispatched via Courier',
         carrier: carrier || 'Royal Mail Tracked 24',
         trackingNumber: trackingNumber || '',
-        currentStatus: currentStatus || 'IN_TRANSIT',
+        currentStatus: (currentStatus as any) || 'IN_TRANSIT',
         estimatedDelivery: estimatedDelivery || (carrier?.includes('Royal') ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days'),
       };
-      return NextResponse.json({ success: true, updated: fulfillmentOverrides[orderId] });
+
+      fulfillmentOverrides[orderId] = updateData;
+      if (stripeSessionId) {
+        fulfillmentOverrides[stripeSessionId] = updateData;
+      }
+      saveOverrides(fulfillmentOverrides);
+
+      // Persist to Stripe PaymentIntent metadata directly so it never reverts across serverless restarts
+      if (stripe) {
+        try {
+          let targetSessionId = stripeSessionId;
+          if (!targetSessionId) {
+            const list = await stripe.checkout.sessions.list({ limit: 30, status: 'complete' });
+            const match = list.data.find(
+              (s) => s.metadata?.orderId === orderId || `RY-${s.created.toString().slice(-5)}` === orderId || s.id === orderId
+            );
+            if (match) targetSessionId = match.id;
+          }
+
+          if (targetSessionId) {
+            const sess = await stripe.checkout.sessions.retrieve(targetSessionId);
+            if (sess.payment_intent) {
+              const piId = typeof sess.payment_intent === 'string' ? sess.payment_intent : sess.payment_intent.id;
+              await stripe.paymentIntents.update(piId, {
+                metadata: {
+                  ...updateData,
+                  orderId,
+                },
+              });
+            }
+          }
+        } catch (stripeUpdateErr) {
+          console.warn('Could not update Stripe PI metadata:', stripeUpdateErr);
+        }
+      }
+
+      return NextResponse.json({ success: true, updated: updateData });
     }
 
     return NextResponse.json({ error: 'Missing orderId or update fields.' }, { status: 400 });

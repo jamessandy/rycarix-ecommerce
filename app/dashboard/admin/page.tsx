@@ -193,9 +193,23 @@ export default function AdminDashboard() {
                 for (let i = 0; i < combined.length; i++) {
                   const c = combined[i];
                   const match = localList.find((l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId));
-                  if (match && !c.phone && match.phone) {
-                    c.phone = match.phone;
-                    if (c.address) c.address.phone = match.phone;
+                  if (match) {
+                    if (!c.phone && match.phone) {
+                      c.phone = match.phone;
+                      if (c.address) c.address.phone = match.phone;
+                    }
+                    // NEVER REVERT DISPATCH STATUS
+                    if (
+                      match.fulfillment &&
+                      match.fulfillment.toLowerCase().includes('dispatched') &&
+                      (!c.fulfillment || !c.fulfillment.toLowerCase().includes('dispatched'))
+                    ) {
+                      c.fulfillment = match.fulfillment;
+                      c.carrier = match.carrier || c.carrier;
+                      c.trackingNumber = match.trackingNumber || c.trackingNumber;
+                      c.currentStatus = match.currentStatus || 'IN_TRANSIT';
+                      c.estimatedDelivery = match.estimatedDelivery || c.estimatedDelivery;
+                    }
                   }
                 }
                 for (const l of localList) {
@@ -810,13 +824,28 @@ export default function AdminDashboard() {
           return next;
         });
 
-        // Notify server API of dispatch update
+        // Update active modal order state so modal immediately reflects dispatched status
+        setDispatchModalOrder((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                fulfillment: `Dispatched via ${activeLabelData.carrier}`,
+                carrier: `${activeLabelData.carrier} Tracked`,
+                trackingNumber: activeLabelData.trackingNumber,
+                currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
+                estimatedDelivery: activeLabelData.estimatedDelivery,
+              }
+            : null
+        );
+
+        // Notify server API of dispatch update (and persist to Stripe PaymentIntent metadata)
         try {
           fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderId: dispatchModalOrder.id,
+              stripeSessionId: dispatchModalOrder.stripeSessionId,
               fulfillment: `Dispatched via ${activeLabelData.carrier}`,
               carrier: `${activeLabelData.carrier} Tracked`,
               trackingNumber: activeLabelData.trackingNumber,

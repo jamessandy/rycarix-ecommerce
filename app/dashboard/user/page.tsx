@@ -95,7 +95,14 @@ function UserDashboardContent() {
 
   // Load persisted orders from live Stripe API and localStorage
   const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [adminOrdersView, setAdminOrdersView] = useState<'all' | 'personal'>('all');
   const defaultAddr = user?.addresses?.find((a) => a.isDefault) || user?.addresses?.[0];
+
+  const personalOrders = userOrders.filter(
+    (o) => (o.email || '').toLowerCase() === (user?.email || '').toLowerCase()
+  );
+  const displayedOrders =
+    user?.role === 'ADMIN' ? (adminOrdersView === 'personal' ? personalOrders : userOrders) : userOrders;
 
   useEffect(() => {
     let localList: any[] = [];
@@ -120,9 +127,23 @@ function UserDashboardContent() {
             for (let i = 0; i < combined.length; i++) {
               const c = combined[i];
               const match = localList.find((l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId));
-              if (match && !c.phone && match.phone) {
-                c.phone = match.phone;
-                if (c.address) c.address.phone = match.phone;
+              if (match) {
+                if (!c.phone && match.phone) {
+                  c.phone = match.phone;
+                  if (c.address) c.address.phone = match.phone;
+                }
+                // NEVER REVERT DISPATCH STATUS
+                if (
+                  match.fulfillment &&
+                  match.fulfillment.toLowerCase().includes('dispatched') &&
+                  (!c.fulfillment || !c.fulfillment.toLowerCase().includes('dispatched'))
+                ) {
+                  c.fulfillment = match.fulfillment;
+                  c.carrier = match.carrier || c.carrier;
+                  c.trackingNumber = match.trackingNumber || c.trackingNumber;
+                  c.currentStatus = match.currentStatus || 'IN_TRANSIT';
+                  c.estimatedDelivery = match.estimatedDelivery || c.estimatedDelivery;
+                }
               }
               if (!c.phone && user?.phone && c.email?.toLowerCase() === user?.email?.toLowerCase()) {
                 c.phone = user.phone;
@@ -323,7 +344,7 @@ function UserDashboardContent() {
                 : 'text-ry-stone hover:text-ry-onyx'
             }`}
           >
-            Orders & Tracking ({userOrders.length})
+            Orders & Tracking ({displayedOrders.length})
           </button>
           <button
             onClick={() => setActiveTab('addresses')}
@@ -349,13 +370,64 @@ function UserDashboardContent() {
 
         {/* TAB 1: ORDERS & TRACKING */}
         {activeTab === 'orders' && (
-          <div className="space-y-8 animate-fade-in">
-            {userOrders.length === 0 ? (
+          <div className="space-y-6 animate-fade-in">
+            {/* Administrator Mode Switcher Bar */}
+            {user?.role === 'ADMIN' && (
+              <div className="p-4 bg-ry-pearl border border-ry-ash/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial font-bold">
+                      Admin Access
+                    </span>
+                    <span className="font-medium text-ry-onyx">Store Orders & Personal Orders</span>
+                  </div>
+                  <p className="text-[11px] text-ry-stone">
+                    Signed in as Store Administrator ({user.email}). Toggle between all store orders and your personal purchases.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAdminOrdersView('all')}
+                    className={`px-3 py-1.5 text-[10px] uppercase tracking-editorial font-medium border transition-colors ${
+                      adminOrdersView === 'all'
+                        ? 'bg-ry-onyx text-ry-white border-ry-onyx shadow-xs'
+                        : 'bg-white text-ry-onyx border-ry-ash hover:bg-ry-pearl'
+                    }`}
+                  >
+                    All Store Orders ({userOrders.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminOrdersView('personal')}
+                    className={`px-3 py-1.5 text-[10px] uppercase tracking-editorial font-medium border transition-colors ${
+                      adminOrdersView === 'personal'
+                        ? 'bg-ry-onyx text-ry-white border-ry-onyx shadow-xs'
+                        : 'bg-white text-ry-onyx border-ry-ash hover:bg-ry-pearl'
+                    }`}
+                  >
+                    My Personal Orders ({personalOrders.length})
+                  </button>
+                  <Link
+                    href="/dashboard/admin"
+                    className="px-3.5 py-1.5 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial font-semibold hover:bg-ry-burgundyLight transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Fulfillment Ledger &rarr;</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {displayedOrders.length === 0 ? (
               <div className="bg-ry-white border border-ry-ash/70 p-12 text-center shadow-sm">
                 <Package className="w-8 h-8 text-ry-stone/60 mx-auto mb-3 stroke-[1.4]" />
                 <h3 className="font-serif text-xl text-ry-onyx mb-2">No Active Orders</h3>
                 <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
-                  You have not placed any orders yet. Discover our restorative botanical hair elixirs, haute perfumes, and candles.
+                  {user?.role === 'ADMIN' && adminOrdersView === 'personal'
+                    ? 'You have not placed any personal orders as Store Administrator. Switch to "All Store Orders" above to inspect incoming orders.'
+                    : 'You have not placed any orders yet. Discover our restorative botanical hair elixirs, haute perfumes, and candles.'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <Link
@@ -373,7 +445,7 @@ function UserDashboardContent() {
                 </div>
               </div>
             ) : (
-              userOrders.map((order: any, orderIdx: number) => {
+              displayedOrders.map((order: any, orderIdx: number) => {
                 const orderItems = order.itemsList || order.items || [];
                 const orderAddress = order.address
                   ? `${order.address.street}, ${order.address.city} ${order.address.postalCode}, ${order.address.country}`
