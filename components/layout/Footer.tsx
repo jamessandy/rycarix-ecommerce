@@ -152,26 +152,6 @@ export default function Footer() {
                   Track My Order
                 </Link>
               </li>
-              <li>
-                <span className="hover:text-ry-white transition-colors cursor-pointer">
-                  Klarna FAQ
-                </span>
-              </li>
-              <li>
-                <span className="hover:text-ry-white transition-colors cursor-pointer">
-                  Shipping Information
-                </span>
-              </li>
-              <li>
-                <span className="hover:text-ry-white transition-colors cursor-pointer">
-                  Returns & Exchanges
-                </span>
-              </li>
-              <li>
-                <span className="hover:text-ry-white transition-colors cursor-pointer">
-                  Contact Support
-                </span>
-              </li>
             </ul>
           </div>
 
@@ -190,21 +170,6 @@ export default function Footer() {
                 <Link href="/#transparency" className="hover:text-ry-white transition-colors">
                   Product Transparency
                 </Link>
-              </li>
-              <li>
-                <span className="hover:text-ry-white transition-colors cursor-pointer">
-                  Sustainability
-                </span>
-              </li>
-              <li>
-                <Link href="/dashboard/admin" className="hover:text-ry-white transition-colors">
-                  Admin Dashboard
-                </Link>
-              </li>
-              <li>
-                <span className="hover:text-ry-white transition-colors cursor-pointer">
-                  Press & Media
-                </span>
               </li>
             </ul>
           </div>
