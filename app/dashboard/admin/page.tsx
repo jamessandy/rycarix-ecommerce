@@ -1105,23 +1105,26 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="py-3.5 px-4">
-                            {ord.trackingNumber ? (
-                              <div className="space-y-1">
-                                <Link
-                                  href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
-                                  target="_blank"
-                                  className="inline-flex items-center gap-1 text-ry-onyx font-medium hover:underline text-[11px] font-mono group"
-                                >
-                                  <span>{ord.trackingNumber}</span>
-                                  <ExternalLink className="w-3 h-3 text-ry-stone group-hover:text-ry-onyx" />
-                                </Link>
+                            {ord.fulfillment?.includes('Dispatched') || ord.fulfillment?.includes('In Transit') ? (
+                              <div className="space-y-1.5">
+                                {ord.trackingNumber && (
+                                  <Link
+                                    href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
+                                    target="_blank"
+                                    className="inline-flex items-center gap-1 text-ry-onyx font-medium hover:underline text-[11px] font-mono group"
+                                  >
+                                    <span>{ord.trackingNumber}</span>
+                                    <ExternalLink className="w-3 h-3 text-ry-stone group-hover:text-ry-onyx" />
+                                  </Link>
+                                )}
                                 <div>
                                   <button
                                     type="button"
                                     onClick={() => handleOpenDispatchModal(ord)}
-                                    className="text-[10px] text-ry-stone hover:text-ry-onyx underline flex items-center gap-1"
+                                    className="px-2.5 py-1 bg-ry-pearl border border-ry-ash hover:bg-ry-oatmeal text-[10px] text-ry-onyx font-medium flex items-center gap-1 transition-colors"
                                   >
-                                    <FileText className="w-3 h-3" /> View Label & LQ Hazard
+                                    <FileText className="w-3 h-3 text-ry-stone" />
+                                    <span>View / Print Dispatch Label</span>
                                   </button>
                                 </div>
                               </div>
@@ -1129,10 +1132,10 @@ export default function AdminDashboard() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenDispatchModal(ord)}
-                                className="px-3 py-1.5 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5 shadow-xs"
+                                className="px-3.5 py-2 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial font-semibold hover:bg-ry-burgundyLight active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-sm"
                               >
-                                <Package className="w-3.5 h-3.5" />
-                                <span>Dispatch (Evri / Royal Mail)</span>
+                                <Truck className="w-3.5 h-3.5" />
+                                <span>Prepare Courier Dispatch</span>
                               </button>
                             )}
                           </td>

@@ -84,7 +84,9 @@ export async function GET(req: NextRequest) {
             trackingNumber:
               override.trackingNumber ||
               s.metadata?.trackingNumber ||
-              `7829-${s.created.toString().slice(-4)}-${s.id.slice(-4).toUpperCase()}`,
+              (override.fulfillment?.includes('Dispatched')
+                ? `7829-${s.created.toString().slice(-4)}-${s.id.slice(-4).toUpperCase()}`
+                : ''),
             date: new Date(s.created * 1000).toLocaleDateString('en-GB', {
               day: 'numeric',
               month: 'short',
@@ -130,3 +132,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Failed to update order' }, { status: 500 });
   }
 }
+
