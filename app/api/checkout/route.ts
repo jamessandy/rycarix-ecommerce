@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
           metadata: {
             platform: 'Rycarix Haute E-Commerce',
             paymentChannel: 'Klarna_Clearpay_Installments_Preferred',
+            orderId: `RY-${Date.now().toString().slice(-5)}`,
+            customerEmail: customerEmail || '',
           },
         });
 

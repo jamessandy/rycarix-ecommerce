@@ -170,16 +170,45 @@ export default function AdminDashboard() {
           setProductsList(PRODUCTS);
         }
 
-        // Hydrate actual client orders
-        const savedOrders = localStorage.getItem('rycarix_orders');
-        if (savedOrders) {
-          const parsedOrders = JSON.parse(savedOrders);
-          if (Array.isArray(parsedOrders)) {
-            setAdminOrders(parsedOrders);
+        // Hydrate actual client orders from localStorage and live Stripe API
+        const loadOrders = async () => {
+          let localList: any[] = [];
+          try {
+            const savedOrders = localStorage.getItem('rycarix_orders');
+            if (savedOrders) {
+              const parsed = JSON.parse(savedOrders);
+              if (Array.isArray(parsed)) localList = parsed;
+            }
+          } catch (e) {
+            console.warn('Failed to parse local orders', e);
           }
-        } else {
-          setAdminOrders([]);
-        }
+
+          try {
+            const res = await fetch('/api/orders');
+            if (res.ok) {
+              const data = await res.json();
+              if (data.orders && Array.isArray(data.orders)) {
+                // Merge live Stripe orders with any local orders, avoiding duplicates by id
+                const combined = [...data.orders];
+                for (const l of localList) {
+                  if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
+                    combined.push(l);
+                  }
+                }
+                setAdminOrders(combined);
+                try {
+                  localStorage.setItem('rycarix_orders', JSON.stringify(combined));
+                } catch (e) {}
+                return;
+              }
+            }
+          } catch (fetchErr) {
+            console.warn('Could not fetch live Stripe orders', fetchErr);
+          }
+
+          setAdminOrders(localList);
+        };
+        loadOrders();
       } catch (e) {
         console.warn('Failed to load saved products/orders', e);
       }
@@ -640,27 +669,41 @@ export default function AdminDashboard() {
         ],
       });
 
-      // Update in local admin orders state and persist to rycarix_orders
-      setAdminOrders((prev) => {
-        const next = prev.map((o) =>
-          o.id === dispatchModalOrder.id
-            ? {
-                ...o,
-                fulfillment: `Dispatched via ${activeLabelData.carrier}`,
-                carrier: `${activeLabelData.carrier} Tracked`,
-                trackingNumber: activeLabelData.trackingNumber,
-              }
-            : o
-        );
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem('rycarix_orders', JSON.stringify(next));
-          } catch (e) {
-            console.warn('Could not persist dispatched order', e);
+        // Update in local admin orders state and persist to rycarix_orders
+        setAdminOrders((prev) => {
+          const next = prev.map((o) =>
+            o.id === dispatchModalOrder.id
+              ? {
+                  ...o,
+                  fulfillment: `Dispatched via ${activeLabelData.carrier}`,
+                  carrier: `${activeLabelData.carrier} Tracked`,
+                  trackingNumber: activeLabelData.trackingNumber,
+                }
+              : o
+          );
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('rycarix_orders', JSON.stringify(next));
+            } catch (e) {
+              console.warn('Could not persist dispatched order', e);
+            }
           }
-        }
-        return next;
-      });
+          return next;
+        });
+
+        // Notify server API of dispatch update
+        try {
+          fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: dispatchModalOrder.id,
+              fulfillment: `Dispatched via ${activeLabelData.carrier}`,
+              carrier: `${activeLabelData.carrier} Tracked`,
+              trackingNumber: activeLabelData.trackingNumber,
+            }),
+          }).catch((err) => console.warn('Could not update order dispatch on server', err));
+        } catch (e) {}
 
       setIsDispatching(false);
       setDispatchSuccessMsg(

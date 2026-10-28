@@ -93,68 +93,102 @@ function UserDashboardContent() {
     });
   };
 
-  // Load persisted orders from localStorage
+  // Load persisted orders from live Stripe API and localStorage
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const defaultAddr = user?.addresses?.find((a) => a.isDefault) || user?.addresses?.[0];
 
   useEffect(() => {
+    let localList: any[] = [];
     try {
       const raw = localStorage.getItem('rycarix_orders');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setUserOrders(parsed);
-          return;
-        }
+        if (Array.isArray(parsed)) localList = parsed;
       }
     } catch (err) {
       console.warn('Could not load saved orders', err);
     }
-    // If no saved orders but checkout was just simulated, create a fallback order
-    if (showCheckoutSuccess) {
-      const fallbackOrder = {
-        id: 'ord-live-01',
-        orderNumber: searchParams.get('orderId') || 'RY-84920',
-        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        status: 'CONFIRMED',
-        fulfillment: 'Ready for Dispatch',
-        carrier: 'Royal Mail Tracked 24 & Evri Express',
-        trackingNumber: '7829-1092-4821',
-        total: 135.00,
-        paymentMethod:
-          paymentMethodParam === 'klarna'
-            ? 'Klarna Pay in 3'
-            : paymentMethodParam === 'clearpay'
-            ? 'Clearpay Pay in 4'
-            : 'Stripe Card (1-Click)',
-        address: defaultAddr
-          ? {
-              street: defaultAddr.street,
-              city: defaultAddr.city,
-              state: defaultAddr.state,
-              postalCode: defaultAddr.postalCode,
-              country: defaultAddr.country,
+
+    const fetchLiveOrders = async () => {
+      try {
+        const query = user?.role === 'ADMIN' ? '' : user?.email ? `?email=${encodeURIComponent(user.email)}` : '';
+        const res = await fetch(`/api/orders${query}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
+            const combined = [...data.orders];
+            for (const l of localList) {
+              if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
+                combined.push(l);
+              }
             }
-          : {
-              street: '18 Grosvenor Gardens',
-              city: 'London',
-              state: 'Greater London',
-              postalCode: 'SW1W 0DH',
-              country: 'United Kingdom',
+            setUserOrders(combined);
+            try {
+              localStorage.setItem('rycarix_orders', JSON.stringify(combined));
+            } catch (e) {}
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch orders from API', e);
+      }
+
+      if (localList.length > 0) {
+        setUserOrders(localList);
+        return;
+      }
+
+      // If no saved orders but checkout was just completed, create and persist a record
+      if (showCheckoutSuccess) {
+        const fallbackOrder = {
+          id: searchParams.get('orderId') || 'RY-84920',
+          orderNumber: searchParams.get('orderId') || 'RY-84920',
+          date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          status: 'CONFIRMED',
+          fulfillment: 'Ready for Dispatch',
+          carrier: 'Royal Mail Tracked 24 & Evri Express',
+          trackingNumber: '7829-1092-4821',
+          total: 135.0,
+          paymentMethod:
+            paymentMethodParam === 'klarna'
+              ? 'Klarna Pay in 3'
+              : paymentMethodParam === 'clearpay'
+              ? 'Clearpay Pay in 4'
+              : 'Stripe Card (1-Click)',
+          address: defaultAddr
+            ? {
+                street: defaultAddr.street,
+                city: defaultAddr.city,
+                state: defaultAddr.state,
+                postalCode: defaultAddr.postalCode,
+                country: defaultAddr.country,
+              }
+            : {
+                street: '18 Grosvenor Gardens',
+                city: 'London',
+                state: 'Greater London',
+                postalCode: 'SW1W 0DH',
+                country: 'United Kingdom',
+              },
+          itemsList: [
+            {
+              title: 'Order Item',
+              variantTitle: 'Standard',
+              quantity: 1,
+              price: 135.0,
+              image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
             },
-        itemsList: [
-          {
-            title: 'Order Item',
-            variantTitle: 'Standard',
-            quantity: 1,
-            price: 135.00,
-            image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
-          },
-        ],
-      };
-      setUserOrders([fallbackOrder]);
-    }
-  }, [showCheckoutSuccess, paymentMethodParam, defaultAddr, searchParams]);
+          ],
+        };
+        setUserOrders([fallbackOrder]);
+        try {
+          localStorage.setItem('rycarix_orders', JSON.stringify([fallbackOrder]));
+        } catch (e) {}
+      }
+    };
+
+    fetchLiveOrders();
+  }, [showCheckoutSuccess, paymentMethodParam, defaultAddr, searchParams, user]);
 
   // If not authenticated, render welcoming prompt
   if (!isAuthenticated || !user) {
