@@ -17,7 +17,6 @@ export default function CartDrawer() {
     updateQuantity,
     getCartSubtotal,
     getTotalCount,
-    getFreeShippingProgress,
   } = useCartStore();
 
   const { user } = useAuthStore();
@@ -25,7 +24,6 @@ export default function CartDrawer() {
 
   const subtotal = getCartSubtotal();
   const totalCount = getTotalCount();
-  const freeShipping = getFreeShippingProgress();
 
   if (!isOpen) return null;
 
@@ -92,31 +90,6 @@ export default function CartDrawer() {
             >
               <X className="w-5 h-5 stroke-[1.5]" />
             </button>
-          </div>
-
-          {/* Free Shipping Threshold Progress Banner */}
-          <div className="px-6 py-3 bg-ry-oatmeal/60 border-b border-ry-ash/40">
-            <div className="flex items-center justify-between text-xs font-sans mb-1.5">
-              <span className="text-ry-charcoal font-medium">
-                {freeShipping.remaining === 0 ? (
-                  <span className="inline-flex items-center gap-1.5 text-ry-onyx">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                    You unlocked Free Shipping!
-                  </span>
-                ) : (
-                  <span>
-                    Add <strong className="text-ry-onyx">£{freeShipping.remaining.toFixed(2)}</strong> more for free shipping
-                  </span>
-                )}
-              </span>
-              <span className="text-[10px] text-ry-stone font-mono">{freeShipping.percent}%</span>
-            </div>
-            <div className="w-full bg-ry-ash/60 h-1 overflow-hidden rounded-full">
-              <div
-                className="bg-ry-burgundy h-full transition-all duration-500 ease-out"
-                style={{ width: `${freeShipping.percent}%` }}
-              />
-            </div>
           </div>
 
           {/* Items List */}
@@ -215,7 +188,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex justify-between text-xs text-ry-stone">
                   <span>Shipping</span>
-                  <span>{freeShipping.remaining === 0 ? 'Free' : 'Calculated at checkout'}</span>
+                  <span>Calculated at checkout</span>
                 </div>
               </div>
 

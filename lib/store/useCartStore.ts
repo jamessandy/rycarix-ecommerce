@@ -18,10 +18,7 @@ interface CartState {
   getTotalCount: () => number;
   getKlarnaInstallment: () => number;
   getClearpayInstallment: () => number;
-  getFreeShippingProgress: () => { threshold: number; remaining: number; percent: number };
 }
-
-const FREE_SHIPPING_THRESHOLD = 180; // £180 luxury free shipping bar
 
 export const useCartStore = create<CartState>()(
   persist(
@@ -89,13 +86,6 @@ export const useCartStore = create<CartState>()(
       getClearpayInstallment: () => {
         const subtotal = get().getCartSubtotal();
         return Math.round((subtotal / 4) * 100) / 100;
-      },
-
-      getFreeShippingProgress: () => {
-        const subtotal = get().getCartSubtotal();
-        const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-        const percent = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
-        return { threshold: FREE_SHIPPING_THRESHOLD, remaining, percent };
       },
     }),
     {

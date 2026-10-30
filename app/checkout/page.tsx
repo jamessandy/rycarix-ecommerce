@@ -14,7 +14,7 @@ export default function CheckoutPage() {
 
   const subtotal = getCartSubtotal();
   const isDemoOrder = items.some((item) => item.price <= 1 || item.productId === 'prod-demo-1eur');
-  const shipping = (subtotal >= 150 || isDemoOrder) ? 0 : 15;
+  const shipping = isDemoOrder ? 0 : 15;
   const total = subtotal + shipping;
 
   const [hasMounted, setHasMounted] = useState(false);
@@ -331,7 +331,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
                 <span className="font-serif font-medium text-sm text-ry-onyx">
-                  {shipping === 0 ? 'FREE' : `£${shipping.toFixed(2)}`}
+                  {shipping === 0 ? '£0.00' : `£${shipping.toFixed(2)}`}
                 </span>
               </div>
             </div>
@@ -528,7 +528,7 @@ export default function CheckoutPage() {
               <div className="flex justify-between text-ry-stone">
                 <span>Shipping (Evri / Royal Mail)</span>
                 <span className="font-mono text-ry-onyx">
-                  {shipping === 0 ? 'FREE' : `£${shipping.toFixed(2)}`}
+                  {shipping === 0 ? '£0.00' : `£${shipping.toFixed(2)}`}
                 </span>
               </div>
               <div className="border-t border-ry-ash/60 pt-3 flex justify-between text-base font-serif text-ry-onyx font-medium">

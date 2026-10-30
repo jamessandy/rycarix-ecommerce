@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
               shipping_rate_data: {
                 type: 'fixed_amount',
                 fixed_amount: { amount: 0, currency: currency },
-                display_name: 'Complimentary White-Glove Courier',
+                display_name: 'Standard Tracked Delivery (Evri / Royal Mail)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 2 },
                   maximum: { unit: 'business_day', value: 3 },

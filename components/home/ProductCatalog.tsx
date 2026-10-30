@@ -351,7 +351,7 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
           <div className="flex items-center gap-3">
             <Sparkles className="w-4 h-4 text-ry-onyx shrink-0" />
             <span>
-              All orders include free gift packaging and two free samples.
+              All orders include signature atelier packaging and two discovery samples.
             </span>
           </div>
           <Link

@@ -22,10 +22,10 @@ const PHILOSOPHIES = [
   {
     number: '03',
     title: 'Sustainable Packaging',
-    subtitle: 'Recyclable Glass & Plastic-Free Shipping',
+    subtitle: 'Recyclable Glass & Sustainable Dispatch',
     description:
       'All bottles and jars use heavy, recyclable biophotonic glass or reusable ceramic vessels. Orders are shipped in 100% recycled FSC-certified boxes with biodegradable paper tape and plant-based padding.',
-    footnote: 'Plastic-Free Shipping',
+    footnote: 'Zero Single-Use Plastic',
   },
 ];
 
