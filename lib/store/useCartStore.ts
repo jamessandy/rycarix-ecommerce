@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { CartItem } from '@/lib/types/ecommerce';
 
 interface CartState {
@@ -20,91 +21,86 @@ interface CartState {
   getFreeShippingProgress: () => { threshold: number; remaining: number; percent: number };
 }
 
-const FREE_SHIPPING_THRESHOLD = 180; // $180 luxury free shipping bar
+const FREE_SHIPPING_THRESHOLD = 180; // £180 luxury free shipping bar
 
-export const useCartStore = create<CartState>((set, get) => ({
-  isOpen: false,
-  items: [
-    // Pre-populate with 1 euro test product for instant payment verification
-    {
-      id: 'prod-demo-1eur-v1',
-      productId: 'prod-demo-1eur',
-      variantId: 'v-demo-1eur',
-      title: 'Atelier Discovery Sample • 1€ Live Checkout Test',
-      variantTitle: '2ml Test Vial (€1.00 / £1.00)',
-      sku: 'RY-TEST-1EUR',
-      price: 1,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=900&auto=format&fit=crop',
-    },
-  ],
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      isOpen: false,
+      items: [],
 
-  openCart: () => set({ isOpen: true }),
-  closeCart: () => set({ isOpen: false }),
-  toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
+      openCart: () => set({ isOpen: true }),
+      closeCart: () => set({ isOpen: false }),
+      toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
 
-  addItem: (item) => {
-    const qty = item.quantity || 1;
-    set((state) => {
-      const existingIndex = state.items.findIndex((i) => i.id === item.id);
-      if (existingIndex > -1) {
-        const nextItems = [...state.items];
-        nextItems[existingIndex].quantity += qty;
-        return { items: nextItems, isOpen: true };
-      }
-      return {
-        items: [...state.items, { ...item, quantity: qty }],
-        isOpen: true,
-      };
-    });
-  },
-
-  removeItem: (id) => {
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-    }));
-  },
-
-  updateQuantity: (id, delta) => {
-    set((state) => {
-      const updated = state.items
-        .map((item) => {
-          if (item.id === id) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+      addItem: (item) => {
+        const qty = item.quantity || 1;
+        set((state) => {
+          const existingIndex = state.items.findIndex((i) => i.id === item.id);
+          if (existingIndex > -1) {
+            const nextItems = [...state.items];
+            nextItems[existingIndex].quantity += qty;
+            return { items: nextItems, isOpen: true };
           }
-          return item;
-        })
-        .filter(Boolean) as CartItem[];
+          return {
+            items: [...state.items, { ...item, quantity: qty }],
+            isOpen: true,
+          };
+        });
+      },
 
-      return { items: updated };
-    });
-  },
+      removeItem: (id) => {
+        set((state) => ({
+          items: state.items.filter((item) => item.id !== id),
+        }));
+      },
 
-  clearCart: () => set({ items: [] }),
+      updateQuantity: (id, delta) => {
+        set((state) => {
+          const updated = state.items
+            .map((item) => {
+              if (item.id === id) {
+                const newQty = item.quantity + delta;
+                return newQty > 0 ? { ...item, quantity: newQty } : null;
+              }
+              return item;
+            })
+            .filter(Boolean) as CartItem[];
 
-  getCartSubtotal: () => {
-    return get().items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  },
+          return { items: updated };
+        });
+      },
 
-  getTotalCount: () => {
-    return get().items.reduce((acc, item) => acc + item.quantity, 0);
-  },
+      clearCart: () => set({ items: [] }),
 
-  getKlarnaInstallment: () => {
-    const subtotal = get().getCartSubtotal();
-    return Math.round((subtotal / 3) * 100) / 100;
-  },
+      getCartSubtotal: () => {
+        return get().items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      },
 
-  getClearpayInstallment: () => {
-    const subtotal = get().getCartSubtotal();
-    return Math.round((subtotal / 4) * 100) / 100;
-  },
+      getTotalCount: () => {
+        return get().items.reduce((acc, item) => acc + item.quantity, 0);
+      },
 
-  getFreeShippingProgress: () => {
-    const subtotal = get().getCartSubtotal();
-    const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-    const percent = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
-    return { threshold: FREE_SHIPPING_THRESHOLD, remaining, percent };
-  },
-}));
+      getKlarnaInstallment: () => {
+        const subtotal = get().getCartSubtotal();
+        return Math.round((subtotal / 3) * 100) / 100;
+      },
+
+      getClearpayInstallment: () => {
+        const subtotal = get().getCartSubtotal();
+        return Math.round((subtotal / 4) * 100) / 100;
+      },
+
+      getFreeShippingProgress: () => {
+        const subtotal = get().getCartSubtotal();
+        const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+        const percent = Math.min(100, Math.round((subtotal / FREE_SHIPPING_THRESHOLD) * 100));
+        return { threshold: FREE_SHIPPING_THRESHOLD, remaining, percent };
+      },
+    }),
+    {
+      name: 'rycarix-cart-storage',
+      partialize: (state) => ({ items: state.items }),
+    }
+  )
+);

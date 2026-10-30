@@ -22,6 +22,7 @@ import { useAuthStore } from '@/lib/store/useAuthStore';
 import { PRODUCTS } from '@/lib/data/mockData';
 
 export default function Header() {
+  const [hasMounted, setHasMounted] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -36,6 +37,10 @@ export default function Header() {
   const totalCount = getTotalCount();
 
   const { user, isAuthenticated, logout, loginAsDemo } = useAuthStore();
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -255,7 +260,7 @@ export default function Header() {
               <span className="text-[11px] font-sans font-medium uppercase tracking-editorial hidden sm:inline">
                 Cart
               </span>
-              {totalCount > 0 && (
+              {hasMounted && totalCount > 0 && (
                 <span className="w-4 h-4 rounded-full bg-ry-burgundy text-ry-white text-[10px] font-semibold flex items-center justify-center -ml-1 animate-fade-in border border-ry-burgundyLight/40">
                   {totalCount}
                 </span>

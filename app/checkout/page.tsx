@@ -17,6 +17,7 @@ export default function CheckoutPage() {
   const shipping = (subtotal >= 150 || isDemoOrder) ? 0 : 15;
   const total = subtotal + shipping;
 
+  const [hasMounted, setHasMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'klarna' | 'clearpay'>('card');
 
@@ -32,6 +33,10 @@ export default function CheckoutPage() {
   const [state, setState] = useState(defaultAddress?.state || '');
   const [postalCode, setPostalCode] = useState(defaultAddress?.postalCode || '');
   const [country, setCountry] = useState(defaultAddress?.country || 'United Kingdom');
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -151,6 +156,14 @@ export default function CheckoutPage() {
       router.push(`/dashboard/user?checkout_simulated=true&orderId=${newOrderId}`);
     }
   };
+
+  if (!hasMounted) {
+    return (
+      <div className="min-h-screen bg-ry-pearl flex items-center justify-center pt-20 font-sans">
+        <div className="w-8 h-8 rounded-full border-2 border-ry-onyx border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
