@@ -179,7 +179,8 @@ function UserDashboardContent() {
           date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'CONFIRMED',
           fulfillment: 'Ready for Dispatch',
-          carrier: 'Royal Mail Tracked 24 & Evri Express',
+          carrier: 'Royal Mail Tracked 48',
+          shippingService: 'Tracked 48, small parcel up to 2kg',
           trackingNumber: '7829-1092-4821',
           total: 135.0,
           paymentMethod:
@@ -454,7 +455,7 @@ function UserDashboardContent() {
                 const orderDate = order.date || 'Recently';
                 const orderStatus = order.status || order.fulfillment || 'CONFIRMED';
                 const orderTotal = typeof order.total === 'number' ? order.total : 0;
-                const orderCarrier = order.carrier || 'Royal Mail Tracked 24 & Evri Express';
+                const orderCarrier = order.shippingService || order.shippingMethod || order.carrier || 'Royal Mail Tracked 48';
                 const orderTracking = order.trackingNumber || '';
                 const orderPayment = order.paymentMethod || 'Card';
 

@@ -52,6 +52,7 @@ import {
   validateDeliveryAddress,
   evaluateShipmentPackaging,
   ShippingLabelData,
+  ROYAL_MAIL_UK_SERVICES,
 } from '@/lib/services/shippingAggregator';
 
 interface AdminProductForm {
@@ -582,17 +583,29 @@ export default function AdminDashboard() {
     const packaging = evaluateShipmentPackaging([
       { title: ord.items, category: ord.itemCategory },
     ]);
-    const carrier = packaging.recommendedCarrier; // 'Royal Mail' for perfume (LQ), 'Evri' for standard
+    const carrier = ord.carrier?.toLowerCase().includes('royal')
+      ? 'Royal Mail'
+      : ord.carrier?.toLowerCase().includes('evri')
+      ? 'Evri'
+      : packaging.recommendedCarrier;
     const isRM = carrier === 'Royal Mail';
     const trackingNumber = isRM
       ? `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`
       : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
 
+    const initialServiceLevel =
+      ord.shippingService ||
+      ord.serviceLevel ||
+      ord.shippingMethod ||
+      (isRM
+        ? (packaging.isHazardous ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48, small parcel up to 2kg')
+        : packaging.serviceLevel);
+
     const simLabel: ShippingLabelData = {
       trackingNumber,
       orderNumber: ord.id,
       carrier,
-      serviceLevel: packaging.serviceLevel,
+      serviceLevel: initialServiceLevel,
       senderAddress: {
         name: 'Rycarix Fulfillment Atelier',
         company: 'Rycarix Luxury Fragrance Co.',
@@ -747,25 +760,25 @@ export default function AdminDashboard() {
     printWindow.document.close();
   };
 
-  const handleSelectCarrier = (newCarrier: 'Royal Mail' | 'Evri') => {
+  const handleSelectCarrier = (newCarrier: 'Royal Mail' | 'Evri', specificService?: string) => {
     if (!activeLabelData || !dispatchModalOrder) return;
     const isRM = newCarrier === 'Royal Mail';
     const newTracking = isRM
-      ? `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`
-      : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      ? (activeLabelData.trackingNumber?.startsWith('RY-RM') ? activeLabelData.trackingNumber : `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`)
+      : (activeLabelData.trackingNumber?.startsWith('RY-EVRI') ? activeLabelData.trackingNumber : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`);
 
-    const newService = isRM
-      ? activeLabelData.isHazardous
-        ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)'
-        : 'Royal Mail Tracked 24'
-      : 'Evri Express Tracked Delivery (48h Doorstep)';
+    const newService = specificService || (isRM
+      ? (dispatchModalOrder?.shippingService || (activeLabelData.isHazardous ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48, small parcel up to 2kg'))
+      : 'Evri Express Tracked Delivery (48h Doorstep)');
 
     setActiveLabelData({
       ...activeLabelData,
       carrier: newCarrier,
       serviceLevel: newService,
       trackingNumber: newTracking,
-      estimatedDelivery: isRM ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days',
+      estimatedDelivery: isRM
+        ? (newService.includes('24') ? 'Tomorrow by 1:00 PM' : 'In 2-3 Business Days')
+        : 'In 1-2 Business Days',
     });
   };
 
@@ -2461,10 +2474,10 @@ export default function AdminDashboard() {
                         )}
                       </div>
                       <div className="text-[11px] font-medium text-ry-onyx">
-                        Tracked 24 Priority
+                        Royal Mail Tracked UK
                       </div>
                       <div className="text-[10px] text-ry-stone mt-1">
-                        UN 1266 LQ Perfume Compliant • Guaranteed Next Day & Saturday Delivery
+                        Tracked 48 (£3.65) • Tracked 24 (£4.80) • Medium Parcel (£5.55)
                       </div>
                     </button>
 
@@ -2497,6 +2510,59 @@ export default function AdminDashboard() {
                       </div>
                     </button>
                   </div>
+
+                  {/* Royal Mail UK Services Selector */}
+                  {activeLabelData.carrier === 'Royal Mail' && (
+                    <div className="mt-3 pt-3 border-t border-ry-ash/60">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
+                          Royal Mail UK Service Level
+                        </span>
+                        <span className="text-[9px] text-ry-stone">
+                          {dispatchModalOrder?.shippingService ? `Customer Selected: ${dispatchModalOrder.shippingService}` : 'Official Rates'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {ROYAL_MAIL_UK_SERVICES.map((rm) => {
+                          const isCurrent =
+                            activeLabelData.serviceLevel?.toLowerCase().includes(rm.service.toLowerCase()) ||
+                            activeLabelData.serviceLevel?.toLowerCase().includes(rm.carrierName.toLowerCase()) ||
+                            (rm.id === 'rm-tracked-24-small' && activeLabelData.serviceLevel?.includes('24') && !activeLabelData.serviceLevel?.includes('48')) ||
+                            (rm.id === 'rm-tracked-48-small' && activeLabelData.serviceLevel?.includes('48') && !activeLabelData.serviceLevel?.toLowerCase().includes('medium'));
+
+                          return (
+                            <button
+                              key={rm.id}
+                              type="button"
+                              onClick={() => handleSelectCarrier('Royal Mail', rm.service)}
+                              className={`p-2.5 text-left border text-xs transition-all flex flex-col justify-between ${
+                                isCurrent
+                                  ? 'border-ry-onyx bg-white ring-1 ring-ry-onyx shadow-xs'
+                                  : 'border-ry-ash/70 bg-white/60 hover:border-ry-onyx/50'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-semibold text-ry-onyx text-[11px]">
+                                    {rm.id === 'rm-tracked-24-small' ? 'Tracked 24' : 'Tracked 48'}
+                                  </span>
+                                  <span className="font-serif font-bold text-ry-onyx text-xs">
+                                    £{rm.price.toFixed(2)}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-ry-stone leading-tight">
+                                  {rm.weightLimit}
+                                </div>
+                              </div>
+                              <div className="mt-2 pt-1 border-t border-ry-ash/40 text-[9px] text-ry-charcoal font-medium">
+                                {rm.recommendation}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

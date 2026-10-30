@@ -6,15 +6,19 @@ import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { ShieldCheck, CreditCard, Lock, ArrowRight, Loader2, Info, CheckCircle2, Truck } from 'lucide-react';
 import Image from 'next/image';
+import { ROYAL_MAIL_UK_SERVICES } from '@/lib/services/shippingAggregator';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getCartSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
 
+  const [selectedShippingId, setSelectedShippingId] = useState<string>('rm-tracked-48-small');
   const subtotal = getCartSubtotal();
   const isDemoOrder = items.some((item) => item.price <= 1 || item.productId === 'prod-demo-1eur');
-  const shipping = isDemoOrder ? 0 : 15;
+  const selectedShipping =
+    ROYAL_MAIL_UK_SERVICES.find((s) => s.id === selectedShippingId) || ROYAL_MAIL_UK_SERVICES[0];
+  const shipping = isDemoOrder ? 0 : selectedShipping.price;
   const total = subtotal + shipping;
 
   const [hasMounted, setHasMounted] = useState(false);
@@ -85,7 +89,11 @@ export default function CheckoutPage() {
           ? 'Clearpay Pay in 4'
           : 'Stripe Card (1-Click)',
       fulfillment: 'Ready for Dispatch',
-      carrier: 'Pending Courier Assignment',
+      carrier: 'Royal Mail',
+      shippingService: selectedShipping.service,
+      shippingMethod: selectedShipping.carrierName,
+      shippingCost: shipping,
+      shippingRecommendation: selectedShipping.recommendation,
       trackingNumber: '',
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       address: {
@@ -119,6 +127,12 @@ export default function CheckoutPage() {
           customerName: customerFullName || undefined,
           customerPhone: customerPhoneNumber || undefined,
           paymentMethod,
+          shippingOption: {
+            id: selectedShipping.id,
+            service: selectedShipping.service,
+            price: shipping,
+            recommendation: selectedShipping.recommendation,
+          },
           shippingAddress: {
             name: customerFullName,
             email: customerEmailAddr,
@@ -315,23 +329,83 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Courier Delivery Option */}
+            {/* Royal Mail UK Delivery Options */}
             <div className="bg-ry-white p-6 border border-ry-ash/70 shadow-sm space-y-4">
-              <h3 className="font-serif text-xl border-b border-ry-ash/50 pb-3 flex items-center gap-2">
-                <Truck className="w-5 h-5 text-ry-onyx" />
-                Delivery Method
-              </h3>
-              <div className="border border-ry-onyx bg-ry-pearl/30 p-4 flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-sm text-ry-onyx">
-                    Royal Mail Tracked 24 & Evri Express
-                  </div>
-                  <div className="text-xs text-ry-stone mt-0.5">
-                    1-2 business days with SMS live GPS tracking milestone alerts. Includes Limited Quantity (LQ) perfume handling.
-                  </div>
-                </div>
-                <span className="font-serif font-medium text-sm text-ry-onyx">
-                  {shipping === 0 ? '£0.00' : `£${shipping.toFixed(2)}`}
+              <div className="border-b border-ry-ash/50 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h3 className="font-serif text-xl flex items-center gap-2 text-ry-onyx">
+                  <Truck className="w-5 h-5 text-ry-onyx" />
+                  Delivery Options (Royal Mail UK)
+                </h3>
+                <span className="text-[10px] uppercase tracking-editorial px-2.5 py-1 bg-red-50 text-red-900 border border-red-200 font-semibold self-start sm:self-auto flex items-center gap-1">
+                  <span>Royal Mail Tracked</span>
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {ROYAL_MAIL_UK_SERVICES.map((option) => {
+                  const isSelected = selectedShippingId === option.id;
+                  const displayPrice = isDemoOrder ? '£0.00' : `£${option.price.toFixed(2)}`;
+
+                  return (
+                    <label
+                      key={option.id}
+                      className={`block border p-4 cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-ry-onyx bg-ry-pearl/50 ring-1 ring-ry-onyx shadow-xs'
+                          : 'border-ry-ash/80 hover:border-ry-stone bg-ry-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="shipping_service"
+                            value={option.id}
+                            checked={isSelected}
+                            onChange={() => setSelectedShippingId(option.id)}
+                            className="mt-1 text-ry-onyx focus:ring-ry-onyx accent-ry-onyx"
+                          />
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm text-ry-onyx">
+                                {option.service}
+                              </span>
+                              <span
+                                className={`text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm ${
+                                  option.id === 'rm-tracked-48-small'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : option.id === 'rm-tracked-24-small'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                    : 'bg-stone-100 text-stone-800 border border-stone-300'
+                                }`}
+                              >
+                                {option.recommendation}
+                              </span>
+                            </div>
+                            <p className="text-xs text-ry-stone mt-1">
+                              {option.deliveryTime}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="font-serif font-medium text-base text-ry-onyx">
+                            {displayPrice}
+                          </span>
+                          <span className="block text-[10px] text-ry-stone uppercase tracking-subtle">
+                            Online price
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2 text-[11px] text-ry-stone flex items-center gap-1.5 border-t border-ry-ash/40">
+                <Info className="w-3.5 h-3.5 shrink-0 text-ry-onyx" />
+                <span>
+                  All shipments are handled by Royal Mail UK with door-to-door tracking and UN 1266 Limited Quantity (LQ) perfume compliance.
                 </span>
               </div>
             </div>
@@ -525,8 +599,13 @@ export default function CheckoutPage() {
                 <span>Subtotal</span>
                 <span className="font-mono text-ry-onyx">£{subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-ry-stone">
-                <span>Shipping (Evri / Royal Mail)</span>
+              <div className="flex justify-between text-ry-stone items-start">
+                <div>
+                  <span>Shipping (Royal Mail)</span>
+                  <span className="block text-[11px] text-ry-charcoal font-medium">
+                    {selectedShipping.service}
+                  </span>
+                </div>
                 <span className="font-mono text-ry-onyx">
                   {shipping === 0 ? '£0.00' : `£${shipping.toFixed(2)}`}
                 </span>

@@ -295,7 +295,7 @@ function TrackingPortalContent() {
                       {activeShipment.currentStatus === 'DISPATCH_PENDING' && 'Preparing Shipment'}
                     </h2>
                     <span className="px-2.5 py-0.5 bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial font-medium">
-                      {activeShipment.carrier} Priority
+                      {activeShipment.serviceLevel || `${activeShipment.carrier} Priority`}
                     </span>
                   </div>
                 </div>

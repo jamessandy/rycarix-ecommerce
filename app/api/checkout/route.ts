@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
       else if (acceptLanguage.includes('fr') || acceptLanguage.includes('de') || acceptLanguage.includes('it') || acceptLanguage.includes('es') || acceptLanguage.includes('nl')) currency = 'eur';
     }
 
+    const isDemoOrder = items.some((item: any) => item.price <= 1 || item.id === 'prod-demo-1eur' || item.productId === 'prod-demo-1eur');
+
     // Map items to Stripe line items
     const line_items = items.map((item: any) => ({
       price_data: {
@@ -82,8 +84,8 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: 0, currency: currency },
-                display_name: 'Standard Tracked Delivery (Evri / Royal Mail)',
+                fixed_amount: { amount: isDemoOrder ? 0 : 365, currency: currency },
+                display_name: 'Tracked 48, small parcel up to 2kg (£3.65 • Best starting option)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 2 },
                   maximum: { unit: 'business_day', value: 3 },
@@ -93,11 +95,22 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: 2500, currency: currency },
-                display_name: 'Priority Next-Morning Express',
+                fixed_amount: { amount: isDemoOrder ? 0 : 480, currency: currency },
+                display_name: 'Tracked 24, small parcel up to 2kg (£4.80 • Faster delivery)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 1 },
                   maximum: { unit: 'business_day', value: 1 },
+                },
+              },
+            },
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: isDemoOrder ? 0 : 555, currency: currency },
+                display_name: 'Tracked 48, medium parcel up to 2kg (£5.55 • Exceeds small parcel)',
+                delivery_estimate: {
+                  minimum: { unit: 'business_day', value: 2 },
+                  maximum: { unit: 'business_day', value: 3 },
                 },
               },
             },

@@ -12,6 +12,50 @@ export interface TrackingMilestone {
   isCompleted: boolean;
 }
 
+export interface RoyalMailServiceOption {
+  id: string;
+  service: string;
+  carrierName: string;
+  price: number;
+  recommendation: string;
+  weightLimit: string;
+  deliveryTime: string;
+  badge?: string;
+}
+
+export const ROYAL_MAIL_UK_SERVICES: RoyalMailServiceOption[] = [
+  {
+    id: 'rm-tracked-48-small',
+    service: 'Tracked 48, small parcel up to 2kg',
+    carrierName: 'Royal Mail Tracked 48',
+    price: 3.65,
+    recommendation: 'Best starting option',
+    weightLimit: 'Small parcel up to 2kg',
+    deliveryTime: '2-3 business days delivery with end-to-end tracking & SMS alerts',
+    badge: 'Best Starting Option',
+  },
+  {
+    id: 'rm-tracked-24-small',
+    service: 'Tracked 24, small parcel up to 2kg',
+    carrierName: 'Royal Mail Tracked 24',
+    price: 4.80,
+    recommendation: 'For customers who want faster delivery',
+    weightLimit: 'Small parcel up to 2kg',
+    deliveryTime: 'Next business day priority delivery with SMS tracking alerts',
+    badge: 'Faster Delivery',
+  },
+  {
+    id: 'rm-tracked-48-medium',
+    service: 'Tracked 48, medium parcel up to 2kg',
+    carrierName: 'Royal Mail Tracked 48 (Medium Parcel)',
+    price: 5.55,
+    recommendation: 'For packages that exceed small-parcel dimensions',
+    weightLimit: 'Medium parcel up to 2kg',
+    deliveryTime: '2-3 business days for packages exceeding small-parcel dimensions',
+    badge: 'Medium Parcel',
+  },
+];
+
 export interface ShippingLabelData {
   trackingNumber: string;
   orderNumber: string;
@@ -506,7 +550,11 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
     trackingNumber,
     orderNumber,
     carrier: carrier.toLowerCase().includes('royal') ? 'Royal Mail' : 'Evri',
-    serviceLevel: isPerfume ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Evri Express Tracked Delivery',
+    serviceLevel:
+      ord.shippingService ||
+      ord.serviceLevel ||
+      ord.shippingMethod ||
+      (isPerfume ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48'),
     senderAddress: {
       name: 'Rycarix Fulfillment Atelier',
       company: 'Rycarix Luxury Fragrance Co.',
