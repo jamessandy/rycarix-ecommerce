@@ -15,10 +15,9 @@ export default function CheckoutPage() {
 
   const [selectedShippingId, setSelectedShippingId] = useState<string>('rm-tracked-48-small');
   const subtotal = getCartSubtotal();
-  const isDemoOrder = items.some((item) => item.price <= 1 || item.productId === 'prod-demo-1eur');
   const selectedShipping =
     ROYAL_MAIL_UK_SERVICES.find((s) => s.id === selectedShippingId) || ROYAL_MAIL_UK_SERVICES[0];
-  const shipping = isDemoOrder ? 0 : selectedShipping.price;
+  const shipping = selectedShipping.price;
   const total = subtotal + shipping;
 
   const [hasMounted, setHasMounted] = useState(false);
@@ -344,7 +343,7 @@ export default function CheckoutPage() {
               <div className="space-y-3">
                 {ROYAL_MAIL_UK_SERVICES.map((option) => {
                   const isSelected = selectedShippingId === option.id;
-                  const displayPrice = isDemoOrder ? '£0.00' : `£${option.price.toFixed(2)}`;
+                  const displayPrice = `£${option.price.toFixed(2)}`;
 
                   return (
                     <label
@@ -607,7 +606,7 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <span className="font-mono text-ry-onyx">
-                  {shipping === 0 ? '£0.00' : `£${shipping.toFixed(2)}`}
+                  £{shipping.toFixed(2)}
                 </span>
               </div>
               <div className="border-t border-ry-ash/60 pt-3 flex justify-between text-base font-serif text-ry-onyx font-medium">

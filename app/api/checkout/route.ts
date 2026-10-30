@@ -42,8 +42,6 @@ export async function POST(req: NextRequest) {
       else if (acceptLanguage.includes('fr') || acceptLanguage.includes('de') || acceptLanguage.includes('it') || acceptLanguage.includes('es') || acceptLanguage.includes('nl')) currency = 'eur';
     }
 
-    const isDemoOrder = items.some((item: any) => item.price <= 1 || item.id === 'prod-demo-1eur' || item.productId === 'prod-demo-1eur');
-
     // Map items to Stripe line items
     const line_items = items.map((item: any) => ({
       price_data: {
@@ -84,8 +82,8 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: isDemoOrder ? 0 : 365, currency: currency },
-                display_name: 'Tracked 48, small parcel up to 2kg (£3.65 • Best starting option)',
+                fixed_amount: { amount: 365, currency: currency },
+                display_name: 'Tracked 48, small parcel up to 2kg (Best starting option)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 2 },
                   maximum: { unit: 'business_day', value: 3 },
@@ -95,8 +93,8 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: isDemoOrder ? 0 : 480, currency: currency },
-                display_name: 'Tracked 24, small parcel up to 2kg (£4.80 • Faster delivery)',
+                fixed_amount: { amount: 480, currency: currency },
+                display_name: 'Tracked 24, small parcel up to 2kg (For faster delivery)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 1 },
                   maximum: { unit: 'business_day', value: 1 },
@@ -106,8 +104,8 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: isDemoOrder ? 0 : 555, currency: currency },
-                display_name: 'Tracked 48, medium parcel up to 2kg (£5.55 • Exceeds small parcel)',
+                fixed_amount: { amount: 555, currency: currency },
+                display_name: 'Tracked 48, medium parcel up to 2kg (For packages that exceed small-parcel)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 2 },
                   maximum: { unit: 'business_day', value: 3 },
