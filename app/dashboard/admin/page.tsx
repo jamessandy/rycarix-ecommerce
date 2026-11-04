@@ -44,7 +44,7 @@ import {
   Check,
 } from 'lucide-react';
 import { PRODUCTS } from '@/lib/data/mockData';
-import { ProductItem } from '@/lib/types/ecommerce';
+import { ProductItem, ProductImageItem } from '@/lib/types/ecommerce';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import {
   createAggregatorDispatch,
@@ -69,8 +69,9 @@ interface AdminProductForm {
   howToUse: string;
   summary: string;
   description: string;
-  imageUrl: string;
-  secondaryImageUrl: string;
+  images: ProductImageItem[];
+  imageUrl?: string;
+  secondaryImageUrl?: string;
 }
 
 interface EditProductFormState {
@@ -89,42 +90,119 @@ interface EditProductFormState {
   howToUse: string;
   summary: string;
   description: string;
-  imageUrl: string;
-  secondaryImageUrl: string;
+  images: ProductImageItem[];
+  imageUrl?: string;
+  secondaryImageUrl?: string;
 }
 
 const PRESET_IMAGES = [
   {
     name: 'Hair Nectar Elixir',
     category: 'Hair',
-    url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=800&auto=format&fit=crop',
+    url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
   },
   {
     name: 'Grasse Perfume Flacon',
     category: 'Haute Parfumerie',
-    url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop',
+    url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=90&w=1600&auto=format&fit=crop',
   },
   {
     name: 'Botanical Cellular Serum',
     category: 'Botanical Skincare',
-    url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=800&auto=format&fit=crop',
+    url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=90&w=1600&auto=format&fit=crop',
   },
   {
     name: 'Artisanal Body Balm',
     category: 'Body & Bath',
-    url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=800&auto=format&fit=crop',
+    url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=90&w=1600&auto=format&fit=crop',
   },
   {
     name: 'Hand-Poured Soy Candle',
     category: 'Home & Living',
-    url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?q=80&w=800&auto=format&fit=crop',
+    url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?q=90&w=1600&auto=format&fit=crop',
+  },
+  {
+    name: 'Sensory Botanical Texture',
+    category: 'Texture',
+    url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=90&w=1600&auto=format&fit=crop',
   },
   {
     name: 'Fine Accessories & Horn',
     category: 'Accessories',
-    url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=800&auto=format&fit=crop',
+    url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=90&w=1600&auto=format&fit=crop',
   },
 ];
+
+/**
+ * Processes image files to maintain high visual fidelity (up to 2048px)
+ * while optimizing file size for browser storage and fast rendering.
+ */
+function processHighQualityImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // If the file is small (under 300KB), read directly as high-res data URL
+    if (file.size <= 300 * 1024) {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // For larger high-resolution camera files (e.g. 2MB - 25MB), resample cleanly up to 2048px max dimension
+    const img = new window.Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const maxDim = 2048; // Ultra crisp 2K Retina luxury presentation
+      let { width, height } = img;
+
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Export as high quality JPEG (or PNG if original is PNG)
+      const isPng = file.type === 'image/png';
+      const mime = isPng ? 'image/png' : 'image/jpeg';
+      const quality = 0.92;
+      const dataUrl = canvas.toDataURL(mime, quality);
+      resolve(dataUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -272,8 +350,22 @@ export default function AdminDashboard() {
     howToUse: 'Apply 2-3 drops to pulse points or smooth through damp hair lengths.',
     summary: 'Dynamic atelier formulation handcrafted with rare botanical essences and molecular extracts.',
     description: 'Extracted and blended according to Rycarix strict artisanal quality protocols in limited batch reserves.',
-    imageUrl: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=800&auto=format&fit=crop',
-    secondaryImageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
+    images: [
+      {
+        id: 'img-new-hero',
+        url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
+        alt: 'Primary Formulation Flacon',
+        isHero: true,
+      },
+      {
+        id: 'img-new-texture',
+        url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=90&w=1600&auto=format&fit=crop',
+        alt: 'Sensory Texture & Botanicals',
+        isTexture: true,
+      },
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
+    secondaryImageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=90&w=1600&auto=format&fit=crop',
   };
 
   const [formData, setFormData] = useState<AdminProductForm>(initialFormData);
@@ -295,42 +387,274 @@ export default function AdminDashboard() {
     howToUse: '',
     summary: '',
     description: '',
+    images: [],
     imageUrl: '',
     secondaryImageUrl: '',
   });
 
-  // Handle local image upload via FileReader
-  const handleImageFileUpload = (
+  const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [addPastedUrl, setAddPastedUrl] = useState('');
+  const [editPastedUrl, setEditPastedUrl] = useState('');
+
+  // Handle multi-image file selection from device
+  const handleMultipleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    target: 'add-primary' | 'add-secondary' | 'edit-primary' | 'edit-secondary'
+    formTarget: 'add' | 'edit'
   ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert('File size exceeds 8MB. Please select a smaller image.');
-      return;
-    }
+    setIsProcessingImages(true);
+    try {
+      const processed: ProductImageItem[] = [];
+      const now = Date.now();
 
-    const reader = new FileReader();
-    reader.onload = (uploadEvent) => {
-      const dataUrl = uploadEvent.target?.result as string;
-      if (target === 'add-primary') {
-        setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
-      } else if (target === 'add-secondary') {
-        setFormData((prev) => ({ ...prev, secondaryImageUrl: dataUrl }));
-      } else if (target === 'edit-primary') {
-        setEditFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
-      } else if (target === 'edit-secondary') {
-        setEditFormData((prev) => ({ ...prev, secondaryImageUrl: dataUrl }));
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > 25 * 1024 * 1024) {
+          alert(`File "${file.name}" exceeds 25MB limit. Skipping.`);
+          continue;
+        }
+        const dataUrl = await processHighQualityImage(file);
+        processed.push({
+          id: `img-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`,
+          url: dataUrl,
+          alt: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+          isHero: false,
+          isTexture: false,
+        });
       }
+
+      if (formTarget === 'add') {
+        setFormData((prev) => {
+          const list = [...(prev.images || []), ...processed];
+          if (!list.some((img) => img.isHero) && list.length > 0) {
+            list[0].isHero = true;
+          }
+          return {
+            ...prev,
+            images: list,
+            imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
+            secondaryImageUrl: list.find((img) => img.isTexture)?.url || list[1]?.url || '',
+          };
+        });
+      } else {
+        setEditFormData((prev) => {
+          const list = [...(prev.images || []), ...processed];
+          if (!list.some((img) => img.isHero) && list.length > 0) {
+            list[0].isHero = true;
+          }
+          return {
+            ...prev,
+            images: list,
+            imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
+            secondaryImageUrl: list.find((img) => img.isTexture)?.url || list[1]?.url || '',
+          };
+        });
+      }
+    } catch (err) {
+      console.error('Image processing error:', err);
+      alert('Failed to process image files.');
+    } finally {
+      setIsProcessingImages(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSetHeroImage = (index: number, formTarget: 'add' | 'edit') => {
+    if (formTarget === 'add') {
+      setFormData((prev) => {
+        const updated = (prev.images || []).map((img, i) => ({
+          ...img,
+          isHero: i === index,
+        }));
+        return {
+          ...prev,
+          images: updated,
+          imageUrl: updated[index]?.url || '',
+        };
+      });
+    } else {
+      setEditFormData((prev) => {
+        const updated = (prev.images || []).map((img, i) => ({
+          ...img,
+          isHero: i === index,
+        }));
+        return {
+          ...prev,
+          images: updated,
+          imageUrl: updated[index]?.url || '',
+        };
+      });
+    }
+  };
+
+  const handleToggleTextureImage = (index: number, formTarget: 'add' | 'edit') => {
+    if (formTarget === 'add') {
+      setFormData((prev) => {
+        const updated = (prev.images || []).map((img, i) => ({
+          ...img,
+          isTexture: i === index ? !img.isTexture : false,
+        }));
+        const textureImg = updated.find((img) => img.isTexture);
+        return {
+          ...prev,
+          images: updated,
+          secondaryImageUrl: textureImg?.url || '',
+        };
+      });
+    } else {
+      setEditFormData((prev) => {
+        const updated = (prev.images || []).map((img, i) => ({
+          ...img,
+          isTexture: i === index ? !img.isTexture : false,
+        }));
+        const textureImg = updated.find((img) => img.isTexture);
+        return {
+          ...prev,
+          images: updated,
+          secondaryImageUrl: textureImg?.url || '',
+        };
+      });
+    }
+  };
+
+  const handleRemoveImage = (index: number, formTarget: 'add' | 'edit') => {
+    if (formTarget === 'add') {
+      setFormData((prev) => {
+        const updated = (prev.images || []).filter((_, i) => i !== index);
+        if (updated.length > 0 && !updated.some((img) => img.isHero)) {
+          updated[0].isHero = true;
+        }
+        return {
+          ...prev,
+          images: updated,
+          imageUrl: updated.find((img) => img.isHero)?.url || updated[0]?.url || '',
+          secondaryImageUrl: updated.find((img) => img.isTexture)?.url || updated[1]?.url || '',
+        };
+      });
+    } else {
+      setEditFormData((prev) => {
+        const updated = (prev.images || []).filter((_, i) => i !== index);
+        if (updated.length > 0 && !updated.some((img) => img.isHero)) {
+          updated[0].isHero = true;
+        }
+        return {
+          ...prev,
+          images: updated,
+          imageUrl: updated.find((img) => img.isHero)?.url || updated[0]?.url || '',
+          secondaryImageUrl: updated.find((img) => img.isTexture)?.url || updated[1]?.url || '',
+        };
+      });
+    }
+  };
+
+  const handleMoveImage = (index: number, direction: 'left' | 'right', formTarget: 'add' | 'edit') => {
+    const targetSetter = formTarget === 'add' ? setFormData : setEditFormData;
+    targetSetter((prev: any) => {
+      const list = [...(prev.images || [])];
+      const targetIndex = direction === 'left' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+      return {
+        ...prev,
+        images: list,
+        imageUrl: list.find((img: any) => img.isHero)?.url || list[0]?.url || '',
+        secondaryImageUrl: list.find((img: any) => img.isTexture)?.url || list[1]?.url || '',
+      };
+    });
+  };
+
+  const handleAddUrlImage = (formTarget: 'add' | 'edit') => {
+    const url = (formTarget === 'add' ? addPastedUrl : editPastedUrl).trim();
+    if (!url) return;
+
+    const newImg: ProductImageItem = {
+      id: `img-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      url,
+      alt: 'Product Imagery',
+      isHero: false,
+      isTexture: false,
     };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+
+    if (formTarget === 'add') {
+      setFormData((prev) => {
+        const list = [...(prev.images || []), newImg];
+        if (list.length === 1) list[0].isHero = true;
+        return {
+          ...prev,
+          images: list,
+          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
+        };
+      });
+      setAddPastedUrl('');
+    } else {
+      setEditFormData((prev) => {
+        const list = [...(prev.images || []), newImg];
+        if (list.length === 1) list[0].isHero = true;
+        return {
+          ...prev,
+          images: list,
+          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
+        };
+      });
+      setEditPastedUrl('');
+    }
+  };
+
+  const handleAddPresetImage = (presetUrl: string, presetName: string, formTarget: 'add' | 'edit') => {
+    const newImg: ProductImageItem = {
+      id: `img-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      url: presetUrl,
+      alt: presetName,
+      isHero: false,
+      isTexture: false,
+    };
+
+    if (formTarget === 'add') {
+      setFormData((prev) => {
+        const list = [...(prev.images || []), newImg];
+        if (list.length === 1) list[0].isHero = true;
+        return {
+          ...prev,
+          images: list,
+          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
+        };
+      });
+    } else {
+      setEditFormData((prev) => {
+        const list = [...(prev.images || []), newImg];
+        if (list.length === 1) list[0].isHero = true;
+        return {
+          ...prev,
+          images: list,
+          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
+        };
+      });
+    }
   };
 
   const handleStartEdit = (product: ProductItem) => {
     setEditingProduct(product);
+    const initialImages: ProductImageItem[] =
+      Array.isArray(product.images) && product.images.length > 0
+        ? product.images.map((img, idx) => ({
+            ...img,
+            isHero: img.isHero ?? idx === 0,
+          }))
+        : [
+            {
+              id: `img-${Date.now()}-1`,
+              url:
+                product.images?.[0]?.url ||
+                'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=90&w=1600&auto=format&fit=crop',
+              alt: product.title,
+              isHero: true,
+            },
+          ];
+
     setEditFormData({
       id: product.id,
       title: product.title,
@@ -347,8 +671,10 @@ export default function AdminDashboard() {
       howToUse: product.howToUse || '',
       summary: product.summary || '',
       description: product.description || '',
-      imageUrl: product.images[0]?.url || '',
-      secondaryImageUrl: product.images[1]?.url || '',
+      images: initialImages,
+      imageUrl: initialImages.find((img) => img.isHero)?.url || initialImages[0]?.url || '',
+      secondaryImageUrl:
+        initialImages.find((img) => img.isTexture)?.url || initialImages[1]?.url || '',
     });
     setShowEditModal(true);
   };
@@ -360,9 +686,23 @@ export default function AdminDashboard() {
       return;
     }
 
-    const primaryImgUrl =
-      formData.imageUrl.trim() ||
-      'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=800&auto=format&fit=crop';
+    const imagesToSave: ProductImageItem[] =
+      formData.images && formData.images.length > 0
+        ? formData.images
+        : [
+            {
+              id: `img-${Date.now()}-1`,
+              url:
+                formData.imageUrl?.trim() ||
+                'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
+              alt: formData.title,
+              isHero: true,
+            },
+          ];
+
+    if (!imagesToSave.some((img) => img.isHero) && imagesToSave.length > 0) {
+      imagesToSave[0].isHero = true;
+    }
 
     const newSlug =
       formData.title
@@ -395,31 +735,7 @@ export default function AdminDashboard() {
       attributes: {
         categoryType: formData.category,
       },
-      images: [
-        {
-          id: `img-${Date.now()}-1`,
-          url: primaryImgUrl,
-          alt: formData.title,
-          isHero: true,
-        },
-        ...(formData.secondaryImageUrl.trim()
-          ? [
-              {
-                id: `img-${Date.now()}-2`,
-                url: formData.secondaryImageUrl.trim(),
-                alt: `${formData.title} Texture`,
-                isTexture: true,
-              },
-            ]
-          : [
-              {
-                id: `img-${Date.now()}-2`,
-                url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
-                alt: `${formData.title} Texture`,
-                isTexture: true,
-              },
-            ]),
-      ],
+      images: imagesToSave,
       variants: [
         {
           id: `var-${Date.now()}`,
@@ -441,7 +757,7 @@ export default function AdminDashboard() {
     setShowAddModal(false);
     setFormData(initialFormData);
     setNotification({
-      message: `Product "${newProduct.title}" created and published to catalog.`,
+      message: `Product "${newProduct.title}" created with ${imagesToSave.length} high-quality images.`,
       type: 'success',
     });
     setTimeout(() => setNotification(null), 4000);
@@ -455,29 +771,14 @@ export default function AdminDashboard() {
       return;
     }
 
-    const primaryImgUrl =
-      editFormData.imageUrl.trim() ||
-      editingProduct.images[0]?.url ||
-      'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop';
+    const imagesToSave: ProductImageItem[] =
+      editFormData.images && editFormData.images.length > 0
+        ? editFormData.images
+        : editingProduct.images;
 
-    const updatedImages = [
-      {
-        id: editingProduct.images[0]?.id || `img-${Date.now()}-1`,
-        url: primaryImgUrl,
-        alt: editFormData.title,
-        isHero: true,
-      },
-      ...(editFormData.secondaryImageUrl.trim()
-        ? [
-            {
-              id: editingProduct.images[1]?.id || `img-${Date.now()}-2`,
-              url: editFormData.secondaryImageUrl.trim(),
-              alt: `${editFormData.title} Texture`,
-              isTexture: true,
-            },
-          ]
-        : editingProduct.images.slice(1)),
-    ];
+    if (!imagesToSave.some((img) => img.isHero) && imagesToSave.length > 0) {
+      imagesToSave[0].isHero = true;
+    }
 
     const updatedVariants = [
       {
@@ -516,7 +817,7 @@ export default function AdminDashboard() {
       ingredients: editFormData.inci,
       sourcingEthics: editFormData.terroir,
       howToUse: editFormData.howToUse,
-      images: updatedImages,
+      images: imagesToSave,
       variants: updatedVariants,
       attributes: {
         ...editingProduct.attributes,
@@ -1697,116 +1998,184 @@ export default function AdminDashboard() {
               </div>
 
               <form onSubmit={handleCreateProduct} className="space-y-5 text-xs font-sans">
-                {/* Product Imagery Section */}
-                <div className="bg-ry-white border border-ry-ash p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
-                      Primary Product Image (Hero)
-                    </label>
-                    <span className="text-[10px] text-ry-stone/70">
-                      Upload from device, paste image URL, or choose preset
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    {/* Live Thumbnail Preview */}
-                    <div className="relative w-24 h-28 bg-ry-oatmeal border border-ry-ash/70 overflow-hidden shrink-0 flex items-center justify-center group">
-                      {formData.imageUrl ? (
-                        <>
-                          <img
-                            src={formData.imageUrl}
-                            alt="Primary Preview"
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, imageUrl: '' })}
-                            className="absolute top-1 right-1 p-1 bg-ry-onyx/80 text-ry-white rounded-full hover:bg-red-700 transition-colors"
-                            title="Remove image"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="flex flex-col items-center text-ry-stone text-center p-2">
-                          <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
-                          <span className="text-[9px] uppercase tracking-subtle">No Image</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Inputs & Controls */}
-                    <div className="flex-1 space-y-2.5 w-full">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          placeholder="Paste image URL (https://...)"
-                          value={formData.imageUrl}
-                          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                          className="flex-1 bg-ry-pearl border border-ry-ash p-2.5 text-xs focus:border-ry-onyx outline-none font-mono"
-                        />
-                        <label className="cursor-pointer px-4 py-2.5 bg-ry-onyx text-ry-white text-[11px] uppercase tracking-editorial flex items-center justify-center gap-1.5 hover:bg-ry-charcoal transition-colors shrink-0">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Upload File</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handleImageFileUpload(e, 'add-primary')}
-                          />
+                {/* Multi-Image Gallery Manager */}
+                <div className="bg-ry-white border border-ry-ash p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ry-ash/40 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
+                          Product Images & Visual Gallery
                         </label>
+                        <span className="px-2 py-0.5 bg-ry-oatmeal text-ry-onyx text-[10px] font-mono font-medium border border-ry-ash">
+                          {formData.images?.length || 0} {formData.images?.length === 1 ? 'asset' : 'assets'}
+                        </span>
                       </div>
-
-                      {/* Quick Luxury Presets */}
-                      <div>
-                        <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
-                          Curated Atelier Presets:
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {PRESET_IMAGES.map((preset) => (
-                            <button
-                              key={preset.name}
-                              type="button"
-                              onClick={() => setFormData({ ...formData, imageUrl: preset.url })}
-                              className={`px-2 py-1 text-[10px] border transition-all ${
-                                formData.imageUrl === preset.url
-                                  ? 'border-ry-onyx bg-ry-onyx text-ry-white'
-                                  : 'border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx'
-                              }`}
-                            >
-                              {preset.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <p className="text-[11px] text-ry-stone mt-0.5">
+                        Upload multiple high-resolution photos. Set your Hero (cover) and Texture views.
+                      </p>
                     </div>
+
+                    <label className="cursor-pointer px-4 py-2 bg-ry-burgundy text-ry-white text-[11px] uppercase tracking-editorial font-medium flex items-center justify-center gap-2 hover:bg-ry-burgundyLight transition-colors shrink-0 shadow-sm">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isProcessingImages ? 'Optimizing...' : 'Upload Image(s)'}</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isProcessingImages}
+                        onChange={(e) => handleMultipleImageUpload(e, 'add')}
+                      />
+                    </label>
                   </div>
 
-                  {/* Secondary Texture Image */}
-                  <div className="pt-2 border-t border-ry-ash/40">
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Secondary / Sensory Texture Image URL (Optional)
-                    </label>
-                    <div className="flex gap-2">
+                  {/* Visual Gallery Grid */}
+                  {formData.images && formData.images.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                      {formData.images.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          className={`relative group bg-ry-oatmeal border overflow-hidden flex flex-col justify-between transition-all ${
+                            img.isHero
+                              ? 'border-ry-onyx ring-2 ring-ry-onyx bg-white'
+                              : img.isTexture
+                              ? 'border-amber-700/80 ring-1 ring-amber-700/50 bg-white'
+                              : 'border-ry-ash/80 hover:border-ry-stone bg-white/70'
+                          }`}
+                        >
+                          {/* Image preview */}
+                          <div className="relative aspect-[4/5] w-full overflow-hidden bg-ry-pearl">
+                            <img
+                              src={img.url}
+                              alt={img.alt || `Product Image ${idx + 1}`}
+                              className="w-full h-full object-cover object-center"
+                            />
+
+                            {/* Badges */}
+                            <div className="absolute top-1 left-1 flex flex-col gap-1 pointer-events-none">
+                              {img.isHero && (
+                                <span className="px-1.5 py-0.5 bg-ry-onyx text-ry-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
+                                  ★ HERO
+                                </span>
+                              )}
+                              {img.isTexture && (
+                                <span className="px-1.5 py-0.5 bg-amber-800 text-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
+                                  TEXTURE
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Remove button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx, 'add')}
+                              className="absolute top-1 right-1 p-1 bg-ry-onyx/80 hover:bg-red-700 text-white rounded-full opacity-80 hover:opacity-100 transition-all"
+                              title="Remove image"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          {/* Quick Toolbar */}
+                          <div className="p-1.5 bg-ry-white border-t border-ry-ash/40 flex flex-col gap-1 text-[9px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSetHeroImage(idx, 'add')}
+                                className={`flex-1 py-1 text-center font-medium transition-colors ${
+                                  img.isHero
+                                    ? 'bg-ry-onyx text-white font-bold'
+                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
+                                }`}
+                                title="Set as primary Hero image"
+                              >
+                                {img.isHero ? '✓ Main Hero' : 'Make Hero'}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleTextureImage(idx, 'add')}
+                                className={`flex-1 py-1 text-center font-medium transition-colors ${
+                                  img.isTexture
+                                    ? 'bg-amber-800 text-white font-bold'
+                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
+                                }`}
+                                title="Tag as sensory texture hover"
+                              >
+                                {img.isTexture ? '✓ Texture' : 'Texture'}
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 border-t border-ry-ash/30 text-[9px] text-ry-stone">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveImage(idx, 'left', 'add')}
+                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
+                                title="Move left"
+                              >
+                                ← Earlier
+                              </button>
+                              <span className="font-mono text-[9px]">#{idx + 1}</span>
+                              <button
+                                type="button"
+                                disabled={idx === formData.images.length - 1}
+                                onClick={() => handleMoveImage(idx, 'right', 'add')}
+                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
+                                title="Move right"
+                              >
+                                Later →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-ry-ash/80 p-8 text-center bg-ry-pearl/40">
+                      <ImageIcon className="w-8 h-8 mx-auto text-ry-stone/40 mb-2" />
+                      <p className="text-xs font-serif text-ry-onyx">No Images Added Yet</p>
+                      <p className="text-[11px] text-ry-stone mt-1">
+                        Click &quot;Upload Image(s)&quot; to select multiple files from your computer, or choose from presets below.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Add via URL & Curated Presets */}
+                  <div className="pt-2 border-t border-ry-ash/40 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
-                        placeholder="e.g. macro texture shot or unboxing photograph URL"
-                        value={formData.secondaryImageUrl}
-                        onChange={(e) =>
-                          setFormData({ ...formData, secondaryImageUrl: e.target.value })
-                        }
-                        className="flex-1 bg-ry-white border border-ry-ash p-2 focus:border-ry-onyx outline-none font-mono"
+                        placeholder="Or paste high-resolution image URL (https://...)"
+                        value={addPastedUrl}
+                        onChange={(e) => setAddPastedUrl(e.target.value)}
+                        className="flex-1 bg-ry-pearl border border-ry-ash p-2 text-xs focus:border-ry-onyx outline-none font-mono"
                       />
-                      <label className="cursor-pointer px-3 py-2 border border-ry-ash bg-ry-pearl text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-[10px] uppercase tracking-editorial flex items-center gap-1 transition-colors shrink-0">
-                        <Upload className="w-3 h-3" />
-                        <span>Upload File</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageFileUpload(e, 'add-secondary')}
-                        />
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleAddUrlImage('add')}
+                        className="px-4 py-2 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors shrink-0"
+                      >
+                        + Add Image URL
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
+                        Curated Atelier Presets (Click to add to gallery):
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PRESET_IMAGES.map((preset) => (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => handleAddPresetImage(preset.url, preset.name, 'add')}
+                            className="px-2 py-1 text-[10px] border border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx transition-all flex items-center gap-1"
+                          >
+                            <span>+ {preset.name}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2042,120 +2411,184 @@ export default function AdminDashboard() {
               </div>
 
               <form onSubmit={handleUpdateProduct} className="space-y-5 text-xs font-sans">
-                {/* Product Imagery Section */}
-                <div className="bg-ry-white border border-ry-ash p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
-                      Primary Product Image (Hero)
-                    </label>
-                    <span className="text-[10px] text-ry-stone/70">
-                      Upload from device, paste image URL, or choose preset
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    {/* Live Thumbnail Preview */}
-                    <div className="relative w-24 h-28 bg-ry-oatmeal border border-ry-ash/70 overflow-hidden shrink-0 flex items-center justify-center group">
-                      {editFormData.imageUrl ? (
-                        <>
-                          <img
-                            src={editFormData.imageUrl}
-                            alt="Edit Primary Preview"
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setEditFormData({ ...editFormData, imageUrl: '' })}
-                            className="absolute top-1 right-1 p-1 bg-ry-onyx/80 text-ry-white rounded-full hover:bg-red-700 transition-colors"
-                            title="Remove image"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="flex flex-col items-center text-ry-stone text-center p-2">
-                          <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
-                          <span className="text-[9px] uppercase tracking-subtle">No Image</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Inputs & Controls */}
-                    <div className="flex-1 space-y-2.5 w-full">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          placeholder="Paste image URL (https://...)"
-                          value={editFormData.imageUrl}
-                          onChange={(e) =>
-                            setEditFormData({ ...editFormData, imageUrl: e.target.value })
-                          }
-                          className="flex-1 bg-ry-pearl border border-ry-ash p-2.5 text-xs focus:border-ry-onyx outline-none font-mono"
-                        />
-                        <label className="cursor-pointer px-4 py-2.5 bg-ry-onyx text-ry-white text-[11px] uppercase tracking-editorial flex items-center justify-center gap-1.5 hover:bg-ry-charcoal transition-colors shrink-0">
-                          <Upload className="w-3.5 h-3.5" />
-                          <span>Upload File</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handleImageFileUpload(e, 'edit-primary')}
-                          />
+                {/* Multi-Image Gallery Manager */}
+                <div className="bg-ry-white border border-ry-ash p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ry-ash/40 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
+                          Product Images & Visual Gallery
                         </label>
+                        <span className="px-2 py-0.5 bg-ry-oatmeal text-ry-onyx text-[10px] font-mono font-medium border border-ry-ash">
+                          {editFormData.images?.length || 0} {editFormData.images?.length === 1 ? 'asset' : 'assets'}
+                        </span>
                       </div>
-
-                      {/* Quick Luxury Presets */}
-                      <div>
-                        <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
-                          Curated Atelier Presets:
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {PRESET_IMAGES.map((preset) => (
-                            <button
-                              key={preset.name}
-                              type="button"
-                              onClick={() =>
-                                setEditFormData({ ...editFormData, imageUrl: preset.url })
-                              }
-                              className={`px-2 py-1 text-[10px] border transition-all ${
-                                editFormData.imageUrl === preset.url
-                                  ? 'border-ry-onyx bg-ry-onyx text-ry-white'
-                                  : 'border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx'
-                              }`}
-                            >
-                              {preset.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <p className="text-[11px] text-ry-stone mt-0.5">
+                        Manage high-resolution images for this product. Reorder, choose Hero, or set Texture views.
+                      </p>
                     </div>
+
+                    <label className="cursor-pointer px-4 py-2 bg-ry-burgundy text-ry-white text-[11px] uppercase tracking-editorial font-medium flex items-center justify-center gap-2 hover:bg-ry-burgundyLight transition-colors shrink-0 shadow-sm">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isProcessingImages ? 'Optimizing...' : 'Upload Image(s)'}</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isProcessingImages}
+                        onChange={(e) => handleMultipleImageUpload(e, 'edit')}
+                      />
+                    </label>
                   </div>
 
-                  {/* Secondary Texture Image */}
-                  <div className="pt-2 border-t border-ry-ash/40">
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Secondary / Sensory Texture Image URL (Optional)
-                    </label>
-                    <div className="flex gap-2">
+                  {/* Visual Gallery Grid */}
+                  {editFormData.images && editFormData.images.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                      {editFormData.images.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          className={`relative group bg-ry-oatmeal border overflow-hidden flex flex-col justify-between transition-all ${
+                            img.isHero
+                              ? 'border-ry-onyx ring-2 ring-ry-onyx bg-white'
+                              : img.isTexture
+                              ? 'border-amber-700/80 ring-1 ring-amber-700/50 bg-white'
+                              : 'border-ry-ash/80 hover:border-ry-stone bg-white/70'
+                          }`}
+                        >
+                          {/* Image preview */}
+                          <div className="relative aspect-[4/5] w-full overflow-hidden bg-ry-pearl">
+                            <img
+                              src={img.url}
+                              alt={img.alt || `Product Image ${idx + 1}`}
+                              className="w-full h-full object-cover object-center"
+                            />
+
+                            {/* Badges */}
+                            <div className="absolute top-1 left-1 flex flex-col gap-1 pointer-events-none">
+                              {img.isHero && (
+                                <span className="px-1.5 py-0.5 bg-ry-onyx text-ry-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
+                                  ★ HERO
+                                </span>
+                              )}
+                              {img.isTexture && (
+                                <span className="px-1.5 py-0.5 bg-amber-800 text-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
+                                  TEXTURE
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Remove button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx, 'edit')}
+                              className="absolute top-1 right-1 p-1 bg-ry-onyx/80 hover:bg-red-700 text-white rounded-full opacity-80 hover:opacity-100 transition-all"
+                              title="Remove image"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          {/* Quick Toolbar */}
+                          <div className="p-1.5 bg-ry-white border-t border-ry-ash/40 flex flex-col gap-1 text-[9px]">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSetHeroImage(idx, 'edit')}
+                                className={`flex-1 py-1 text-center font-medium transition-colors ${
+                                  img.isHero
+                                    ? 'bg-ry-onyx text-white font-bold'
+                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
+                                }`}
+                                title="Set as primary Hero image"
+                              >
+                                {img.isHero ? '✓ Main Hero' : 'Make Hero'}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleTextureImage(idx, 'edit')}
+                                className={`flex-1 py-1 text-center font-medium transition-colors ${
+                                  img.isTexture
+                                    ? 'bg-amber-800 text-white font-bold'
+                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
+                                }`}
+                                title="Tag as sensory texture hover"
+                              >
+                                {img.isTexture ? '✓ Texture' : 'Texture'}
+                              </button>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 border-t border-ry-ash/30 text-[9px] text-ry-stone">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={() => handleMoveImage(idx, 'left', 'edit')}
+                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
+                                title="Move left"
+                              >
+                                ← Earlier
+                              </button>
+                              <span className="font-mono text-[9px]">#{idx + 1}</span>
+                              <button
+                                type="button"
+                                disabled={idx === (editFormData.images?.length || 0) - 1}
+                                onClick={() => handleMoveImage(idx, 'right', 'edit')}
+                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
+                                title="Move right"
+                              >
+                                Later →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-ry-ash/80 p-8 text-center bg-ry-pearl/40">
+                      <ImageIcon className="w-8 h-8 mx-auto text-ry-stone/40 mb-2" />
+                      <p className="text-xs font-serif text-ry-onyx">No Images In Gallery</p>
+                      <p className="text-[11px] text-ry-stone mt-1">
+                        Click &quot;Upload Image(s)&quot; to select multiple files from your computer, or choose from presets below.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Add via URL & Curated Presets */}
+                  <div className="pt-2 border-t border-ry-ash/40 space-y-2.5">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
-                        placeholder="e.g. macro texture shot or unboxing photograph URL"
-                        value={editFormData.secondaryImageUrl}
-                        onChange={(e) =>
-                          setEditFormData({ ...editFormData, secondaryImageUrl: e.target.value })
-                        }
-                        className="flex-1 bg-ry-white border border-ry-ash p-2 focus:border-ry-onyx outline-none font-mono"
+                        placeholder="Or paste high-resolution image URL (https://...)"
+                        value={editPastedUrl}
+                        onChange={(e) => setEditPastedUrl(e.target.value)}
+                        className="flex-1 bg-ry-pearl border border-ry-ash p-2 text-xs focus:border-ry-onyx outline-none font-mono"
                       />
-                      <label className="cursor-pointer px-3 py-2 border border-ry-ash bg-ry-pearl text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-[10px] uppercase tracking-editorial flex items-center gap-1 transition-colors shrink-0">
-                        <Upload className="w-3 h-3" />
-                        <span>Upload File</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleImageFileUpload(e, 'edit-secondary')}
-                        />
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleAddUrlImage('edit')}
+                        className="px-4 py-2 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors shrink-0"
+                      >
+                        + Add Image URL
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
+                        Curated Atelier Presets (Click to add to gallery):
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PRESET_IMAGES.map((preset) => (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => handleAddPresetImage(preset.url, preset.name, 'edit')}
+                            className="px-2 py-1 text-[10px] border border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx transition-all flex items-center gap-1"
+                          >
+                            <span>+ {preset.name}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
