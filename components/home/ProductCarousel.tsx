@@ -46,7 +46,7 @@ export default function ProductCarousel() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 pb-6 border-b border-ry-ash/70">
           <div>
             <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone font-sans block mb-2">
-              Curated Formulations & Perfumes
+              Curated Formulations & Parfums
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl text-ry-onyx font-normal">
               The Permanent Collection

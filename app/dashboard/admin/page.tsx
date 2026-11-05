@@ -17,6 +17,7 @@ import {
   Shield,
   Filter,
   Eye,
+  EyeOff,
   Edit3,
   Trash2,
   Sparkles,
@@ -1338,7 +1339,7 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2">
                   <span className="font-serif text-sm">Product Catalog Matrix</span>
                   <span className="text-ry-stone">
-                    (Supports Haircare, Perfumes, and Future Category Expansions)
+                    (Supports Haircare, Parfums, and Future Category Expansions)
                   </span>
                 </div>
                 <div className="text-[11px] text-ry-stone">
@@ -1361,7 +1362,7 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-ry-ash/40">
                     {productsList.map((product) => (
-                      <tr key={product.id} className="hover:bg-ry-pearl/50 transition-colors">
+                      <tr key={product.id} className={`hover:bg-ry-pearl/50 transition-colors ${product.isHidden ? 'opacity-50 bg-ry-ash/10' : ''}`}>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <div className="relative w-10 h-12 bg-ry-oatmeal overflow-hidden border border-ry-ash/60 shrink-0">
@@ -1375,8 +1376,13 @@ export default function AdminDashboard() {
                               />
                             </div>
                             <div>
-                              <div className="font-serif text-sm font-medium text-ry-onyx">
+                              <div className="font-serif text-sm font-medium text-ry-onyx flex items-center gap-2">
                                 {product.title}
+                                {product.isHidden && (
+                                  <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] uppercase tracking-wider border border-amber-300 font-medium">
+                                    Hidden
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[10px] text-ry-stone">{product.slug}</div>
                             </div>
@@ -1428,6 +1434,25 @@ export default function AdminDashboard() {
                               title="Edit Formulation, Image & Pricing"
                             >
                               <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const updated = productsList.map((p) =>
+                                  p.id === product.id ? { ...p, isHidden: !p.isHidden } : p
+                                );
+                                saveCatalog(updated);
+                                setNotification({
+                                  message: product.isHidden
+                                    ? `"${product.title}" is now visible on the storefront.`
+                                    : `"${product.title}" is now hidden from the storefront.`,
+                                  type: 'info',
+                                });
+                                setTimeout(() => setNotification(null), 4000);
+                              }}
+                              className={`p-1.5 transition-colors ${product.isHidden ? 'text-amber-600 hover:text-ry-onyx' : 'text-ry-stone hover:text-amber-600'}`}
+                              title={product.isHidden ? 'Show on storefront' : 'Hide from storefront'}
+                            >
+                              {product.isHidden ? <EyeOff className="w-4 h-4" /> : <EyeOff className="w-4 h-4 opacity-40" />}
                             </button>
                             <button
                               onClick={() => {

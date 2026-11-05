@@ -12,7 +12,7 @@ export default function Hero({ onSelectCategory }: HeroProps) {
   const quickCategories = [
     { label: 'All Products', href: '/products' },
     { label: 'Hair', href: '/category/hair' },
-    { label: 'Perfume', href: '/category/fragrance' },
+    { label: 'Parfum', href: '/category/fragrance' },
     { label: 'Skincare', href: '/category/skincare' },
     { label: 'Home & Candles', href: '/category/candles' },
     { label: 'Accessories', href: '/category/accessories' },
@@ -50,18 +50,18 @@ export default function Hero({ onSelectCategory }: HeroProps) {
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-ry-white/20 bg-ry-white/10 backdrop-blur-md mb-6 animate-fade-in">
           <Sparkles className="w-3.5 h-3.5 text-ry-ash" />
           <span className="text-[10px] uppercase tracking-[0.3em] font-sans text-ry-ash">
-            Luxury Hair, Perfume & Living
+            Luxury Hair, Parfum & Living
           </span>
         </div>
 
         {/* Headline */}
         <h1 className="font-serif text-4xl sm:text-6xl md:text-7xl font-normal leading-[1.12] tracking-tight mb-6 text-ry-white max-w-4xl mx-auto">
-          Luxury Essentials <br className="hidden sm:inline" />
-          <span className="italic font-light text-ry-oatmeal">for Hair, Scent & Skin</span>
+          Beauty, Style & Elegance. <br className="hidden sm:inline" />
+          <span className="italic font-light text-ry-oatmeal">All in One Place.</span>
         </h1>
 
         <p className="font-sans text-xs sm:text-base text-ry-ash/90 max-w-2xl mx-auto mb-10 leading-relaxed font-light">
-          Discover restorative botanical hair elixirs, long-lasting perfumes, high-potency skincare, and scented candles.
+          Discover a collection of carefully selected beauty and lifestyle essentials designed to complement your individuality. From beautiful hair and signature fragrances to skincare and stylish accessories, RYCARIX brings together the little things that make you feel confident, beautiful and effortlessly elegant.
         </p>
 
         {/* Primary Call to Actions */}

@@ -25,7 +25,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Rycarix | Luxury Botanical Hair, Perfumes & Skincare',
+  title: 'Rycarix | Luxury Botanical Hair, Parfum & Skincare',
   description:
     'Shop artisanal botanical hair, luxury fragrances, clean skincare, and scented candles. Tracked delivery via Evri & Royal Mail.',
   keywords: [
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     'Luxury Hair',
     'Artisanal Hair Formulations',
     'Hair Nectars',
-    'Perfume',
+    'Parfum',
     'Fragrance',
     'Botanical Skincare',
     'Scented Candles',
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     'Clearpay Pay in 4',
   ],
   openGraph: {
-    title: 'Rycarix | Luxury Botanical Hair, Perfumes & Skincare',
+    title: 'Rycarix | Luxury Botanical Hair, Parfum & Skincare',
     description: 'Shop artisanal botanical hair, luxury fragrances, clean skincare, and scented candles.',
     url: 'https://www.rycarix.com',
     siteName: 'Rycarix',

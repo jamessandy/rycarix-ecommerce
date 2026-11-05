@@ -404,8 +404,24 @@ export default function CheckoutPage() {
               <div className="pt-2 text-[11px] text-ry-stone flex items-center gap-1.5 border-t border-ry-ash/40">
                 <Info className="w-3.5 h-3.5 shrink-0 text-ry-onyx" />
                 <span>
-                  All shipments are handled by Royal Mail UK with door-to-door tracking and UN 1266 Limited Quantity (LQ) perfume compliance.
+                  All shipments are handled by Royal Mail UK with door-to-door tracking and UN 1266 Limited Quantity (LQ) parfum compliance.
                 </span>
+              </div>
+
+              {/* International Delivery Info */}
+              <div className="pt-3 border-t border-ry-ash/40">
+                <p className="text-[10px] uppercase tracking-editorial text-ry-stone mb-2">International Delivery</p>
+                <div className="space-y-1.5 text-[11px] text-ry-stone">
+                  <div className="flex justify-between">
+                    <span>Europe</span><span className="font-mono text-ry-onyx">3–5 working days</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>USA & Canada</span><span className="font-mono text-ry-onyx">5–7 working days</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rest of the World</span><span className="font-mono text-ry-onyx">5–7 working days or longer</span>
+                  </div>
+                </div>
               </div>
             </div>
 

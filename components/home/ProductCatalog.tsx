@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -28,21 +28,42 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [hoveredProductId, setHoveredProductId] = useState<string | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [allProducts, setAllProducts] = useState<ProductItem[]>(PRODUCTS);
 
   const { addItem, openCart } = useCartStore();
 
+  // Load admin-managed catalog from localStorage (falls back to static PRODUCTS)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('rycarix_catalog_products');
+        if (saved) {
+          const parsed: ProductItem[] = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAllProducts(parsed);
+          }
+        }
+      } catch (e) {
+        // Fall back to static data if localStorage fails
+      }
+    }
+  }, []);
+
+  // Visible products (exclude admin-hidden ones)
+  const visibleProducts = useMemo(() => allProducts.filter(p => !p.isHidden), [allProducts]);
+
   const categoryOptions = [
-    { label: 'All Products', value: 'ALL', count: PRODUCTS.length },
-    { label: 'Hair', value: 'Hair', count: PRODUCTS.filter(p => p.category === 'Hair' || p.category === 'Hair Care').length },
-    { label: 'Perfume', value: 'Haute Parfumerie', count: PRODUCTS.filter(p => p.category === 'Haute Parfumerie').length },
-    { label: 'Skincare', value: 'Botanical Skincare', count: PRODUCTS.filter(p => p.category === 'Botanical Skincare').length },
-    { label: 'Body & Bath', value: 'Body & Bath', count: PRODUCTS.filter(p => p.category === 'Body & Bath').length },
-    { label: 'Home & Candles', value: 'Home & Living', count: PRODUCTS.filter(p => p.category === 'Home & Living').length },
-    { label: 'Accessories', value: 'Accessories', count: PRODUCTS.filter(p => p.category === 'Accessories').length },
+    { label: 'All Products', value: 'ALL', count: visibleProducts.length },
+    { label: 'Hair', value: 'Hair', count: visibleProducts.filter(p => p.category === 'Hair' || p.category === 'Hair Care').length },
+    { label: 'Parfum', value: 'Haute Parfumerie', count: visibleProducts.filter(p => p.category === 'Haute Parfumerie').length },
+    { label: 'Skincare', value: 'Botanical Skincare', count: visibleProducts.filter(p => p.category === 'Botanical Skincare').length },
+    { label: 'Body & Bath', value: 'Body & Bath', count: visibleProducts.filter(p => p.category === 'Body & Bath').length },
+    { label: 'Home & Candles', value: 'Home & Living', count: visibleProducts.filter(p => p.category === 'Home & Living').length },
+    { label: 'Accessories', value: 'Accessories', count: visibleProducts.filter(p => p.category === 'Accessories').length },
   ];
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
+    return visibleProducts.filter((product) => {
       const matchesCategory =
         activeCategory === 'ALL' ||
         product.category === activeCategory ||
@@ -61,7 +82,7 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
       if (sortBy === 'rating') return b.rating - a.rating;
       return 0; // Default featured order
     });
-  }, [activeCategory, searchQuery, sortBy]);
+  }, [visibleProducts, activeCategory, searchQuery, sortBy]);
 
   const handleQuickAdd = (product: ProductItem, e: React.MouseEvent) => {
     e.preventDefault();
@@ -99,11 +120,11 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
               All Products
             </span>
             <h2 className="font-serif text-3xl sm:text-5xl font-normal text-ry-onyx leading-tight">
-              Shop All Collections
+              Everyday Essentials. <span className="italic">Exceptional Style.</span>
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-ry-stone max-w-md font-sans">
-            Browse our curated selection of restorative botanical hair, luxury perfumes, clean skincare, and scented candles.
+            We believe the little details make a difference. That&apos;s why RYCARIX brings you a thoughtfully curated selection of hair, fragrances, skincare, home essentials and accessories to add a touch of beauty and elegance to your everyday life.
           </p>
         </div>
 

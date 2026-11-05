@@ -49,6 +49,7 @@ export interface ProductItem {
   compareAtPrice?: number;
   rating: number;
   reviewCount: number;
+  isHidden?: boolean; // Admin can hide a product from the storefront
   
   // Accordion details
   ingredients: string;

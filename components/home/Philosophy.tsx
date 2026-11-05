@@ -16,7 +16,7 @@ const PHILOSOPHIES = [
     title: 'Clean, Effective Formulas',
     subtitle: 'No Harmful Chemicals',
     description:
-      'All skincare and hair products are made without parabens, sulfates, silicones, or synthetic dyes. Perfumes are formulated at high concentrations (28% to 32% pure essence) for remarkable all-day longevity.',
+      'All skincare and hair products are made without parabens, sulfates, silicones, or synthetic dyes. Parfums are formulated at high concentrations (28% to 32% pure essence) for remarkable all-day longevity.',
     footnote: '100% Cruelty-Free',
   },
   {
