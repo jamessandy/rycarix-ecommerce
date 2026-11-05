@@ -233,7 +233,7 @@ function TrackingPortalContent() {
             Track Your Delivery
           </h1>
           <p className="text-xs text-ry-stone mt-3 leading-relaxed">
-            Real-time milestone tracking for your Rycarix order. Complete transparency from our Paris packaging atelier to your door.
+            Real-time milestone tracking for your Rycarix order. Complete transparency from our Paris packaging facility to your door.
           </p>
 
           {/* Quick Search Form */}
@@ -400,7 +400,7 @@ function TrackingPortalContent() {
                         </span>
                       </div>
                       <p className="text-[11px] text-ry-stone leading-relaxed">
-                        Contains perfume formulation with flammable solvent solution. Packed under certified Limited Quantity (LQ) protocols with temperature-regulated air courier routing.
+                        Contains parfum with flammable solvent solution. Packed under certified Limited Quantity (LQ) protocols with temperature-regulated air courier routing.
                       </p>
                     </div>
                   </div>
@@ -729,7 +729,7 @@ function TrackingPortalContent() {
                         </div>
 
                         <div className="text-xs text-ry-onyx font-medium truncate">
-                          {ord.items || 'Atelier Selection'}
+                          {ord.items || 'Selected Products'}
                         </div>
 
                         <div className="text-[11px] text-ry-stone flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -780,7 +780,7 @@ function TrackingPortalContent() {
                     href="/products"
                     className="px-5 py-2.5 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors"
                   >
-                    Explore Sanctuary Formulations
+                    Explore Featured Products
                   </Link>
                   <Link
                     href="/login"

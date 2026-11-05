@@ -146,7 +146,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
           <div className="hidden lg:grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-ry-ash/40 text-center text-xs text-ry-stone">
             <div>
               <p className="font-serif italic text-ry-onyx text-sm">Artisanal Origin</p>
-              <p className="text-[10px] uppercase tracking-subtle mt-0.5">Master Atelier Sourced</p>
+              <p className="text-[10px] uppercase tracking-subtle mt-0.5">Responsibly Sourced</p>
             </div>
             <div>
               <p className="font-serif italic text-ry-onyx text-sm">Sustainable Luxury</p>
@@ -318,7 +318,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
           ) : product.sourcingEthics || product.category ? (
             <div className="bg-ry-oatmeal/50 p-4 border border-ry-ash/60 space-y-2">
               <div className="text-[10px] uppercase tracking-editorial text-ry-stone">
-                Atelier Formulation Profile
+                Product Details & Origin
               </div>
               <div className="text-xs space-y-1 font-sans text-ry-charcoal">
                 <div>
@@ -326,7 +326,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                 </div>
                 {product.sourcingEthics && (
                   <div>
-                    <strong className="text-ry-onyx">Terroir & Craft:</strong> {product.sourcingEthics}
+                    <strong className="text-ry-onyx">Origin & Craft:</strong> {product.sourcingEthics}
                   </div>
                 )}
                 {product.variants[0]?.title && (

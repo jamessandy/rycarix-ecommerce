@@ -128,7 +128,7 @@ function LoginFormContent() {
               Client Portal
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl text-ry-white font-normal leading-tight">
-              Sign In to Your Sanctuary
+              Sign In to Your Account
             </h2>
             <p className="text-xs text-ry-stone mt-4 leading-relaxed">
               Track packages in real time, view your private order archive, manage delivery addresses, and review Klarna payment schedules.

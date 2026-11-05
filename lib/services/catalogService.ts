@@ -12,16 +12,16 @@ export const CATEGORY_DEFINITIONS = [
     aliases: ['hair', 'haircare', 'hair care', 'scalp', 'shampoo', 'conditioner', 'hair elixir'],
   },
   {
-    key: 'Haute Parfumerie',
+    key: 'Parfum',
     label: 'Parfum',
     slug: 'fragrance',
-    aliases: ['haute parfumerie', 'parfum', 'perfume', 'fragrance', 'extrait', 'flacon', 'cologne', 'scent'],
+    aliases: ['parfum', 'haute parfumerie', 'perfume', 'fragrance', 'extrait', 'flacon', 'cologne', 'scent'],
   },
   {
-    key: 'Botanical Skincare',
+    key: 'Skincare',
     label: 'Skincare',
     slug: 'skincare',
-    aliases: ['botanical skincare', 'skincare', 'skin', 'serum', 'balm', 'face', 'cellular'],
+    aliases: ['skincare', 'botanical skincare', 'skin', 'serum', 'balm', 'face', 'cellular'],
   },
   {
     key: 'Body & Bath',
@@ -30,10 +30,10 @@ export const CATEGORY_DEFINITIONS = [
     aliases: ['body & bath', 'body', 'bath', 'polish', 'wash'],
   },
   {
-    key: 'Home & Living',
+    key: 'Home & Candles',
     label: 'Home & Candles',
     slug: 'home-living',
-    aliases: ['home & living', 'home & candles', 'candles', 'candle', 'bougie', 'home', 'living', 'room mist'],
+    aliases: ['home & candles', 'home & living', 'candles', 'candle', 'bougie', 'home', 'living', 'room mist'],
   },
   {
     key: 'Accessories',
@@ -91,7 +91,7 @@ export function matchProductCategory(productCategory: string | undefined, target
  * Get clean client-facing label for category pill
  */
 export function getCategoryDisplayLabel(category: string): string {
-  if (!category) return 'Atelier';
+  if (!category) return 'Product';
   const norm = category.toLowerCase().trim();
 
   const def = CATEGORY_DEFINITIONS.find(
@@ -122,3 +122,4 @@ export function loadClientCatalog(): ProductItem[] {
   }
   return PRODUCTS;
 }
+

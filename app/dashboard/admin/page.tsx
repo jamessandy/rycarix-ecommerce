@@ -104,13 +104,13 @@ const PRESET_IMAGES = [
     url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
   },
   {
-    name: 'Grasse Perfume Flacon',
-    category: 'Haute Parfumerie',
+    name: 'Luxury Glass Bottle',
+    category: 'Parfum',
     url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=90&w=1600&auto=format&fit=crop',
   },
   {
     name: 'Botanical Cellular Serum',
-    category: 'Botanical Skincare',
+    category: 'Skincare',
     url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=90&w=1600&auto=format&fit=crop',
   },
   {
@@ -337,9 +337,9 @@ export default function AdminDashboard() {
   };
 
   const handleResetCatalog = () => {
-    if (confirm('Restore factory default product catalog (all initial formulations)?')) {
+    if (confirm('Restore factory default product catalog (all initial products)?')) {
       saveCatalog(PRODUCTS);
-      setNotification({ message: 'Catalog reset to atelier factory presets.', type: 'info' });
+      setNotification({ message: 'Catalog reset to factory presets.', type: 'info' });
       setTimeout(() => setNotification(null), 4000);
     }
   };
@@ -355,15 +355,15 @@ export default function AdminDashboard() {
     sku: 'RY-NEW-01',
     size: '100ml / 3.4 fl. oz.',
     inci: 'Alcohol Denat, Parfum, Santalum Album Oil, Rosa Damascena Flower Water, Tocopherol.',
-    terroir: 'Murano Hand-Blown Flacon & Grasse Botanicals',
+    terroir: 'Luxury Glass Bottle & Fine Botanicals',
     howToUse: 'Apply 2-3 drops to pulse points or smooth through damp hair lengths.',
-    summary: 'Dynamic atelier formulation handcrafted with rare botanical essences and molecular extracts.',
-    description: 'Extracted and blended according to Rycarix strict artisanal quality protocols in limited batch reserves.',
+    summary: 'Handcrafted luxury product made with botanical extracts and essential oils.',
+    description: 'Blended according to Rycarix quality protocols in limited batch reserves.',
     images: [
       {
         id: 'img-new-hero',
         url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
-        alt: 'Primary Formulation Flacon',
+        alt: 'Primary Product Image',
         isHero: true,
       },
       {
@@ -691,7 +691,7 @@ export default function AdminDashboard() {
   const handleCreateProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim()) {
-      alert('Please enter a formulation title.');
+      alert('Please enter a product title.');
       return;
     }
 
@@ -723,10 +723,10 @@ export default function AdminDashboard() {
       id: `prod-${Date.now()}`,
       title: formData.title,
       slug: newSlug,
-      subtitle: formData.subtitle || `${formData.category} Formulation`,
+      subtitle: formData.subtitle || `${formData.category} Collection`,
       summary:
         formData.summary ||
-        'Dynamic atelier formulation handcrafted with rare botanical essences and molecular extracts.',
+        'Handcrafted luxury product made with botanical extracts and essential oils.',
       description:
         formData.description ||
         'Extracted and blended according to Rycarix strict artisanal quality protocols in limited batch reserves.',
@@ -815,7 +815,7 @@ export default function AdminDashboard() {
         editFormData.slug.trim() ||
         editFormData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
       category: editFormData.category,
-      subtitle: editFormData.subtitle || `${editFormData.category} Formulation`,
+      subtitle: editFormData.subtitle || `${editFormData.category} Collection`,
       summary: editFormData.summary || editingProduct.summary,
       description: editFormData.description || editingProduct.description,
       basePrice: Number(editFormData.basePrice) || 0,
@@ -932,8 +932,8 @@ export default function AdminDashboard() {
       carrier,
       serviceLevel: initialServiceLevel,
       senderAddress: {
-        name: 'Rycarix Fulfillment Atelier',
-        company: 'Rycarix Luxury Fragrance Co.',
+        name: 'Rycarix Fulfillment Center',
+        company: 'Rycarix Luxury Goods Co.',
         street: '18 Place Vendôme',
         city: 'Paris',
         postalCode: '75001',
@@ -963,7 +963,7 @@ export default function AdminDashboard() {
         {
           timestamp: 'Just now',
           status: `Label Generated via ${carrier}`,
-          location: 'Rycarix Atelier, Paris',
+          location: 'Rycarix Fulfillment Center, Paris',
           description: packaging.isHazardous
             ? `${carrier} barcoded shipping label generated with mandatory UN 1266 Limited Quantity (LQ) diamond marking.`
             : `${carrier} express doorstep tracking waybill generated.`,
@@ -973,7 +973,7 @@ export default function AdminDashboard() {
       items: [
         {
           title: ord.items,
-          variant: 'Standard Atelier Packaging',
+          variant: 'Standard Luxury Packaging',
           quantity: 1,
           price: ord.total,
           image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
@@ -1025,8 +1025,8 @@ export default function AdminDashboard() {
           <div class="label-card">
             <div class="top-bar">
               <div>
-                <div class="brand">RYCARIX ATELIER</div>
-                <div class="sub">Haute Parfumerie & Care • Dispatch Facility</div>
+                <div class="brand">RYCARIX FULFILLMENT</div>
+                <div class="sub">Parfum & Care • Dispatch Facility</div>
               </div>
               <div class="carrier-box">
                 <div class="carrier-title">${activeLabelData.carrier} Priority</div>
@@ -1037,7 +1037,7 @@ export default function AdminDashboard() {
             <div class="address-grid">
               <div>
                 <div class="section-label">FROM (SENDER):</div>
-                <div style="font-weight: 700;">Rycarix Atelier</div>
+                <div style="font-weight: 700;">Rycarix Fulfillment Center</div>
                 <div>18 Place Vendôme</div>
                 <div>75001 Paris, France</div>
               </div>
@@ -1130,7 +1130,7 @@ export default function AdminDashboard() {
         items: [
           {
             title: dispatchModalOrder.items,
-            variant: 'Atelier Packaging',
+            variant: 'Luxury Packaging',
             quantity: 1,
             price: dispatchModalOrder.total,
             image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
@@ -1217,7 +1217,7 @@ export default function AdminDashboard() {
                 items: dispatchModalOrder.itemsList || [
                   {
                     title: dispatchModalOrder.items,
-                    variantTitle: 'Atelier Packaging',
+                    variantTitle: 'Luxury Packaging',
                     quantity: 1,
                     price: dispatchModalOrder.total,
                   },
@@ -1270,7 +1270,7 @@ export default function AdminDashboard() {
                 Rycarix Admin
               </span>
               <span className="text-xs text-ry-stone">
-                Admin: {user?.name || 'Store Administrator'} • Live Atelier
+                Admin: {user?.name || 'Store Administrator'} • Live Store
               </span>
             </div>
             <h1 className="font-serif text-3xl sm:text-4xl text-ry-onyx">
@@ -1282,7 +1282,7 @@ export default function AdminDashboard() {
             <button
               onClick={handleResetCatalog}
               className="px-4 py-3 border border-ry-ash text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-xs uppercase tracking-editorial flex items-center gap-1.5 transition-colors"
-              title="Reset catalog to atelier factory presets"
+              title="Reset catalog to factory presets"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Reset Defaults</span>
@@ -1435,7 +1435,7 @@ export default function AdminDashboard() {
                 <table className="w-full text-left text-xs font-sans">
                   <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
                     <tr>
-                      <th className="py-3 px-4">Formulation</th>
+                      <th className="py-3 px-4">Product</th>
                       <th className="py-3 px-4">Category</th>
                       <th className="py-3 px-4">Primary Variant</th>
                       <th className="py-3 px-4">Price</th>
@@ -1515,7 +1515,7 @@ export default function AdminDashboard() {
                             <button
                               onClick={() => handleStartEdit(product)}
                               className="p-1.5 text-ry-stone hover:text-ry-onyx transition-colors"
-                              title="Edit Formulation, Image & Pricing"
+                              title="Edit Product, Image & Pricing"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
@@ -1540,18 +1540,18 @@ export default function AdminDashboard() {
                             </button>
                             <button
                               onClick={() => {
-                                if (confirm(`Archive formulation "${product.title}"?`)) {
+                                if (confirm(`Archive product "${product.title}"?`)) {
                                   const updated = productsList.filter((p) => p.id !== product.id);
                                   saveCatalog(updated);
                                   setNotification({
-                                    message: `Formulation "${product.title}" removed from catalog.`,
+                                    message: `Product "${product.title}" removed from catalog.`,
                                     type: 'info',
                                   });
                                   setTimeout(() => setNotification(null), 4000);
                                 }
                               }}
                               className="p-1.5 text-ry-stone hover:text-red-700 transition-colors"
-                              title="Archive Formulation"
+                              title="Archive Product"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1836,10 +1836,10 @@ export default function AdminDashboard() {
                 <div className="space-y-4 text-xs font-sans">
                   {(trafficData?.categoryTraffic || [
                     { name: 'Hair (Flagship Category)', views: 0, share: '0.0%', badge: 'Main Line' },
-                    { name: 'Haute Parfumerie', views: 0, share: '0.0%' },
-                    { name: 'Botanical Skincare', views: 0, share: '0.0%' },
+                    { name: 'Parfum', views: 0, share: '0.0%' },
+                    { name: 'Skincare', views: 0, share: '0.0%' },
                     { name: 'Body & Bath', views: 0, share: '0.0%' },
-                    { name: 'Home & Living', views: 0, share: '0.0%' },
+                    { name: 'Home & Candles', views: 0, share: '0.0%' },
                   ]).map((cat: any, idx: number) => (
                     <div key={idx}>
                       <div className="flex justify-between mb-1.5 items-center">
@@ -1928,18 +1928,18 @@ export default function AdminDashboard() {
 
             {/* Bottom Row: Top Pages, Devices & Integrations */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Top Visited Formulations */}
+              {/* Top Visited Products */}
               <div className="lg:col-span-2 bg-ry-white border border-ry-ash p-6">
-                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Catalog Formulations & Status</h3>
+                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Catalog Products & Status</h3>
                 <p className="text-xs text-ry-stone mb-4">
-                  Active formulations published to the catalog and ready for customer purchase.
+                  Active products published to the catalog and ready for customer purchase.
                 </p>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs font-sans">
                     <thead className="bg-ry-pearl border-b border-ry-ash text-[10px] uppercase tracking-editorial text-ry-stone">
                       <tr>
-                        <th className="py-2.5 px-3">Formulation / Route</th>
+                        <th className="py-2.5 px-3">Product / Route</th>
                         <th className="py-2.5 px-3">Category</th>
                         <th className="py-2.5 px-3">Price</th>
                         <th className="py-2.5 px-3 text-right">Inventory</th>
@@ -2364,9 +2364,9 @@ export default function AdminDashboard() {
             <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
               <div className="flex justify-between items-center pb-4 mb-6 border-b border-ry-ash">
                 <div>
-                  <h3 className="font-serif text-2xl">Add Dynamic Product Formulation</h3>
+                  <h3 className="font-serif text-2xl">Add Dynamic Product</h3>
                   <p className="text-xs text-ry-stone font-sans">
-                    Extensible architecture ready for Haircare, Perfume, Skincare, or future categories.
+                    Extensible architecture ready for Haircare, Parfum, Skincare, or future categories.
                   </p>
                 </div>
                 <button
@@ -2543,7 +2543,7 @@ export default function AdminDashboard() {
 
                     <div>
                       <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
-                        Curated Atelier Presets (Click to add to gallery):
+                        Curated Image Presets (Click to add to gallery):
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {PRESET_IMAGES.map((preset) => (
@@ -2587,22 +2587,22 @@ export default function AdminDashboard() {
                       className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
                     >
                       <option value="Hair">Hair (Main Seller)</option>
-                      <option value="Haute Parfumerie">Haute Parfumerie</option>
-                      <option value="Botanical Skincare">Botanical Skincare</option>
+                      <option value="Parfum">Parfum</option>
+                      <option value="Skincare">Skincare</option>
                       <option value="Body & Bath">Body & Bath</option>
-                      <option value="Home & Living">Home & Living</option>
-                      <option value="Accessories">Accessories & Fine Goods</option>
+                      <option value="Home & Candles">Home & Candles</option>
+                      <option value="Accessories">Accessories</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Atelier Subtitle / Tagline
+                    Product Subtitle / Tagline
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., Rare Murano Flacon Concentrated Extrait"
+                    placeholder="e.g., Luxury Concentrated Extrait de Parfum"
                     value={formData.subtitle}
                     onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
                     className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
@@ -2697,7 +2697,7 @@ export default function AdminDashboard() {
 
                 <div>
                   <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Full Formulation Narrative & Description
+                    Full Product Description
                   </label>
                   <textarea
                     rows={2}
@@ -2709,7 +2709,7 @@ export default function AdminDashboard() {
 
                 <div>
                   <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Ingredients (INCI) / Scent Notes Profile
+                    Ingredients & Scent Notes Profile
                   </label>
                   <textarea
                     rows={2}
@@ -2722,7 +2722,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Ethical Sourcing & Terroir Notes
+                      Origin & Sourcing Materials
                     </label>
                     <input
                       type="text"
@@ -2765,7 +2765,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Edit Formulation & Product Modal */}
+        {/* Edit Product Modal */}
         {showEditModal && editingProduct && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -2774,9 +2774,9 @@ export default function AdminDashboard() {
                   <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">
                     Product Ref: {editingProduct.id}
                   </span>
-                  <h3 className="font-serif text-2xl text-ry-onyx">Edit Formulation: {editingProduct.title}</h3>
+                  <h3 className="font-serif text-2xl text-ry-onyx">Edit Product: {editingProduct.title}</h3>
                   <p className="text-xs text-ry-stone font-sans">
-                    Modify product imagery, pricing, inventory count, and formulation stories.
+                    Modify product imagery, pricing, inventory count, and product details.
                   </p>
                 </div>
                 <button
@@ -2956,7 +2956,7 @@ export default function AdminDashboard() {
 
                     <div>
                       <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
-                        Curated Atelier Presets (Click to add to gallery):
+                        Curated Image Presets (Click to add to gallery):
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {PRESET_IMAGES.map((preset) => (
@@ -3003,11 +3003,11 @@ export default function AdminDashboard() {
                       className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
                     >
                       <option value="Hair">Hair (Main Seller)</option>
-                      <option value="Haute Parfumerie">Haute Parfumerie</option>
-                      <option value="Botanical Skincare">Botanical Skincare</option>
+                      <option value="Parfum">Parfum</option>
+                      <option value="Skincare">Skincare</option>
                       <option value="Body & Bath">Body & Bath</option>
-                      <option value="Home & Living">Home & Living</option>
-                      <option value="Accessories">Accessories & Fine Goods</option>
+                      <option value="Home & Candles">Home & Candles</option>
+                      <option value="Accessories">Accessories</option>
                     </select>
                   </div>
                 </div>
@@ -3028,7 +3028,7 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Atelier Subtitle / Tagline
+                      Product Subtitle / Tagline
                     </label>
                     <input
                       type="text"
@@ -3138,7 +3138,7 @@ export default function AdminDashboard() {
 
                 <div>
                   <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Full Formulation Narrative & Description
+                    Full Product Description
                   </label>
                   <textarea
                     rows={2}
@@ -3152,7 +3152,7 @@ export default function AdminDashboard() {
 
                 <div>
                   <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Ingredients (INCI) / Scent Notes Profile
+                    Ingredients & Scent Notes Profile
                   </label>
                   <textarea
                     rows={2}
@@ -3167,7 +3167,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Ethical Sourcing & Terroir Notes
+                      Origin & Sourcing Materials
                     </label>
                     <input
                       type="text"
@@ -3291,7 +3291,7 @@ export default function AdminDashboard() {
                         Royal Mail Tracked UK
                       </div>
                       <div className="text-[10px] text-ry-stone mt-1">
-                        Tracked 48 (£3.65) • Tracked 24 (£4.80) • Medium Parcel (£5.55)
+                        Standard (£3.50) • Tracked 48 (£4.50) • Tracked 24 (£5.00)
                       </div>
                     </button>
 
@@ -3358,7 +3358,7 @@ export default function AdminDashboard() {
                               <div>
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="font-semibold text-ry-onyx text-[11px]">
-                                    {rm.id === 'rm-tracked-24-small' ? 'Tracked 24' : 'Tracked 48'}
+                                    {rm.service}
                                   </span>
                                   <span className="font-serif font-bold text-ry-onyx text-xs">
                                     £{rm.price.toFixed(2)}
@@ -3438,7 +3438,7 @@ export default function AdminDashboard() {
                     <div>
                       <div className="font-medium text-ry-onyx">Standard Cosmetic Goods</div>
                       <p className="text-[11px] text-ry-stone mt-1">
-                        Formulation does not exceed solvent flashpoint thresholds. Standard shipping documentation accepted by {activeLabelData.carrier}.
+                        Product does not exceed solvent flashpoint thresholds. Standard shipping documentation accepted by {activeLabelData.carrier}.
                       </p>
                     </div>
                   )}
@@ -3520,7 +3520,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between border-b-2 border-black pb-3 mb-3">
                     <div>
                       <span className="font-serif text-lg tracking-wider uppercase font-bold block">
-                        RYCARIX ATELIER
+                        RYCARIX FULFILLMENT
                       </span>
                       <span className="text-[9px] uppercase tracking-wider text-neutral-600 block">
                         {activeLabelData.carrier === 'Royal Mail'
@@ -3545,7 +3545,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-2 gap-4 text-[11px] border-b-2 border-black pb-3 mb-3">
                     <div>
                       <span className="text-[9px] uppercase font-bold text-neutral-500 block">FROM:</span>
-                      <div className="font-medium">Rycarix Fulfillment Atelier</div>
+                      <div className="font-medium">Rycarix Fulfillment Center</div>
                       <div className="text-neutral-600">18 Place Vendôme, 75001 Paris, France</div>
                     </div>
                     <div>
@@ -3661,7 +3661,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Floating Atelier Admin Notification Toast */}
+        {/* Floating Admin Notification Toast */}
         {notification && (
           <div className="fixed bottom-6 right-6 z-50 bg-ry-onyx text-ry-white px-5 py-3.5 border border-ry-ash/40 shadow-2xl flex items-center gap-3 animate-fade-in font-sans">
             {notification.type === 'success' ? (

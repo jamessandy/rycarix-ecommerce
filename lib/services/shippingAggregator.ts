@@ -109,8 +109,8 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     carrier: 'Royal Mail',
     serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
     senderAddress: {
-      name: 'Rycarix Fulfillment Atelier',
-      company: 'Rycarix Luxury Fragrance Co.',
+      name: 'Rycarix Fulfillment Center',
+      company: 'Rycarix Luxury Goods Co.',
       street: '18 Place Vendôme',
       city: 'Paris',
       postalCode: '75001',
@@ -118,7 +118,7 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     },
     recipientAddress: {
       name: 'Éléonore de Vance',
-      email: 'eleonore.devance@sanctuary.luxury',
+      email: 'eleonore.devance@example.com',
       phone: '+44 7946 0991',
       street: '42 Kensington Palace Gardens',
       city: 'London',
@@ -126,7 +126,7 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
       postalCode: 'W8 4QP',
       country: 'United Kingdom',
     },
-    customerEmail: 'eleonore.devance@sanctuary.luxury',
+    customerEmail: 'eleonore.devance@example.com',
     customerPhone: '+44 7946 0991',
     weightKg: 0.85,
     isHazardous: true,
@@ -161,7 +161,7 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
       {
         timestamp: 'Sep 25, 2026 • 02:15 PM',
         status: 'Dispatched via ShipStation',
-        location: 'Rycarix Atelier, Paris',
+        location: 'Rycarix Fulfillment Center, Paris',
         description: 'Royal Mail Tracked 24 thermal label printed with UN 1266 Limited Quantity diamond marking.',
         isCompleted: true,
       },
@@ -190,8 +190,8 @@ export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
     carrier: 'Evri',
     serviceLevel: 'Evri Express Tracked Delivery (48h Doorstep)',
     senderAddress: {
-      name: 'Rycarix Fulfillment Atelier',
-      company: 'Rycarix Luxury Fragrance Co.',
+      name: 'Rycarix Fulfillment Center',
+      company: 'Rycarix Luxury Goods Co.',
       street: '18 Place Vendôme',
       city: 'Paris',
       postalCode: '75001',
@@ -299,6 +299,7 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
       item.title.toLowerCase().includes('parfum') ||
       item.title.toLowerCase().includes('fragrance') ||
       item.title.toLowerCase().includes('mist') ||
+      item.category === 'Parfum' ||
       item.category === 'Haute Parfumerie'
   );
 
@@ -383,8 +384,8 @@ export function createAggregatorDispatch(params: {
     carrier: chosenCarrier,
     serviceLevel: chosenService,
     senderAddress: {
-      name: 'Rycarix Fulfillment Atelier',
-      company: 'Rycarix Luxury Fragrance Co.',
+      name: 'Rycarix Fulfillment Center',
+      company: 'Rycarix Luxury Goods Co.',
       street: '18 Place Vendôme',
       city: 'Paris',
       postalCode: '75001',
@@ -420,7 +421,7 @@ export function createAggregatorDispatch(params: {
           : `Dispatched via ${chosenCarrier}`,
         location: status === 'DELIVERED' || status === 'OUT_FOR_DELIVERY'
           ? `${params.city} Local Depot`
-          : 'Rycarix Atelier, Paris',
+          : 'Rycarix Fulfillment Center, Paris',
         description: packaging.isHazardous
           ? `${chosenCarrier} barcode generated with required UN 1266 Limited Quantity (LQ) hazard diamond.`
           : `${chosenCarrier} express courier waybill ${trackingNumber} in transit.`,
@@ -512,7 +513,7 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
     milestones.push({
       timestamp: `${ord.date || dateStr} • 04:30 PM`,
       status: `Collected by ${carrier}`,
-      location: 'Rycarix Fulfillment Atelier, Paris',
+      location: 'Rycarix Fulfillment Center, Paris',
       description: `Package collected and scanned into ${carrier} priority logistics network.`,
       isCompleted: true,
     });
@@ -529,7 +530,7 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
   const itemsList = Array.isArray(ord.itemsList) && ord.itemsList.length > 0
     ? ord.itemsList.map((i: any) => ({
         title: i.title || 'Botanical Item',
-        variant: i.variantTitle || 'Atelier Packaging',
+        variant: i.variantTitle || 'Luxury Packaging',
         quantity: i.quantity || 1,
         price: i.price || 0,
         image: i.image || 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
@@ -537,7 +538,7 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
       }))
     : [
         {
-          title: typeof ord.items === 'string' ? ord.items : 'Atelier Discovery Sample',
+          title: typeof ord.items === 'string' ? ord.items : 'Discovery Sample',
           variant: 'Standard Packaging',
           quantity: 1,
           price: ord.total || 0,
@@ -556,8 +557,8 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
       ord.shippingMethod ||
       (isPerfume ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48'),
     senderAddress: {
-      name: 'Rycarix Fulfillment Atelier',
-      company: 'Rycarix Luxury Fragrance Co.',
+      name: 'Rycarix Fulfillment Center',
+      company: 'Rycarix Luxury Goods Co.',
       street: '18 Place Vendôme',
       city: 'Paris',
       postalCode: '75001',

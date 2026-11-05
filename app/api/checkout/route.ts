@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: 365, currency: currency },
-                display_name: 'Tracked 48, small parcel up to 2kg (Best starting option)',
+                fixed_amount: { amount: 350, currency: currency },
+                display_name: 'Standard Delivery (2–3 working days)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 2 },
                   maximum: { unit: 'business_day', value: 3 },
@@ -93,22 +93,22 @@ export async function POST(req: NextRequest) {
             {
               shipping_rate_data: {
                 type: 'fixed_amount',
-                fixed_amount: { amount: 480, currency: currency },
-                display_name: 'Tracked 24, small parcel up to 2kg (For faster delivery)',
+                fixed_amount: { amount: 450, currency: currency },
+                display_name: 'Tracked 48 (2–3 working days)',
+                delivery_estimate: {
+                  minimum: { unit: 'business_day', value: 2 },
+                  maximum: { unit: 'business_day', value: 3 },
+                },
+              },
+            },
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: 500, currency: currency },
+                display_name: 'Tracked 24 (1–2 working days)',
                 delivery_estimate: {
                   minimum: { unit: 'business_day', value: 1 },
-                  maximum: { unit: 'business_day', value: 1 },
-                },
-              },
-            },
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: 555, currency: currency },
-                display_name: 'Tracked 48, medium parcel up to 2kg (For packages that exceed small-parcel)',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 2 },
-                  maximum: { unit: 'business_day', value: 3 },
+                  maximum: { unit: 'business_day', value: 2 },
                 },
               },
             },
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
           success_url: `${host}/dashboard/user?session_id={CHECKOUT_SESSION_ID}&status=success`,
           cancel_url: `${host}/?checkout_canceled=true`,
           metadata: {
-            platform: 'Rycarix Haute E-Commerce',
+            platform: 'Rycarix Luxury E-Commerce',
             paymentChannel: 'Klarna_Clearpay_Installments_Preferred',
             orderId: `RY-${Date.now().toString().slice(-5)}`,
             customerEmail: customerEmail || shippingAddress?.email || '',

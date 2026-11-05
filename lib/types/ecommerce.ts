@@ -14,6 +14,7 @@ export interface ProductAttributeMap {
   heartNotes?: string[];
   baseNotes?: string[];
   flaconOrigin?: string;
+  bottleOrigin?: string;
 
   // Generic dynamic attributes for future categories
   [key: string]: any;

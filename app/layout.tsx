@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   keywords: [
     'Rycarix',
     'Luxury Hair',
-    'Artisanal Hair Formulations',
+    'Artisanal Hair Care',
     'Hair Nectars',
     'Parfum',
     'Fragrance',

@@ -53,3 +53,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Dispatch email failed' }, { status: 500 });
   }
 }
+

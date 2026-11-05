@@ -67,10 +67,10 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
   const categoryOptions = [
     { label: 'All Products', value: 'ALL', count: visibleProducts.length },
     { label: 'Hair', value: 'Hair', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Hair')).length },
-    { label: 'Parfum', value: 'Haute Parfumerie', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Parfum')).length },
-    { label: 'Skincare', value: 'Botanical Skincare', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Skincare')).length },
+    { label: 'Parfum', value: 'Parfum', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Parfum')).length },
+    { label: 'Skincare', value: 'Skincare', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Skincare')).length },
     { label: 'Body & Bath', value: 'Body & Bath', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Body & Bath')).length },
-    { label: 'Home & Candles', value: 'Home & Living', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Home & Candles')).length },
+    { label: 'Home & Candles', value: 'Home & Candles', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Home & Candles')).length },
     { label: 'Accessories', value: 'Accessories', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Accessories')).length },
   ];
 
@@ -383,7 +383,7 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
           <div className="flex items-center gap-3">
             <Sparkles className="w-4 h-4 text-ry-onyx shrink-0" />
             <span>
-              All orders include signature atelier packaging and two discovery samples.
+              All orders include luxury gift packaging and two discovery samples.
             </span>
           </div>
           <Link

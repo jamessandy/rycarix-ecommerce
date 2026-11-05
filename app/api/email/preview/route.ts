@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const sampleHtml = buildDispatchNotificationEmailHtml({
       orderNumber: 'RY-84920',
       customerName: 'Éléonore de Vance',
-      customerEmail: 'eleonore.devance@sanctuary.luxury',
+      customerEmail: 'eleonore.devance@example.com',
       carrier: 'Royal Mail Tracked 24',
       trackingNumber: 'RY-RM-84920GB',
       serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const sampleHtml = buildOrderConfirmationEmailHtml({
     orderNumber: 'RY-84920',
     customerName: 'Éléonore de Vance',
-    customerEmail: 'eleonore.devance@sanctuary.luxury',
+    customerEmail: 'eleonore.devance@example.com',
     customerPhone: '+44 7946 0991',
     date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
     total: 284.50,
@@ -85,3 +85,4 @@ export async function GET(req: NextRequest) {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
+

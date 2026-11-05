@@ -103,11 +103,11 @@ function SignupFormContent() {
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-ry-white/10 border border-ry-white/20 text-[10px] uppercase tracking-editorial font-medium mb-4">
               <Crown className="w-3.5 h-3.5 text-amber-300" />
-              <span>Client Sanctuary Onboarding</span>
+              <span>Customer Account Creation</span>
             </div>
 
             <h1 className="font-serif text-3xl sm:text-4xl text-ry-white font-normal leading-tight">
-              Create Your Private Sanctuary Account
+              Create Your Private Rycarix Account
             </h1>
 
             <p className="text-xs text-ry-ash/80 mt-4 leading-relaxed font-light">
@@ -134,8 +134,8 @@ function SignupFormContent() {
               <div className="flex items-start gap-3">
                 <Crown className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
                 <div>
-                  <strong className="text-ry-white font-medium block">Atelier Member Access</strong>
-                  <span className="text-ry-ash/70 text-[11px]">Private invitations to limited botanical extractions.</span>
+                  <strong className="text-ry-white font-medium block">VIP Member Access</strong>
+                  <span className="text-ry-ash/70 text-[11px]">Private invitations to limited releases and events.</span>
                 </div>
               </div>
             </div>
@@ -154,7 +154,7 @@ function SignupFormContent() {
           <div>
             <div className="mb-6">
               <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block mb-1">
-                Sanctuary Member Registration
+                Account Registration
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl text-ry-onyx">
                 Personal & Delivery Details
@@ -214,7 +214,7 @@ function SignupFormContent() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="client@atelier.com"
+                      placeholder="client@rycarix.com"
                       className="w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border border-ry-ash focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors"
                     />
                   </div>
@@ -373,10 +373,10 @@ function SignupFormContent() {
                 className="w-full py-4 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-luxury"
               >
                 {isLoading ? (
-                  <span>Registering Sanctuary Account...</span>
+                  <span>Registering Account...</span>
                 ) : (
                   <>
-                    <span>Create Sanctuary Account & Save Delivery Address</span>
+                    <span>Create Account & Save Delivery Address</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -392,7 +392,7 @@ function SignupFormContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-ry-pearl pt-32 text-center text-xs text-ry-stone">Loading Sanctuary Registration...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-ry-pearl pt-32 text-center text-xs text-ry-stone">Loading Registration...</div>}>
       <SignupFormContent />
     </Suspense>
   );

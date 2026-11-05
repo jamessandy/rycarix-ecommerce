@@ -32,10 +32,10 @@ function getProductFromAllSources(slug: string): ProductItem | null {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const product = getProductFromAllSources(params.slug);
-  if (!product) return { title: 'Product Detail | Rycarix Haute Parfumerie & Care' };
+  if (!product) return { title: 'Product Detail | Rycarix Parfum & Care' };
 
   return {
-    title: `${product.title} | Rycarix Haute Parfumerie & Care`,
+    title: `${product.title} | Rycarix Parfum & Care`,
     description: product.summary || product.subtitle,
     openGraph: {
       title: product.title,

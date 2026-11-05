@@ -72,7 +72,7 @@ export default function Footer() {
               Rycarix
             </span>
             <p className="text-xs text-ry-stone leading-relaxed max-w-sm mb-4">
-              Artisanal botanical hair formulations, luxury parfums, clean skincare, and scented home goods crafted with premium ingredients.
+              Artisanal botanical hair care, luxury parfums, clean skincare, and scented home goods crafted with premium ingredients.
             </p>
             <div className="flex items-center gap-3 text-[10px] text-ry-ash/80">
               <span className="flex items-center gap-1">

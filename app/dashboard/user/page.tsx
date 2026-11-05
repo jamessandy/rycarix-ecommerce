@@ -245,7 +245,7 @@ function UserDashboardContent() {
             <User className="w-6 h-6 stroke-[1.4]" />
           </div>
           <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block mb-2">
-            Client Sanctuary
+            My Account
           </span>
           <h2 className="font-serif text-2xl text-ry-onyx mb-3">
             Sign In Required
@@ -365,7 +365,7 @@ function UserDashboardContent() {
                 : 'text-ry-stone hover:text-ry-onyx'
             }`}
           >
-            Sanctuary Profile
+            Account Profile
           </button>
         </div>
 
@@ -428,7 +428,7 @@ function UserDashboardContent() {
                 <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
                   {user?.role === 'ADMIN' && adminOrdersView === 'personal'
                     ? 'You have not placed any personal orders as Store Administrator. Switch to "All Store Orders" above to inspect incoming orders.'
-                    : 'You have not placed any orders yet. Discover our restorative botanical hair elixirs, haute perfumes, and candles.'}
+                    : 'You have not placed any orders yet. Discover our restorative botanical hair elixirs, luxury parfums, and candles.'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <Link
@@ -756,11 +756,11 @@ function UserDashboardContent() {
           </div>
         )}
 
-        {/* TAB 3: SANCTUARY PROFILE */}
+        {/* TAB 3: ACCOUNT PROFILE */}
         {activeTab === 'profile' && (
           <div className="bg-ry-white border border-ry-ash/70 p-6 sm:p-8 max-w-2xl animate-fade-in space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-serif text-xl">Sanctuary Account Details</h3>
+              <h3 className="font-serif text-xl">Account Details</h3>
               {profileSaved && (
                 <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-1 border border-emerald-200 animate-fade-in">
                   Account details updated
@@ -810,7 +810,7 @@ function UserDashboardContent() {
                 type="submit"
                 className="px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors"
               >
-                Save Sanctuary Profile
+                Save Profile
               </button>
             </form>
           </div>
@@ -823,7 +823,7 @@ function UserDashboardContent() {
 
 export default function UserDashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-ry-pearl pt-32 text-center text-xs text-ry-stone">Loading Sanctuary Dashboard...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-ry-pearl pt-32 text-center text-xs text-ry-stone">Loading Account Dashboard...</div>}>
       <UserDashboardContent />
     </Suspense>
   );

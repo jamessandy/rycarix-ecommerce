@@ -138,14 +138,14 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background-color: #FFFFFF; border: 1px solid #E5DFD3; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
           
-          <!-- Atelier Header Banner -->
+          <!-- Header Banner -->
           <tr>
             <td style="background-color: #3D1220; padding: 36px 32px; text-align: center;">
               <div style="font-family: Georgia, serif; font-size: 26px; letter-spacing: 0.28em; color: #FFFFFF; text-transform: uppercase; font-weight: 400; margin: 0;">
                 R Y C A R I X
               </div>
               <div style="font-size: 10px; letter-spacing: 0.3em; color: #E7DFD5; text-transform: uppercase; margin-top: 8px;">
-                Haute Parfumerie & Botanical Care
+                Parfum &amp; Botanical Care
               </div>
             </td>
           </tr>
@@ -160,7 +160,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
                 Thank you for your purchase, ${data.customerName || 'Valued Client'}.
               </h1>
               <p style="font-size: 14px; line-height: 1.6; color: #5C5850; margin: 0 0 20px 0;">
-                Your order <strong style="color: #1A1A1A; font-family: monospace;">${data.orderNumber}</strong> has been registered at our Paris packaging atelier. Each formulation is prepared according to strict purity protocols and inspected prior to courier dispatch.
+                Your order <strong style="color: #1A1A1A; font-family: monospace;">${data.orderNumber}</strong> has been registered at our Paris packaging facility. Each product is prepared according to strict purity protocols and inspected prior to courier dispatch.
               </p>
               
               <div style="background-color: #FBF9F5; border-left: 3px solid #3D1220; padding: 12px 16px; font-size: 12px; color: #666; margin-bottom: 24px;">
@@ -169,13 +169,13 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
             </td>
           </tr>
 
-          <!-- Itemized Formulation Table -->
+          <!-- Itemized Product Table -->
           <tr>
             <td style="padding: 0 32px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <thead>
                   <tr>
-                    <th align="left" style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A847A; padding-bottom: 10px; border-bottom: 2px solid #1A1A1A;">Formulation</th>
+                    <th align="left" style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A847A; padding-bottom: 10px; border-bottom: 2px solid #1A1A1A;">Product</th>
                     <th align="right" style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A847A; padding-bottom: 10px; border-bottom: 2px solid #1A1A1A;">Total</th>
                   </tr>
                 </thead>
@@ -223,7 +223,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
               </div>
 
               <div style="margin-top: 16px; padding: 12px; background-color: #FFFDF9; border: 1px solid #ECE3D4; font-size: 11px; color: #6E685F; line-height: 1.5;">
-                <strong style="color: #3D1220;">UN 1266 Limited Quantity (LQ) Compliant:</strong> Perfume formulations containing alcohol are packed under certified temperature-regulated air & road transit protocols with Royal Mail / Evri courier tracking.
+                <strong style="color: #3D1220;">UN 1266 Limited Quantity (LQ) Compliant:</strong> Parfums containing alcohol are packed under certified temperature-regulated air & road transit protocols with Royal Mail / Evri courier tracking.
               </div>
             </td>
           </tr>
@@ -235,7 +235,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
                 Track Your Order Live &rarr;
               </a>
               <div style="font-size: 11px; color: #8A847A; margin-top: 10px;">
-                Real-time milestones from packaging atelier to residential doorstep
+                Real-time milestones from packaging facility to residential doorstep
               </div>
             </td>
           </tr>
@@ -271,7 +271,7 @@ export function buildDispatchNotificationEmailHtml(data: DispatchNotificationEma
     ? `
       <div style="margin-top: 20px; border-top: 1px solid #ECE7DE; padding-top: 16px;">
         <div style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8A847A; margin-bottom: 8px;">
-          Enclosed Formulations:
+          Enclosed Products:
         </div>
         ${data.items
           .map(
@@ -529,3 +529,4 @@ export async function sendEmail({
 
   return { success: true, id, status: 'SIMULATED_DEMO' };
 }
+

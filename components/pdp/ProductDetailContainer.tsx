@@ -79,7 +79,7 @@ export default function ProductDetailContainer({ slug, initialProduct }: Product
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full border-2 border-ry-onyx border-t-transparent animate-spin" />
           <span className="text-xs uppercase tracking-editorial text-ry-stone">
-            Loading Formulation...
+            Loading Product...
           </span>
         </div>
       </div>
@@ -94,11 +94,11 @@ export default function ProductDetailContainer({ slug, initialProduct }: Product
             <Package className="w-6 h-6 stroke-[1.4]" />
           </div>
           <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block mb-2">
-            Rycarix Boutique
+            Rycarix Store
           </span>
-          <h1 className="font-serif text-2xl text-ry-onyx mb-3">Formulation Not Found</h1>
+          <h1 className="font-serif text-2xl text-ry-onyx mb-3">Product Not Found</h1>
           <p className="text-xs text-ry-stone mb-6 leading-relaxed">
-            The formulation or edition you are searching for may have been archived or moved to private client reserves.
+            The product you are searching for may have been archived or is temporarily unavailable.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
@@ -125,3 +125,4 @@ export default function ProductDetailContainer({ slug, initialProduct }: Product
     </div>
   );
 }
+

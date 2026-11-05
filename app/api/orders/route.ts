@@ -94,10 +94,10 @@ export async function GET(req: NextRequest) {
           const countryRaw = s.shipping_details?.address?.country;
           const country = countryRaw === 'GB' ? 'United Kingdom' : (countryRaw || 'United Kingdom');
 
-          const itemsText = lineItems.map((i) => `${i.description || 'Item'} (x${i.quantity || 1})`).join(', ') || 'Atelier Order';
+          const itemsText = lineItems.map((i) => `${i.description || 'Item'} (x${i.quantity || 1})`).join(', ') || 'Rycarix Order';
           const itemsList = lineItems.map((i) => ({
-            title: i.description || 'Botanical Formulation',
-            variantTitle: 'Atelier Packaging',
+            title: i.description || 'Botanical Product',
+            variantTitle: 'Luxury Packaging',
             quantity: i.quantity || 1,
             price: (i.amount_total || 0) / 100 / (i.quantity || 1),
             image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
             phone: customerPhone,
             items: itemsText,
             itemsList,
-            itemCategory: isPerfume ? 'Haute Parfumerie' : 'Hair',
+            itemCategory: isPerfume ? 'Parfum' : 'Hair',
             total: (s.amount_total || 0) / 100,
             currency: '£',
             paymentMethod: s.payment_method_types?.includes('klarna')

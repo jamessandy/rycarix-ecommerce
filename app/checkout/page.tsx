@@ -79,7 +79,7 @@ export default function CheckoutPage() {
       phone: customerPhoneNumber,
       items: items.map((i) => `${i.title} (${i.variantTitle})`).join(', '),
       itemsList: items,
-      itemCategory: items[0]?.title?.toLowerCase().includes('parfum') ? 'Haute Parfumerie' : 'Hair',
+      itemCategory: items[0]?.title?.toLowerCase().includes('parfum') ? 'Parfum' : 'Hair',
       total: total,
       paymentMethod:
         paymentMethod === 'klarna'
@@ -253,7 +253,7 @@ export default function CheckoutPage() {
                 {isAuthenticated && defaultAddress && (
                   <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 font-medium flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Prefilled from sanctuary profile
+                    Prefilled from account profile
                   </span>
                 )}
               </div>

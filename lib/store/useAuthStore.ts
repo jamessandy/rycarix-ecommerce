@@ -45,7 +45,7 @@ export const MAIN_ADMIN_ACCOUNT: UserProfile = {
     {
       id: 'addr-admin-hq',
       type: 'Headquarters',
-      street: '18 Place Vendôme / Bond Street Atelier',
+      street: '18 Place Vendôme / Bond Street Store',
       city: 'London',
       state: 'Greater London',
       postalCode: 'W1S 2TE',

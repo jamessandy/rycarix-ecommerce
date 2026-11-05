@@ -41,7 +41,7 @@ export const CATEGORIES: CategoryItem[] = [
   },
   {
     id: 'cat-fragrance',
-    name: 'Haute Parfumerie',
+    name: 'Parfum',
     slug: 'fragrance',
     description: 'Rare extrait concentrations aged in charred oak casks with 24-hour sillage.',
     image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=1200&auto=format&fit=crop',
@@ -50,7 +50,7 @@ export const CATEGORIES: CategoryItem[] = [
   },
   {
     id: 'cat-skincare',
-    name: 'Botanical Skincare',
+    name: 'Skincare',
     slug: 'skincare',
     description: 'High-potency cellular serums, barrier restorative balms, and cold-extracted actives.',
     image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=1200&auto=format&fit=crop',
@@ -66,16 +66,16 @@ export const CATEGORIES: CategoryItem[] = [
   },
   {
     id: 'cat-home',
-    name: 'Home & Living',
+    name: 'Home & Candles',
     slug: 'home-living',
-    description: 'Hand-poured ceramic bougies, room mists, and artisanal atmospheric objects.',
+    description: 'Hand-poured ceramic candles, room mists, and luxury home goods.',
     image: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?q=80&w=1200&auto=format&fit=crop',
     productCount: 2,
     featuredTag: 'New In',
   },
   {
     id: 'cat-accessories',
-    name: 'Accessories & Fine Objects',
+    name: 'Accessories',
     slug: 'accessories',
     description: 'Hand-stitched Italian leather travel cases and 22-momme pure mulberry silk goods.',
     image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1200&auto=format&fit=crop',
@@ -89,10 +89,10 @@ export const PRODUCTS: ProductItem[] = [
   // -------------------------------------------------------------
   {
     id: 'prod-demo-1eur',
-    title: 'Atelier Discovery Sample • 1€ Live Checkout Test',
+    title: 'Discovery Sample • 1€ Live Checkout Test',
     slug: 'atelier-discovery-sample-1-euro',
-    subtitle: '1€ / £1 Verification Sample • Botanical Hair & Fragrance Discovery Flacon',
-    summary: 'An artisanal 2ml discovery sample for testing live checkout, instant payment authorization, and courier dispatch milestones for exactly 1€ / £1.',
+    subtitle: '1€ / £1 Verification Sample • Botanical Hair & Fragrance Discovery Bottle',
+    summary: 'A 2ml discovery sample for testing live checkout, instant payment authorization, and courier dispatch milestones for exactly 1€ / £1.',
     description: 'Created specifically for client verification and live transaction testing. Experience the smooth checkout and instant milestone tracking of Rycarix with a single nominal payment of €1.00 / £1.00. Includes sample vial of our flagship botanical hair nectar.',
     category: 'Hair',
     basePrice: 1,
@@ -101,7 +101,7 @@ export const PRODUCTS: ProductItem[] = [
     reviewCount: 98,
     ingredients: 'Camellia Japonica Seed Oil, Citrullus Lanatus Seed Oil, Ceramide NG, Squalane, Natural Botanical Isolates. 100% Biodegradable.',
     howToUse: 'Dispense 1 drop into palms and smooth over hair ends or pulse points.',
-    sourcingEthics: 'Hand-filled in Murano glass 2ml sample flacons with recyclable brass caps.',
+    sourcingEthics: 'Hand-filled in 2ml glass sample bottles with recyclable caps.',
     attributes: {
       badge: '1€ Test Order',
       hairType: ['All Hair Types', 'Straight', 'Wavy', 'Curly', 'Coiled'],
@@ -114,7 +114,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'img-demo-hero',
         url: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Atelier Discovery Sample 1 euro test product',
+        alt: 'Discovery Sample 1 euro test product',
         isHero: true,
       },
       {
@@ -166,7 +166,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'img-hs-hero',
         url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=1200&auto=format&fit=crop',
-        alt: 'L’Huile Sublime luxury flacon in dark-field lighting',
+        alt: 'L’Huile Sublime luxury bottle in dark-field lighting',
         isHero: true,
       },
       {
@@ -185,7 +185,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'v-hs-100ml',
         sku: 'RY-HN-100',
-        title: '100ml / 3.4 fl. oz. Full Flacon',
+        title: '100ml / 3.4 fl. oz. Full Bottle',
         price: 135,
         compareAtPrice: 160,
         inventory: 48,
@@ -330,16 +330,16 @@ export const PRODUCTS: ProductItem[] = [
   },
 
   // -------------------------------------------------------------
-  // HAUTE PARFUMERIE
+  // PARFUM
   // -------------------------------------------------------------
   {
     id: 'prod-perfume-1',
     title: 'Santal Noir Extrait de Parfum',
     slug: 'santal-noir-extrait-de-parfum',
-    subtitle: 'Haute Parfumerie • 32% Rare Essence Concentration',
+    subtitle: 'Parfum • 32% Rare Essence Concentration',
     summary: 'A brooding, sculptural ode to Mysore sandalwood enveloped in smoky cardamom, violet concrete, and tactile black leather.',
     description: 'Santal Noir is formulated at an uncompromising 32% extrait concentration. It evokes the sensory threshold between ancient Japanese temple woodwork and candlelit midnight salon gatherings in Paris. Lingers on the skin and silk scarves for in excess of twenty-four hours.',
-    category: 'Haute Parfumerie',
+    category: 'Parfum',
     basePrice: 280,
     compareAtPrice: 310,
     rating: 5.0,
@@ -360,7 +360,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'img-sn-hero',
         url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Santal Noir crystal flacon in chiaroscuro studio lighting',
+        alt: 'Santal Noir crystal bottle in chiaroscuro studio lighting',
         isHero: true,
       },
       {
@@ -379,7 +379,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'v-sn-100ml',
         sku: 'RY-SN-100',
-        title: '100ml / 3.4 fl. oz. Crystal Flacon',
+        title: '100ml / 3.4 fl. oz. Crystal Bottle',
         price: 280,
         inventory: 35,
         attributes: { size: '100ml' },
@@ -401,7 +401,7 @@ export const PRODUCTS: ProductItem[] = [
     subtitle: 'Luminous Solar Amber & White Incense • 28% Concentration',
     summary: 'A transcendent union of sun-bleached driftwood, golden Moroccan benzoin, and sparkling solar neroli.',
     description: 'Capturing the golden hour over Mediterranean limestone cliffs. Ambre Céleste balances creamy vanilla resinoids with high-vibrational sparkling neroli blossom and warm skin musks.',
-    category: 'Haute Parfumerie',
+    category: 'Parfum',
     basePrice: 260,
     rating: 4.9,
     reviewCount: 54,
@@ -493,7 +493,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'v-br-50ml',
         sku: 'RY-BRS-50',
-        title: '50ml / 1.7 fl. oz. Dropper Flacon',
+        title: '50ml / 1.7 fl. oz. Dropper Bottle',
         price: 145,
         compareAtPrice: 170,
         inventory: 42,
@@ -744,7 +744,7 @@ export const PRODUCTS: ProductItem[] = [
       {
         id: 'v-bi-200ml',
         sku: 'RY-BIM-200',
-        title: '200ml / 6.8 fl. oz. Frosted Flacon',
+        title: '200ml / 6.8 fl. oz. Frosted Bottle',
         price: 75,
         inventory: 26,
         attributes: { size: '200ml' },
@@ -753,22 +753,22 @@ export const PRODUCTS: ProductItem[] = [
   },
 
   // -------------------------------------------------------------
-  // ACCESSORIES & FINE OBJECTS
+  // ACCESSORIES
   // -------------------------------------------------------------
   {
     id: 'prod-acc-1',
-    title: 'Artisan Leather Travel Flacon Case',
+    title: 'Artisan Leather Travel Case',
     slug: 'cuir-artisan-travel-flacon-case',
     subtitle: 'Hand-Stitched Full-Grain Italian Nappa Leather • Obsidian Finish',
-    summary: 'A bespoke travel companion sculpted to cradle your 50ml or 100ml fragrance flacon and elixirs during worldwide voyages.',
-    description: 'Handcrafted in an artisanal atelier outside Florence from supple vegetable-tanned full-grain Italian Nappa leather. Features hand-painted beveled edges, solid brass hardware with palladium plating, and a padded microfiber interior that safeguards delicate crystal vessels.',
+    summary: 'A bespoke travel companion sculpted to cradle your 50ml or 100ml fragrance bottle and elixirs during worldwide voyages.',
+    description: 'Handcrafted outside Florence from supple vegetable-tanned full-grain Italian Nappa leather. Features hand-painted beveled edges, solid brass hardware with palladium plating, and a padded microfiber interior that safeguards delicate crystal vessels.',
     category: 'Accessories',
     basePrice: 185,
     compareAtPrice: 215,
     rating: 5.0,
     reviewCount: 31,
     ingredients: '100% Certified Full-Grain Tuscan Vegetable-Tanned Nappa Leather, Solid Brass Hardware with Palladium Plating, Protective Suede-Microfiber Lining.',
-    howToUse: 'Insert 50ml or 100ml Rycarix crystal flacon securely into the central padded sleeve. Snap magnetic brass clasp to seal. Wipe with soft dry cloth to preserve natural patina.',
+    howToUse: 'Insert 50ml or 100ml Rycarix crystal bottle securely into the central padded sleeve. Snap magnetic brass clasp to seal. Wipe with soft dry cloth to preserve natural patina.',
     sourcingEthics: 'Vegetable-tanned with tree bark tannins without toxic chromium. Crafted by third-generation Tuscan leather artisans operating under fair wage standards.',
     attributes: {
       badge: 'Artisan Craft',
@@ -875,17 +875,17 @@ export const PRESS_MENTIONS: PressMention[] = [
   },
   {
     publication: 'Wallpaper*',
-    quote: 'From Murano glass flacons to hand-poured Limoges ceramics, every single piece is treated as an enduring work of design.',
+    quote: 'From luxury glass bottles to hand-poured ceramics, every single piece is treated as an enduring work of design.',
     date: 'Design Awards',
   },
   {
     publication: 'GQ Style',
-    quote: 'Santal Noir is quite simply one of the finest, most enduring sandalwood extraits formulated in the last decade.',
+    quote: 'Santal Noir is quite simply one of the finest, most enduring sandalwood parfums created in the last decade.',
     date: 'Fragrance Edit',
   },
   {
     publication: 'Harper’s Bazaar',
-    quote: 'The Botanical Radiance Serum and Silk Mask transformed our nightly ritual into an unhurried sanctuary.',
+    quote: 'The Botanical Radiance Serum and Silk Mask transformed our nightly ritual into an unhurried retreat.',
     date: 'Beauty Highlights',
   },
 ];
@@ -897,7 +897,7 @@ export const CUSTOMER_REVIEWS: ReviewItem[] = [
     location: 'Zurich, Switzerland',
     rating: 5,
     productTitle: 'Botanical Radiance Cellular Serum',
-    category: 'Botanical Skincare',
+    category: 'Skincare',
     title: 'Cellular restoration that truly delivers',
     comment: 'Within ten days of using this serum morning and evening, my skin texture underwent a visible transformation. The packaging and Klarna checkout were completely seamless.',
     verified: true,
@@ -909,9 +909,9 @@ export const CUSTOMER_REVIEWS: ReviewItem[] = [
     location: 'London, UK',
     rating: 5,
     productTitle: 'Santal Noir Extrait de Parfum',
-    category: 'Haute Parfumerie',
-    title: 'Monumental sillage and depth',
-    comment: 'This is authentic haute perfumery. The smoky cardamom and Mysore sandalwood linger effortlessly into the next morning. Arrived in a stunning presentation box with complimentary samples.',
+    category: 'Parfum',
+    title: 'Monumental scent and depth',
+    comment: 'This is authentic artisanal parfum. The smoky cardamom and Mysore sandalwood linger effortlessly into the next morning. Arrived in a stunning presentation box with complimentary samples.',
     verified: true,
     date: '3 weeks ago',
   },
@@ -921,7 +921,7 @@ export const CUSTOMER_REVIEWS: ReviewItem[] = [
     location: 'Paris, France',
     rating: 5,
     productTitle: 'Flamme Noire Artisanal Candle',
-    category: 'Home & Living',
+    category: 'Home & Candles',
     title: 'The Limoges ceramic vessel is exquisite',
     comment: 'The scent throw fills our entire Parisian apartment with warm fig and oud without ever being overpowering. When finished, I will keep the ceramic container for my vanity.',
     verified: true,

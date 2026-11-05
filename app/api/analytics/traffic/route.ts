@@ -55,10 +55,10 @@ export async function GET() {
 
   // Real category view distribution from recorded events
   const hairViews = recentEvents.filter((e) => e.category === 'Hair' || e.path.toLowerCase().includes('hair') || e.path.toLowerCase().includes('nectar') || e.path.toLowerCase().includes('mask') || e.path.toLowerCase().includes('bob')).length;
-  const fragranceViews = recentEvents.filter((e) => e.category === 'Haute Parfumerie' || e.path.toLowerCase().includes('parfum') || e.path.toLowerCase().includes('santal') || e.path.toLowerCase().includes('ambre')).length;
-  const skincareViews = recentEvents.filter((e) => e.category === 'Botanical Skincare' || e.path.toLowerCase().includes('serum') || e.path.toLowerCase().includes('balm')).length;
+  const fragranceViews = recentEvents.filter((e) => e.category === 'Parfum' || e.category === 'Haute Parfumerie' || e.path.toLowerCase().includes('parfum') || e.path.toLowerCase().includes('santal') || e.path.toLowerCase().includes('ambre')).length;
+  const skincareViews = recentEvents.filter((e) => e.category === 'Skincare' || e.category === 'Botanical Skincare' || e.path.toLowerCase().includes('serum') || e.path.toLowerCase().includes('balm')).length;
   const bodyViews = recentEvents.filter((e) => e.category === 'Body & Bath' || e.path.toLowerCase().includes('body')).length;
-  const homeViews = recentEvents.filter((e) => e.category === 'Home & Living' || e.path.toLowerCase().includes('candle') || e.path.toLowerCase().includes('bougie')).length;
+  const homeViews = recentEvents.filter((e) => e.category === 'Home & Candles' || e.category === 'Home & Living' || e.path.toLowerCase().includes('candle') || e.path.toLowerCase().includes('bougie')).length;
 
   const totalCatViews = hairViews + fragranceViews + skincareViews + bodyViews + homeViews;
 
@@ -71,13 +71,13 @@ export async function GET() {
       badge: 'Main Line',
     },
     {
-      name: 'Haute Parfumerie',
+      name: 'Parfum',
       slug: 'fragrance',
       views: fragranceViews,
       share: totalCatViews > 0 ? `${((fragranceViews / totalCatViews) * 100).toFixed(1)}%` : '0.0%',
     },
     {
-      name: 'Botanical Skincare',
+      name: 'Skincare',
       slug: 'skincare',
       views: skincareViews,
       share: totalCatViews > 0 ? `${((skincareViews / totalCatViews) * 100).toFixed(1)}%` : '0.0%',

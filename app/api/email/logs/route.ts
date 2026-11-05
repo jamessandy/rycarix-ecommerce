@@ -13,3 +13,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Could not load email logs' }, { status: 500 });
   }
 }
+

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
               paymentMethod: isKlarna ? 'Klarna Pay in 3 (0% APR)' : 'Authorized Card (Stripe)',
               items: [
                 {
-                  title: 'Rycarix Atelier Formulations',
+                  title: 'Rycarix Luxury Products',
                   variantTitle: 'Curated Edition',
                   quantity: 1,
                   price: totalAmount,
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
             await sendEmail({
               to: customerEmail,
-              subject: `Order Confirmed • ${orderNumber} • Rycarix Atelier`,
+              subject: `Order Confirmed • ${orderNumber} • Rycarix Store`,
               html: emailHtml,
               type: 'ORDER_CONFIRMATION',
               orderNumber,

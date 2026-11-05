@@ -66,7 +66,7 @@ export default function TransparencySection() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-center">
             <div className="lg:col-span-5 order-2 lg:order-1 space-y-4">
               <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
-                02 • Clean Formulations
+                02 • Clean Ingredients
               </span>
               <h3 className="font-serif text-2xl sm:text-3xl text-ry-onyx">
                 Effective Without Compromise
@@ -85,7 +85,7 @@ export default function TransparencySection() {
               <div className="relative aspect-[16/10] bg-ry-oatmeal border border-ry-ash/60 overflow-hidden shadow-luxury">
                 <Image
                   src="https://images.unsplash.com/photo-1526947425960-945c6e72858f?q=80&w=1200&auto=format&fit=crop"
-                  alt="Precision laboratory formulation"
+                  alt="Precision laboratory ingredients"
                   fill
                   sizes="(max-width: 1024px) 100vw, 60vw"
                   className="object-cover"

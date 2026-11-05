@@ -22,7 +22,7 @@ export default function PerksBanner() {
     },
     {
       icon: Gift,
-      title: 'Atelier Packaging',
+      title: 'Luxury Gift Packaging',
       description: 'Recyclable amber glass vessels with presentation box.',
     },
     {

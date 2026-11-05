@@ -46,7 +46,7 @@ function resolveCategoryData(rawSlug: string): { category: CategoryItem; filterK
         'Warm 2 to 3 drops of L’Huile Sublime between palms to activate cold-pressed botanical lipids. Smooth through damp lengths to seal cuticle porosity before thermal styling or overnight repair.',
     },
     fragrance: {
-      ritualTitle: 'The Haute Parfumerie Extraction & Aging',
+      ritualTitle: 'The Parfum Craft & Aging',
       ritualText:
         'Aged in charred French oak casks for eighteen months, our extraits possess a 32% oil concentration. Mist pulse points from 15cm distance; allow amber warmth to unfold over a 24-hour olfactory journey.',
     },
@@ -63,7 +63,7 @@ function resolveCategoryData(rawSlug: string): { category: CategoryItem; filterK
     'home-living': {
       ritualTitle: 'Feu de Cèdre Artisanal Candle & Atmospheric Care',
       ritualText:
-        'On first lighting, burn your hand-poured ceramic bougie for at least three consecutive hours until an even melt pool reaches the container edge. Trim wick to 5mm before every lighting for a clean, soot-free 65-hour aroma.',
+        'On first lighting, burn your hand-poured ceramic candle for at least three consecutive hours until an even melt pool reaches the container edge. Trim wick to 5mm before every lighting for a clean, soot-free 65-hour aroma.',
     },
     accessories: {
       ritualTitle: 'Artisanal Craftsmanship & Leather Preservation',
@@ -73,7 +73,7 @@ function resolveCategoryData(rawSlug: string): { category: CategoryItem; filterK
   };
 
   const ritual = rituals[targetSlug] || {
-    ritualTitle: 'Artisanal Formulation Philosophy',
+    ritualTitle: 'Artisanal Craft & Philosophy',
     ritualText: 'Crafted in small batches with uncompromising material purity and unhurried French techniques.',
   };
 
@@ -307,7 +307,7 @@ export default function CategoryDetailPage() {
         {categoryProducts.length === 0 ? (
           <div className="text-center py-20 bg-ry-white border border-ry-ash/70 p-8 max-w-lg mx-auto">
             <Sparkles className="w-8 h-8 text-ry-stone/60 mx-auto mb-3" />
-            <h3 className="font-serif text-2xl text-ry-onyx mb-2">No Formulations Found</h3>
+            <h3 className="font-serif text-2xl text-ry-onyx mb-2">No Products Found</h3>
             <p className="text-xs text-ry-stone mb-6">
               No products found matching &ldquo;{searchQuery}&rdquo; in {category.name}. Try a different search term or explore other departments.
             </p>
@@ -475,7 +475,7 @@ export default function CategoryDetailPage() {
 
           <div className="md:col-span-7 space-y-4">
             <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block font-medium">
-              Atelier Ritual & Application
+              Application & Routine
             </span>
             <h2 className="font-serif text-2xl sm:text-3xl text-ry-onyx">
               {ritualTitle}

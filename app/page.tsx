@@ -40,7 +40,7 @@ export default function HomePage() {
       {/* 7. Verified Customer Reviews & Press Accolades */}
       <CustomerReviews />
 
-      {/* 8. Terroir & Workshop Transparency */}
+      {/* 8. Ingredients & Workshop Transparency */}
       <TransparencySection />
     </main>
   );

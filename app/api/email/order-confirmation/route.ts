@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       paymentMethod: body.paymentMethod || 'Authorized Card / Klarna',
       items: Array.isArray(body.items) && body.items.length > 0 ? body.items : [
         {
-          title: typeof body.items === 'string' ? body.items : 'Atelier Formulation',
+          title: typeof body.items === 'string' ? body.items : 'Rycarix Product',
           variantTitle: '100ml / 3.4 fl. oz.',
           quantity: 1,
           price: Number(body.total) || 0,
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     const html = buildOrderConfirmationEmailHtml(data);
-    const subject = `Order Confirmed • ${data.orderNumber} • Rycarix Atelier`;
+    const subject = `Order Confirmed • ${data.orderNumber} • Rycarix Store`;
 
     const result = await sendEmail({
       to: data.customerEmail,
@@ -65,3 +65,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Email processing failed' }, { status: 500 });
   }
 }
+
