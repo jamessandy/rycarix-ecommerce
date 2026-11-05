@@ -1,8 +1,10 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import fs from 'fs';
+import path from 'path';
 import { PRODUCTS } from '@/lib/data/mockData';
-import ProductDetailView from '@/components/pdp/ProductDetailView';
+import { ProductItem } from '@/lib/types/ecommerce';
+import ProductDetailContainer from '@/components/pdp/ProductDetailContainer';
 
 interface ProductPageProps {
   params: {
@@ -10,31 +12,41 @@ interface ProductPageProps {
   };
 }
 
+function getProductFromAllSources(slug: string): ProductItem | null {
+  // 1. Check static mockData
+  let found = PRODUCTS.find((p) => p.slug === slug || p.id === slug);
+  if (found) return found;
+
+  // 2. Check server cache file
+  try {
+    const cacheFile = path.join('/tmp', 'rycarix_catalog_products.json');
+    if (fs.existsSync(cacheFile)) {
+      const serverList: ProductItem[] = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+      found = serverList.find((p) => p.slug === slug || p.id === slug);
+      if (found) return found;
+    }
+  } catch (e) {}
+
+  return null;
+}
+
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const product = PRODUCTS.find((p) => p.slug === params.slug);
-  if (!product) return { title: 'Product Not Found | Rycarix' };
+  const product = getProductFromAllSources(params.slug);
+  if (!product) return { title: 'Product Detail | Rycarix Haute Parfumerie & Care' };
 
   return {
     title: `${product.title} | Rycarix Haute Parfumerie & Care`,
-    description: product.summary,
+    description: product.summary || product.subtitle,
     openGraph: {
       title: product.title,
-      description: product.summary,
-      images: [{ url: product.images[0]?.url }],
+      description: product.summary || product.subtitle,
+      images: product.images && product.images[0] ? [{ url: product.images[0].url }] : [],
     },
   };
 }
 
 export default function ProductPage({ params }: ProductPageProps) {
-  const product = PRODUCTS.find((p) => p.slug === params.slug);
+  const product = getProductFromAllSources(params.slug);
 
-  if (!product) {
-    notFound();
-  }
-
-  return (
-    <div className="pt-24 bg-ry-pearl min-h-screen">
-      <ProductDetailView product={product} />
-    </div>
-  );
+  return <ProductDetailContainer slug={params.slug} initialProduct={product} />;
 }

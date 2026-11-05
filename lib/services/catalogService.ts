@@ -1,0 +1,124 @@
+import { ProductItem } from '@/lib/types/ecommerce';
+import { PRODUCTS } from '@/lib/data/mockData';
+
+/**
+ * Standard luxury department names and aliases
+ */
+export const CATEGORY_DEFINITIONS = [
+  {
+    key: 'Hair',
+    label: 'Hair',
+    slug: 'hair',
+    aliases: ['hair', 'haircare', 'hair care', 'scalp', 'shampoo', 'conditioner', 'hair elixir'],
+  },
+  {
+    key: 'Haute Parfumerie',
+    label: 'Parfum',
+    slug: 'fragrance',
+    aliases: ['haute parfumerie', 'parfum', 'perfume', 'fragrance', 'extrait', 'flacon', 'cologne', 'scent'],
+  },
+  {
+    key: 'Botanical Skincare',
+    label: 'Skincare',
+    slug: 'skincare',
+    aliases: ['botanical skincare', 'skincare', 'skin', 'serum', 'balm', 'face', 'cellular'],
+  },
+  {
+    key: 'Body & Bath',
+    label: 'Body & Bath',
+    slug: 'body-bath',
+    aliases: ['body & bath', 'body', 'bath', 'polish', 'wash'],
+  },
+  {
+    key: 'Home & Living',
+    label: 'Home & Candles',
+    slug: 'home-living',
+    aliases: ['home & living', 'home & candles', 'candles', 'candle', 'bougie', 'home', 'living', 'room mist'],
+  },
+  {
+    key: 'Accessories',
+    label: 'Accessories',
+    slug: 'accessories',
+    aliases: ['accessories', 'accessories & fine goods', 'accessory', 'fine goods', 'leather', 'silk mask'],
+  },
+];
+
+/**
+ * Check if a product matches a target category filter
+ */
+export function matchProductCategory(productCategory: string | undefined, targetCategory: string): boolean {
+  if (!targetCategory || targetCategory === 'ALL') return true;
+  if (!productCategory) return false;
+
+  const prodCatNorm = productCategory.toLowerCase().trim();
+  const targetNorm = targetCategory.toLowerCase().trim();
+
+  // Direct match
+  if (prodCatNorm === targetNorm) return true;
+
+  // Find definition for target
+  const def = CATEGORY_DEFINITIONS.find(
+    (d) =>
+      d.key.toLowerCase() === targetNorm ||
+      d.label.toLowerCase() === targetNorm ||
+      d.slug.toLowerCase() === targetNorm ||
+      d.aliases.some((a) => a === targetNorm)
+  );
+
+  if (def) {
+    if (def.aliases.some((alias) => prodCatNorm.includes(alias) || alias.includes(prodCatNorm))) {
+      return true;
+    }
+  }
+
+  // Also check if prodCat matches any definition that matches target
+  const prodDef = CATEGORY_DEFINITIONS.find(
+    (d) =>
+      d.key.toLowerCase() === prodCatNorm ||
+      d.label.toLowerCase() === prodCatNorm ||
+      d.slug.toLowerCase() === prodCatNorm ||
+      d.aliases.some((a) => a === prodCatNorm)
+  );
+
+  if (prodDef && def && prodDef.key === def.key) {
+    return true;
+  }
+
+  return prodCatNorm.includes(targetNorm) || targetNorm.includes(prodCatNorm);
+}
+
+/**
+ * Get clean client-facing label for category pill
+ */
+export function getCategoryDisplayLabel(category: string): string {
+  if (!category) return 'Atelier';
+  const norm = category.toLowerCase().trim();
+
+  const def = CATEGORY_DEFINITIONS.find(
+    (d) =>
+      d.key.toLowerCase() === norm ||
+      d.label.toLowerCase() === norm ||
+      d.aliases.some((a) => norm.includes(a))
+  );
+
+  return def ? def.label : category;
+}
+
+/**
+ * Client-side helper to load full product catalog (syncs localStorage + fallback mockData)
+ */
+export function loadClientCatalog(): ProductItem[] {
+  if (typeof window === 'undefined') return PRODUCTS;
+  try {
+    const raw = localStorage.getItem('rycarix_catalog_products');
+    if (raw) {
+      const parsed: ProductItem[] = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read rycarix_catalog_products from localStorage', e);
+  }
+  return PRODUCTS;
+}

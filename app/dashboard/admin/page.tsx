@@ -25,6 +25,7 @@ import {
   KeyRound,
   Truck,
   Printer,
+  Mail,
   ExternalLink,
   FileText,
   CheckCircle2,
@@ -227,7 +228,7 @@ export default function AdminDashboard() {
     }
   }, [hasHydrated, isAuthenticated, user, router]);
 
-  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'analytics'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'analytics' | 'emails'>('inventory');
   const [productsList, setProductsList] = useState<ProductItem[]>(PRODUCTS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -326,6 +327,13 @@ export default function AdminDashboard() {
         console.warn('Could not persist products', err);
       }
     }
+    try {
+      fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: newList }),
+      }).catch((e) => console.warn('Could not sync catalog with server API', e));
+    } catch (e) {}
   };
 
   const handleResetCatalog = () => {
@@ -840,12 +848,27 @@ export default function AdminDashboard() {
   // Real store orders hydrated from localStorage or empty
   const [adminOrders, setAdminOrders] = useState<any[]>([]);
   const [trafficData, setTrafficData] = useState<any>(null);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [selectedEmailPreview, setSelectedEmailPreview] = useState<any | null>(null);
+
+  const fetchEmailLogs = () => {
+    fetch('/api/email/logs')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data?.logs)) {
+          setEmailLogs(data.logs);
+        }
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     fetch('/api/analytics/traffic')
       .then((res) => res.json())
       .then((data) => setTrafficData(data))
       .catch(() => {});
+
+    fetchEmailLogs();
   }, [activeTab]);
 
   // Dynamic calculations based strictly on real catalog and active orders
@@ -1170,6 +1193,53 @@ export default function AdminDashboard() {
           }).catch((err) => console.warn('Could not update order dispatch on server', err));
         } catch (e) {}
 
+        // Send automated customer dispatch notification email
+        const targetEmail = dispatchModalOrder.email || dispatchModalOrder.address?.email;
+        if (targetEmail) {
+          try {
+            fetch('/api/email/dispatch-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderNumber: dispatchModalOrder.id,
+                customerName: dispatchModalOrder.customer,
+                customerEmail: targetEmail,
+                carrier: activeLabelData.carrier,
+                trackingNumber: activeLabelData.trackingNumber,
+                serviceLevel: activeLabelData.serviceLevel,
+                estimatedDelivery: activeLabelData.estimatedDelivery,
+                trackingUrl:
+                  typeof window !== 'undefined'
+                    ? `${window.location.origin}/track?ref=${encodeURIComponent(
+                        activeLabelData.trackingNumber || dispatchModalOrder.id
+                      )}`
+                    : undefined,
+                items: dispatchModalOrder.itemsList || [
+                  {
+                    title: dispatchModalOrder.items,
+                    variantTitle: 'Atelier Packaging',
+                    quantity: 1,
+                    price: dispatchModalOrder.total,
+                  },
+                ],
+                address: dispatchModalOrder.address,
+              }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  setNotification({
+                    message: `Dispatch email notification sent to ${targetEmail} (Tracking #${activeLabelData.trackingNumber}).`,
+                    type: 'success',
+                  });
+                  setTimeout(() => setNotification(null), 5000);
+                  fetchEmailLogs();
+                }
+              })
+              .catch((err) => console.warn('Dispatch email notification failed', err));
+          } catch (e) {}
+        }
+
       setIsDispatching(false);
       setDispatchSuccessMsg(
         `Order ${dispatchModalOrder.id} dispatched via ${activeLabelData.carrier}! Tracking #${activeLabelData.trackingNumber} is live.`
@@ -1328,6 +1398,20 @@ export default function AdminDashboard() {
             }`}
           >
             Website Traffic & Analytics
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('emails');
+              fetchEmailLogs();
+            }}
+            className={`pb-4 px-4 font-medium transition-all relative flex items-center gap-1.5 ${
+              activeTab === 'emails'
+                ? 'text-ry-onyx border-b-2 border-ry-onyx'
+                : 'text-ry-stone hover:text-ry-onyx'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Automated Customer Emails ({emailLogs.length})</span>
           </button>
         </div>
 
@@ -1999,6 +2083,278 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Tab 4: Automated Customer Emails & Notification Logs */}
+        {activeTab === 'emails' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header Status & Notification Pipeline Card */}
+            <div className="bg-ry-white border border-ry-ash p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 bg-ry-onyx text-ry-white flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif text-base text-ry-onyx">
+                      Automated Customer Email Pipeline
+                    </h3>
+                    <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[9px] uppercase tracking-wider font-semibold">
+                      Live Trigger Engine Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-ry-stone mt-1 max-w-2xl leading-relaxed">
+                    1. <strong>Order Confirmation:</strong> Sent automatically immediately upon customer purchase with itemized summary, delivery address, and pricing.<br />
+                    2. <strong>Dispatch Notification:</strong> Sent automatically when you click &quot;Confirm Dispatch&quot; with the live tracking number, carrier name, and courier milestone link.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch('/api/email/order-confirmation', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        orderNumber: `RY-${Math.floor(10000 + Math.random() * 90000)}`,
+                        customerName: 'Valued Client (Test)',
+                        customerEmail: user?.email || 'client@rycarix.com',
+                        total: 135.0,
+                        items: [
+                          {
+                            title: 'Santal Sublime Extrait de Parfum',
+                            variantTitle: '100ml / 3.4 fl. oz.',
+                            quantity: 1,
+                            price: 135.0,
+                          },
+                        ],
+                      }),
+                    })
+                      .then((res) => res.json())
+                      .then(() => {
+                        fetchEmailLogs();
+                        setNotification({
+                          message: `Test Order Confirmation email generated!`,
+                          type: 'success',
+                        });
+                        setTimeout(() => setNotification(null), 4000);
+                      });
+                  }}
+                  className="px-3.5 py-2 bg-ry-pearl border border-ry-ash text-ry-onyx text-xs uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors"
+                >
+                  + Test Order Email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch('/api/email/dispatch-notification', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        orderNumber: `RY-${Math.floor(10000 + Math.random() * 90000)}`,
+                        customerName: 'Valued Client (Test)',
+                        customerEmail: user?.email || 'client@rycarix.com',
+                        carrier: 'Royal Mail Tracked 24',
+                        trackingNumber: `RY-RM-${Math.floor(100000 + Math.random() * 900000)}GB`,
+                        serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
+                        estimatedDelivery: 'Tomorrow by 1:00 PM',
+                      }),
+                    })
+                      .then((res) => res.json())
+                      .then(() => {
+                        fetchEmailLogs();
+                        setNotification({
+                          message: `Test Dispatch Notification email generated!`,
+                          type: 'success',
+                        });
+                        setTimeout(() => setNotification(null), 4000);
+                      });
+                  }}
+                  className="px-3.5 py-2 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-semibold hover:bg-ry-burgundyLight transition-colors"
+                >
+                  + Test Dispatch Email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={fetchEmailLogs}
+                  className="p-2 border border-ry-ash text-ry-stone hover:text-ry-onyx hover:bg-ry-pearl transition-colors"
+                  title="Refresh Email Logs"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Email Logs Table */}
+            <div className="bg-ry-white border border-ry-ash overflow-hidden">
+              <div className="p-4 bg-ry-pearlDark/30 border-b border-ry-ash flex items-center justify-between text-xs">
+                <span className="font-serif text-sm">Automated Email Dispatch Telemetry</span>
+                <span className="text-[11px] text-ry-stone">
+                  {emailLogs.length} automated emails recorded
+                </span>
+              </div>
+
+              {emailLogs.length === 0 ? (
+                <div className="p-12 text-center text-ry-stone font-sans">
+                  <Mail className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="font-serif text-base text-ry-onyx mb-1">No Automated Emails Sent Yet</p>
+                  <p className="text-xs text-ry-stone max-w-md mx-auto mb-4">
+                    Automated emails will appear here when a customer completes checkout or when you confirm dispatch in the Fulfillment tab.
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    <a
+                      href="/api/email/preview?type=order_confirmation"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 border border-ry-ash bg-ry-pearl text-[11px] uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Preview Order Confirmation HTML</span>
+                    </a>
+                    <a
+                      href="/api/email/preview?type=dispatch_notification"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 border border-ry-ash bg-ry-pearl text-[11px] uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Preview Dispatch Email HTML</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
+                      <tr>
+                        <th className="py-3 px-4">Trigger / Email Type</th>
+                        <th className="py-3 px-4">Order Ref</th>
+                        <th className="py-3 px-4">Customer Recipient</th>
+                        <th className="py-3 px-4">Courier / Tracking</th>
+                        <th className="py-3 px-4">Timestamp</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-ry-ash/40">
+                      {emailLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-ry-pearl/50 transition-colors">
+                          <td className="py-3 px-4 font-medium">
+                            <span
+                              className={`px-2 py-0.5 text-[9px] uppercase tracking-wider font-semibold border ${
+                                log.type === 'ORDER_CONFIRMATION'
+                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
+                                  : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                              }`}
+                            >
+                              {log.type === 'ORDER_CONFIRMATION' ? 'Order Confirmation' : 'Dispatch Notice'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono font-medium text-ry-onyx">
+                            {log.orderNumber}
+                          </td>
+                          <td className="py-3 px-4 text-ry-charcoal">
+                            <div>{log.to}</div>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-ry-stone">
+                            {log.carrier && (
+                              <div className="font-semibold text-ry-onyx">{log.carrier}</div>
+                            )}
+                            {log.trackingNumber ? log.trackingNumber : '—'}
+                          </td>
+                          <td className="py-3 px-4 text-ry-stone text-[11px]">
+                            {new Date(log.timestamp).toLocaleString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[9px] uppercase tracking-wider font-medium">
+                              {log.status === 'DELIVERED' ? '✓ Delivered' : '✓ Generated (Preview Ready)'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedEmailPreview(log)}
+                                className="px-2.5 py-1 bg-ry-pearl border border-ry-ash text-ry-onyx hover:bg-ry-onyx hover:text-ry-white text-[10px] uppercase tracking-editorial transition-colors"
+                              >
+                                Preview HTML
+                              </button>
+                              <a
+                                href={`/api/email/preview?id=${encodeURIComponent(log.id)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-ry-stone hover:text-ry-onyx"
+                                title="Open full email in new tab"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* In-Dashboard Email Preview Modal */}
+            {selectedEmailPreview && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in font-sans">
+                <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+                  <div className="p-4 bg-ry-onyx text-ry-white flex items-center justify-between border-b border-ry-ash">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-editorial text-ry-ash font-medium">
+                        Luxury HTML Email Preview
+                      </div>
+                      <div className="font-serif text-sm">
+                        {selectedEmailPreview.subject}
+                      </div>
+                      <div className="text-[11px] text-ry-stone font-mono">
+                        To: {selectedEmailPreview.to} &nbsp;•&nbsp; Order: {selectedEmailPreview.orderNumber}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/email/preview?id=${encodeURIComponent(selectedEmailPreview.id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1 bg-ry-white/10 hover:bg-ry-white/20 text-white text-[10px] uppercase tracking-editorial flex items-center gap-1 border border-white/20"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Full Screen</span>
+                      </a>
+                      <button
+                        onClick={() => setSelectedEmailPreview(null)}
+                        className="p-1.5 text-ry-ash hover:text-ry-white transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-neutral-100 p-4">
+                    <div className="max-w-2xl mx-auto bg-white shadow-md border border-neutral-300">
+                      <iframe
+                        srcDoc={selectedEmailPreview.html}
+                        className="w-full min-h-[600px] border-none"
+                        title="Rendered Email Preview"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

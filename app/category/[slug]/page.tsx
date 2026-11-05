@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -22,6 +22,7 @@ import {
 import { PRODUCTS, CATEGORIES, CategoryItem } from '@/lib/data/mockData';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { ProductItem } from '@/lib/types/ecommerce';
+import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/services/catalogService';
 
 // Map common URLs to standard categories
 function resolveCategoryData(rawSlug: string): { category: CategoryItem; filterKey: string; ritualTitle: string; ritualText: string } | null {
@@ -93,8 +94,36 @@ export default function CategoryDetailPage() {
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [hoveredProductId, setHoveredProductId] = useState<string | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [allProducts, setAllProducts] = useState<ProductItem[]>(PRODUCTS);
 
   const { addItem, openCart } = useCartStore();
+
+  // Load latest catalog from localStorage and API
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('rycarix_catalog_products');
+        if (saved) {
+          const parsed: ProductItem[] = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAllProducts(parsed);
+          }
+        }
+      } catch (e) {}
+
+      fetch('/api/products')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (Array.isArray(data?.products) && data.products.length > 0) {
+            setAllProducts((prev) => {
+              // Prefer localStorage if newer, otherwise sync
+              return prev.length >= data.products.length ? prev : data.products;
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
 
   if (!resolved) {
     return (
@@ -117,32 +146,47 @@ export default function CategoryDetailPage() {
 
   const { category, filterKey, ritualTitle, ritualText } = resolved;
 
-  // Filter products matching this category
+  // Filter products matching this category (including admin-added items)
   const categoryProducts = useMemo(() => {
-    return PRODUCTS.filter((product) => {
-      const matchCat =
-        product.category === filterKey ||
-        (category.slug === 'hair' && (product.category === 'Hair' || product.category === 'Hair Care')) ||
-        (category.slug === 'home-living' && (product.category === 'Home & Living' || product.title.toLowerCase().includes('candle') || product.title.toLowerCase().includes('bougie'))) ||
-        (category.slug === 'fragrance' && (product.category === 'Haute Parfumerie' || product.category.toLowerCase().includes('perfume'))) ||
-        (category.slug === 'skincare' && product.category === 'Botanical Skincare') ||
-        (category.slug === 'body-bath' && product.category === 'Body & Bath') ||
-        (category.slug === 'accessories' && product.category === 'Accessories');
+    return allProducts
+      .filter((product) => {
+        if (product.isHidden) return false;
 
-      const matchSearch =
-        searchQuery === '' ||
-        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchCat =
+          matchProductCategory(product.category, category.slug) ||
+          matchProductCategory(product.category, filterKey) ||
+          (category.slug === 'hair' && (product.category === 'Hair' || product.category === 'Hair Care')) ||
+          (category.slug === 'home-living' &&
+            (product.category === 'Home & Living' ||
+              product.title.toLowerCase().includes('candle') ||
+              product.title.toLowerCase().includes('bougie'))) ||
+          (category.slug === 'fragrance' &&
+            (product.category === 'Haute Parfumerie' ||
+              product.category.toLowerCase().includes('parfum') ||
+              product.category.toLowerCase().includes('perfume') ||
+              product.category.toLowerCase().includes('fragrance'))) ||
+          (category.slug === 'skincare' &&
+            (product.category === 'Botanical Skincare' || product.category.toLowerCase().includes('skin'))) ||
+          (category.slug === 'body-bath' &&
+            (product.category === 'Body & Bath' || product.category.toLowerCase().includes('body'))) ||
+          (category.slug === 'accessories' &&
+            (product.category === 'Accessories' || product.category.toLowerCase().includes('accessor')));
 
-      return matchCat && matchSearch;
-    }).sort((a, b) => {
-      if (sortBy === 'price-asc') return a.basePrice - b.basePrice;
-      if (sortBy === 'price-desc') return b.basePrice - a.basePrice;
-      if (sortBy === 'rating') return b.rating - a.rating;
-      return 0;
-    });
-  }, [category.slug, filterKey, searchQuery, sortBy]);
+        const matchSearch =
+          searchQuery === '' ||
+          product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchCat && matchSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'price-asc') return a.basePrice - b.basePrice;
+        if (sortBy === 'price-desc') return b.basePrice - a.basePrice;
+        if (sortBy === 'rating') return b.rating - a.rating;
+        return 0;
+      });
+  }, [allProducts, category.slug, filterKey, searchQuery, sortBy]);
 
   const handleQuickAdd = (product: ProductItem, e: React.MouseEvent) => {
     e.preventDefault();

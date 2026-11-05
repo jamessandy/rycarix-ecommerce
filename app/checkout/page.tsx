@@ -117,6 +117,41 @@ export default function CheckoutPage() {
       console.warn('Could not persist order locally', saveErr);
     }
 
+    // Trigger automated order confirmation email immediately
+    try {
+      fetch('/api/email/order-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderNumber: newOrderId,
+          customerName: customerFullName,
+          customerEmail: customerEmailAddr,
+          customerPhone: customerPhoneNumber,
+          date: newOrder.date,
+          total: total,
+          subtotal: subtotal,
+          shippingCost: shipping,
+          shippingMethod: selectedShipping.service,
+          paymentMethod: newOrder.paymentMethod,
+          items: items.map((i) => ({
+            title: i.title,
+            variantTitle: i.variantTitle,
+            quantity: i.quantity,
+            price: i.price,
+            image: i.image,
+          })),
+          address: {
+            name: customerFullName,
+            street,
+            city,
+            state,
+            postalCode,
+            country,
+          },
+        }),
+      }).catch((emailErr) => console.warn('Order confirmation email trigger failed', emailErr));
+    } catch (e) {}
+
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',

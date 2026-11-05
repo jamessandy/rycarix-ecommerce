@@ -17,6 +17,7 @@ import {
 import { ProductItem } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import KlarnaWidget from '@/components/klarna/KlarnaWidget';
+import { getCategoryDisplayLabel } from '@/lib/services/catalogService';
 
 interface ProductDetailViewProps {
   product: ProductItem;
@@ -164,7 +165,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
           {/* Header & Subtitle */}
           <div>
             <span className="text-[10px] uppercase tracking-[0.25em] text-ry-stone font-sans">
-              {product.category}
+              {getCategoryDisplayLabel(product.category)}
             </span>
             <h1 className="font-serif text-3xl sm:text-4xl text-ry-onyx leading-tight mt-1 mb-2 font-normal">
               {product.title}
@@ -307,9 +308,30 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                     <strong className="text-ry-onyx">Origin:</strong> {product.attributes.origin}
                   </div>
                 )}
-                {product.attributes.hardware && (
+                {product.attributes?.hardware && (
                   <div>
                     <strong className="text-ry-onyx">Hardware:</strong> {product.attributes.hardware}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : product.sourcingEthics || product.category ? (
+            <div className="bg-ry-oatmeal/50 p-4 border border-ry-ash/60 space-y-2">
+              <div className="text-[10px] uppercase tracking-editorial text-ry-stone">
+                Atelier Formulation Profile
+              </div>
+              <div className="text-xs space-y-1 font-sans text-ry-charcoal">
+                <div>
+                  <strong className="text-ry-onyx">Department:</strong> {getCategoryDisplayLabel(product.category)}
+                </div>
+                {product.sourcingEthics && (
+                  <div>
+                    <strong className="text-ry-onyx">Terroir & Craft:</strong> {product.sourcingEthics}
+                  </div>
+                )}
+                {product.variants[0]?.title && (
+                  <div>
+                    <strong className="text-ry-onyx">Edition Size:</strong> {product.variants[0].title}
                   </div>
                 )}
               </div>

@@ -17,6 +17,7 @@ import {
 import { PRODUCTS } from '@/lib/data/mockData';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { ProductItem } from '@/lib/types/ecommerce';
+import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/services/catalogService';
 
 interface ProductCatalogProps {
   selectedCategory?: string;
@@ -32,7 +33,7 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
 
   const { addItem, openCart } = useCartStore();
 
-  // Load admin-managed catalog from localStorage (falls back to static PRODUCTS)
+  // Load admin-managed catalog from localStorage and API (falls back to static PRODUCTS)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -46,6 +47,17 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
       } catch (e) {
         // Fall back to static data if localStorage fails
       }
+
+      fetch('/api/products')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (Array.isArray(data?.products) && data.products.length > 0) {
+            setAllProducts((prev) => {
+              return prev.length >= data.products.length ? prev : data.products;
+            });
+          }
+        })
+        .catch(() => {});
     }
   }, []);
 
@@ -54,12 +66,12 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
 
   const categoryOptions = [
     { label: 'All Products', value: 'ALL', count: visibleProducts.length },
-    { label: 'Hair', value: 'Hair', count: visibleProducts.filter(p => p.category === 'Hair' || p.category === 'Hair Care').length },
-    { label: 'Parfum', value: 'Haute Parfumerie', count: visibleProducts.filter(p => p.category === 'Haute Parfumerie').length },
-    { label: 'Skincare', value: 'Botanical Skincare', count: visibleProducts.filter(p => p.category === 'Botanical Skincare').length },
-    { label: 'Body & Bath', value: 'Body & Bath', count: visibleProducts.filter(p => p.category === 'Body & Bath').length },
-    { label: 'Home & Candles', value: 'Home & Living', count: visibleProducts.filter(p => p.category === 'Home & Living').length },
-    { label: 'Accessories', value: 'Accessories', count: visibleProducts.filter(p => p.category === 'Accessories').length },
+    { label: 'Hair', value: 'Hair', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Hair')).length },
+    { label: 'Parfum', value: 'Haute Parfumerie', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Parfum')).length },
+    { label: 'Skincare', value: 'Botanical Skincare', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Skincare')).length },
+    { label: 'Body & Bath', value: 'Body & Bath', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Body & Bath')).length },
+    { label: 'Home & Candles', value: 'Home & Living', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Home & Candles')).length },
+    { label: 'Accessories', value: 'Accessories', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Accessories')).length },
   ];
 
   const filteredProducts = useMemo(() => {
@@ -67,8 +79,7 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
       const matchesCategory =
         activeCategory === 'ALL' ||
         product.category === activeCategory ||
-        (activeCategory === 'Hair' && (product.category === 'Hair' || product.category === 'Hair Care')) ||
-        (activeCategory === 'Hair Care' && (product.category === 'Hair' || product.category === 'Hair Care'));
+        matchProductCategory(product.category, activeCategory);
       const matchesSearch =
         searchQuery === '' ||
         product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -258,8 +269,8 @@ export default function ProductCatalog({ selectedCategory: initialCategory }: Pr
                   </div>
 
                   {/* Category Pill Tag */}
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-ry-white/90 backdrop-blur-sm text-ry-stone text-[9px] uppercase tracking-editorial border border-ry-ash/40">
-                    {product.category}
+                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-ry-white/90 backdrop-blur-sm text-ry-stone text-[9px] uppercase tracking-editorial border border-ry-ash/40 font-medium">
+                    {getCategoryDisplayLabel(product.category)}
                   </span>
 
                   {/* Sensory Hover Prompt */}
