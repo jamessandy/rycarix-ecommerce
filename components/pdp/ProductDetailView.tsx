@@ -100,7 +100,11 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
     setOpenAccordion(openAccordion === id ? null : id);
   };
 
-  const handleShare = async () => {
+  const handleShare = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
     const shareData = {
       title: `${title} | Rycarix`,
@@ -108,25 +112,52 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
       url: shareUrl,
     };
 
+    const copyFallback = (text: string) => {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     try {
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share(shareData);
         setShareFeedback('Shared successfully!');
-      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(shareUrl);
+        setShareFeedback('Link copied to clipboard!');
+      } else {
+        copyFallback(shareUrl);
         setShareFeedback('Link copied to clipboard!');
       }
-    } catch {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(shareUrl);
-        setShareFeedback('Link copied to clipboard!');
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        const ok = copyFallback(shareUrl);
+        if (ok) {
+          setShareFeedback('Link copied to clipboard!');
+        } else {
+          setShareFeedback('Link ready: ' + shareUrl.slice(0, 30) + '...');
+        }
       }
     }
 
     setTimeout(() => setShareFeedback(null), 3000);
   };
 
-  const handleWishlistToggle = () => {
+  const handleWishlistToggle = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const productForWishlist: Product = {
       id: product.id,
       name: title,
@@ -526,6 +557,37 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                 )}
               </button>
             </div>
+
+            {/* Secondary Actions (Directly under Add to Cart button, fully clickable with real-time feedback!) */}
+            <div className="flex justify-between items-center text-[11px] text-ry-stone px-1 pt-1 border-t border-ry-ash/40">
+              <button
+                type="button"
+                onClick={handleWishlistToggle}
+                className="flex items-center gap-1.5 hover:text-ry-onyx transition-colors cursor-pointer py-1"
+                aria-label="Save to Wishlist"
+              >
+                <Heart className={`w-3.5 h-3.5 ${wishlisted ? 'fill-rose-600 text-rose-600' : 'text-ry-stone'}`} />
+                <span className={wishlisted ? 'text-rose-600 font-medium' : ''}>
+                  {wishlisted ? 'Saved in Wishlist' : 'Save to Wishlist'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleShare}
+                className="flex items-center gap-1.5 hover:text-ry-onyx transition-colors cursor-pointer py-1"
+                aria-label="Share Product"
+              >
+                <Share2 className="w-3.5 h-3.5 text-ry-stone hover:text-ry-onyx" />
+                <span>Share Product</span>
+              </button>
+            </div>
+
+            {/* Feedback notification toast under buttons */}
+            {(shareFeedback || wishlistFeedback) && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs text-center font-medium animate-fade-in shadow-xs">
+                {shareFeedback || wishlistFeedback}
+              </div>
+            )}
           </div>
 
           {/* Product Details Drop-Down Accordions */}
