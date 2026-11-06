@@ -75,7 +75,7 @@ async function autoSeedDatabaseIfEmpty() {
 }
 
 export const catalogService = {
-  async getAllProducts(categoryFilter?: string): Promise<Product[]> {
+  async getAllProducts(categoryFilter?: string, searchQuery?: string): Promise<Product[]> {
     let products: Product[] = [];
 
     try {
@@ -132,7 +132,19 @@ export const catalogService = {
     }
 
     if (categoryFilter && categoryFilter !== 'all' && categoryFilter !== 'ALL' && categoryFilter !== 'all products') {
-      return products.filter((p) => matchProductCategory(p.category, categoryFilter));
+      products = products.filter((p) => matchProductCategory(p.category, categoryFilter));
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      products = products.filter(
+        (p) =>
+          (p.name && p.name.toLowerCase().includes(q)) ||
+          (p.title && p.title.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q)) ||
+          (p.category && p.category.toLowerCase().includes(q)) ||
+          (p.sku && p.sku.toLowerCase().includes(q))
+      );
     }
 
     return products;

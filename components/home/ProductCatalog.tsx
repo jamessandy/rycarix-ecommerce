@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Search, X } from 'lucide-react';
 import { Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
@@ -17,6 +18,7 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
   const startCat = (selectedCategory || initialCategory || 'all').toLowerCase();
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>(startCat);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -34,6 +36,17 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
   useEffect(() => {
     let mounted = true;
+
+    // Check for search query param (?search=... or ?q=...)
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryFromUrl = urlParams.get('search') || urlParams.get('q');
+        if (queryFromUrl) {
+          setSearchQuery(queryFromUrl);
+        }
+      } catch (e) {}
+    }
 
     // 1. Instant hydration from localStorage on client mount (0ms latency on refresh)
     if (typeof window !== 'undefined') {
@@ -123,10 +136,24 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
     return products.filter((p) => matchProductCategory(p.category, catValue)).length;
   };
 
-  const filteredProducts =
-    activeCategory === 'all' || activeCategory === 'all products'
-      ? products
-      : products.filter((p) => matchProductCategory(p.category, activeCategory));
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory =
+      activeCategory === 'all' || activeCategory === 'all products'
+        ? true
+        : matchProductCategory(p.category, activeCategory);
+
+    if (!matchesCategory) return false;
+
+    if (!searchQuery.trim()) return true;
+
+    const q = searchQuery.toLowerCase().trim();
+    const name = (p.name || p.title || '').toLowerCase();
+    const category = (p.category || '').toLowerCase();
+    const desc = (p.description || '').toLowerCase();
+    const sku = (p.sku || '').toLowerCase();
+
+    return name.includes(q) || category.includes(q) || desc.includes(q) || sku.includes(q);
+  });
 
   const handleCardShare = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
@@ -157,22 +184,49 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
   return (
     <section id="catalog" className="max-w-7xl mx-auto px-4 sm:px-8 py-12 font-sans">
-      {/* Header & Dynamic Count */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-        <div>
-          <span className="text-[10px] uppercase tracking-[0.3em] text-neutral-500 font-semibold block mb-1">
-            Curated Collection
-          </span>
-          <h2 className="text-3xl font-serif font-bold text-neutral-900 capitalize">
-            {activeCategory === 'all' ? 'Complete Collection' : `${getCategoryDisplayLabel(activeCategory)} Collection`}
-          </h2>
-          <p className="text-sm text-neutral-600 mt-1">
-            Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} available
-          </p>
+      {/* Header & Controls */}
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <span className="text-[10px] uppercase tracking-[0.3em] text-neutral-500 font-semibold block mb-1">
+              Curated Collection
+            </span>
+            <h2 className="text-3xl font-serif font-bold text-neutral-900 capitalize">
+              {activeCategory === 'all' ? 'Complete Collection' : `${getCategoryDisplayLabel(activeCategory)} Collection`}
+            </h2>
+            <p className="text-sm text-neutral-600 mt-1">
+              Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+              {searchQuery && (
+                <span> matching &ldquo;<span className="font-medium text-neutral-900">{searchQuery}</span>&rdquo;</span>
+              )}
+            </p>
+          </div>
+
+          {/* Interactive Search Bar based on product name */}
+          <div className="relative w-full sm:w-80 shrink-0">
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search product by name, note..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-9 py-2 bg-neutral-50 hover:bg-white focus:bg-white border border-neutral-300 rounded-lg text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 p-0.5"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Category Filter Pills with Real-Time Dynamic Counts */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 pt-2 border-t border-neutral-100">
           {categoryPills.map((cat) => {
             const count = getCategoryCount(cat.value);
             const isActive =
@@ -206,13 +260,37 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="text-center py-16 bg-neutral-50 rounded-xl border border-neutral-200">
-          <p className="text-base font-medium text-neutral-700">No products found in this category.</p>
-          <button
-            onClick={() => setActiveCategory('all')}
-            className="mt-4 px-4 py-2 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition cursor-pointer"
-          >
-            View All Products
-          </button>
+          <Search className="w-10 h-10 mx-auto text-neutral-400 mb-3" />
+          <p className="text-base font-medium text-neutral-800">
+            {searchQuery
+              ? `No products found matching "${searchQuery}"`
+              : 'No products found in this category.'}
+          </p>
+          <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
+            {searchQuery
+              ? 'Try checking for typos or searching by a different fragrance or keyword.'
+              : 'Check back soon as new editions are released regularly.'}
+          </p>
+          <div className="mt-5 flex justify-center gap-3">
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="px-4 py-2 border border-neutral-300 bg-white text-neutral-900 text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-50 transition cursor-pointer"
+              >
+                Clear Search
+              </button>
+            )}
+            {activeCategory !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setActiveCategory('all')}
+                className="px-4 py-2 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition cursor-pointer"
+              >
+                View All Categories
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

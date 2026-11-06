@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   ShoppingBag,
   User,
@@ -32,6 +32,8 @@ export default function Header() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
+  const [liveProducts, setLiveProducts] = useState<any[]>(PRODUCTS);
 
   const { toggleCart, getTotalCount } = useCartStore();
   const totalCount = getTotalCount();
@@ -40,6 +42,38 @@ export default function Header() {
 
   useEffect(() => {
     setHasMounted(true);
+
+    const syncLiveCatalog = () => {
+      try {
+        if (typeof window !== 'undefined') {
+          const cached = localStorage.getItem('rycarix_catalog_products');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setLiveProducts(parsed);
+            }
+          }
+        }
+      } catch (e) {}
+
+      fetch('/api/products', { cache: 'no-store' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.products && Array.isArray(data.products) && data.products.length > 0) {
+            setLiveProducts(data.products);
+          }
+        })
+        .catch(() => {});
+    };
+
+    syncLiveCatalog();
+
+    window.addEventListener('rycarix-catalog-updated', syncLiveCatalog);
+    window.addEventListener('storage', syncLiveCatalog);
+    return () => {
+      window.removeEventListener('rycarix-catalog-updated', syncLiveCatalog);
+      window.removeEventListener('storage', syncLiveCatalog);
+    };
   }, []);
 
   useEffect(() => {
@@ -82,13 +116,25 @@ export default function Header() {
     { name: 'About Us', href: '/#philosophy' },
   ];
 
-  const searchResults = searchQuery.trim()
-    ? PRODUCTS.filter(
-        (p) =>
-          p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.summary.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 4)
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+    setSearchOpen(false);
+    router.push(`/products?search=${encodeURIComponent(query)}`);
+  };
+
+  const q = searchQuery.toLowerCase().trim();
+  const searchResults = q
+    ? liveProducts
+        .filter((p: any) => {
+          const name = (p.name || p.title || '').toLowerCase();
+          const cat = (p.category || '').toLowerCase();
+          const desc = (p.description || p.summary || p.subtitle || '').toLowerCase();
+          const sku = (p.sku || '').toLowerCase();
+          return name.includes(q) || cat.includes(q) || desc.includes(q) || sku.includes(q);
+        })
+        .slice(0, 6)
     : [];
 
   const isLightHero = pathname === '/';
@@ -273,69 +319,117 @@ export default function Header() {
         {searchOpen && (
           <div className="bg-ry-white border-b border-ry-ash shadow-md animate-fade-in">
             <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6">
-              <div className="relative flex items-center">
-                <Search className="w-5 h-5 text-ry-stone absolute left-3" />
+              <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+                <Search className="w-5 h-5 text-ry-stone absolute left-3 pointer-events-none" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Search hair, parfum, skincare, candles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-10 py-3 text-sm bg-ry-pearl border border-ry-ash/70 focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone font-sans"
+                  className="w-full pl-11 pr-20 py-3 text-sm bg-ry-pearl border border-ry-ash/70 focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone font-sans"
                 />
-                <button
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQuery('');
-                  }}
-                  className="absolute right-3 text-sm text-ry-stone hover:text-ry-onyx"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+                <div className="absolute right-3 flex items-center gap-2">
+                  {searchQuery && (
+                    <button
+                      type="submit"
+                      className="px-2.5 py-1 bg-ry-onyx text-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors cursor-pointer"
+                    >
+                      Search
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery('');
+                    }}
+                    className="text-sm text-ry-stone hover:text-ry-onyx p-1"
+                    aria-label="Close search"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </form>
 
               {/* Instant Search Results */}
               {searchQuery.trim() && (
                 <div className="mt-4 pt-3 border-t border-ry-ash/40">
                   {searchResults.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {searchResults.map((product) => (
-                        <Link
-                          key={product.id}
-                          href={`/products/${product.slug}`}
-                          onClick={() => {
-                            setSearchOpen(false);
-                            setSearchQuery('');
-                          }}
-                          className="flex items-center gap-3 p-2 bg-ry-pearl hover:bg-ry-oatmeal border border-ry-ash/40 transition-colors group"
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {searchResults.map((product: any) => {
+                          const imgUrl = Array.isArray(product.images) && product.images[0]
+                            ? typeof product.images[0] === 'string'
+                              ? product.images[0]
+                              : product.images[0]?.url
+                            : product.image || '/images/media_1791069473262.jpg';
+                          const title = product.name || product.title || 'Product';
+                          const price = Number(product.price ?? product.basePrice ?? 0);
+
+                          return (
+                            <Link
+                              key={product.id || product.slug}
+                              href={`/products/${product.slug}`}
+                              onClick={() => {
+                                setSearchOpen(false);
+                                setSearchQuery('');
+                              }}
+                              className="flex items-center gap-3 p-2 bg-ry-pearl hover:bg-ry-oatmeal border border-ry-ash/40 transition-colors group"
+                            >
+                              <div className="w-12 h-14 bg-ry-charcoal relative shrink-0 overflow-hidden">
+                                <Image
+                                  src={imgUrl}
+                                  alt={title}
+                                  fill
+                                  unoptimized={imgUrl.startsWith('data:')}
+                                  className="object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[9px] uppercase tracking-editorial text-ry-stone block capitalize">
+                                  {product.category}
+                                </span>
+                                <h4 className="font-serif text-xs text-ry-onyx group-hover:underline truncate">
+                                  {title}
+                                </h4>
+                                <span className="text-[11px] font-mono text-ry-charcoal">
+                                  £{price.toFixed(2)}
+                                </span>
+                              </div>
+                              <ArrowRight className="w-3.5 h-3.5 text-ry-stone group-hover:translate-x-1 transition-transform mr-1" />
+                            </Link>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-4 pt-2 border-t border-ry-ash/40 flex justify-between items-center text-xs">
+                        <span className="text-ry-stone text-[11px]">
+                          Showing top {searchResults.length} {searchResults.length === 1 ? 'match' : 'matches'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleSearchSubmit}
+                          className="font-medium text-ry-onyx hover:text-ry-burgundy flex items-center gap-1.5 uppercase tracking-editorial text-[11px] cursor-pointer"
                         >
-                          <div className="w-12 h-14 bg-ry-charcoal relative shrink-0 overflow-hidden">
-                            <Image
-                              src={product.images[0]?.url || ''}
-                              alt={product.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[9px] uppercase tracking-editorial text-ry-stone block">
-                              {product.category}
-                            </span>
-                            <h4 className="font-serif text-xs text-ry-onyx group-hover:underline truncate">
-                              {product.title}
-                            </h4>
-                            <span className="text-[11px] font-mono text-ry-charcoal">
-                              £{product.basePrice.toFixed(2)}
-                            </span>
-                          </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-ry-stone group-hover:translate-x-1 transition-transform mr-1" />
-                        </Link>
-                      ))}
-                    </div>
+                          <span>Explore all results for &ldquo;{searchQuery}&rdquo;</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </>
                   ) : (
-                    <p className="text-xs text-ry-stone py-2">
-                      No products found matching “{searchQuery}”. Try searching for “sandalwood”, “serum”, “candle”, or “shampoo”.
-                    </p>
+                    <div className="py-3 text-center sm:text-left">
+                      <p className="text-xs text-ry-stone mb-2">
+                        No products found matching &ldquo;{searchQuery}&rdquo;. Try searching for “ambre”, “nectar”, “candle”, or “serum”.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleSearchSubmit}
+                        className="text-xs underline text-ry-onyx hover:text-ry-burgundy font-medium"
+                      >
+                        Search entire catalog for &ldquo;{searchQuery}&rdquo; &rarr;
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

@@ -41,6 +41,7 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
+  const [productSearch, setProductSearch] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -595,6 +596,19 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
+            {/* Inventory Quick Search Filter */}
+            {products.length > 0 && (
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Search inventory by product title, SKU, or category..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+            )}
+
             {loading ? (
               <div className="py-12 text-center text-sm text-neutral-500">Loading catalog inventory...</div>
             ) : products.length === 0 ? (
@@ -612,7 +626,17 @@ export default function AdminDashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 text-sm">
-                    {products.map((product) => (
+                    {products
+                      .filter((product) => {
+                        if (!productSearch.trim()) return true;
+                        const q = productSearch.toLowerCase().trim();
+                        return (
+                          (product.name || '').toLowerCase().includes(q) ||
+                          (product.category || '').toLowerCase().includes(q) ||
+                          (product.sku || '').toLowerCase().includes(q)
+                        );
+                      })
+                      .map((product) => (
                       <tr key={product.id} className="hover:bg-neutral-50">
                         <td className="py-3 px-2 flex items-center gap-3">
                           <img

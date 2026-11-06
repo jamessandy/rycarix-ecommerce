@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category') || undefined;
     const slug = searchParams.get('slug') || undefined;
+    const search = searchParams.get('q') || searchParams.get('search') || undefined;
 
     if (slug) {
       const product = await catalogService.getProductBySlug(slug);
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ product }, { status: 200 });
     }
 
-    const products = await catalogService.getAllProducts(category);
+    const products = await catalogService.getAllProducts(category, search);
 
     // Compute accurate real-time category counts and total inventory value
     const categoryCounts = products.reduce((acc: Record<string, number>, item) => {
