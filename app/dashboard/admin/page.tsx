@@ -1,3686 +1,724 @@
+// app/dashboard/admin/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  TrendingUp,
-  DollarSign,
-  Package,
-  Layers,
-  Plus,
-  Search,
-  CheckCircle,
-  AlertTriangle,
-  Clock,
-  Shield,
-  Filter,
-  Eye,
-  EyeOff,
-  Edit3,
-  Trash2,
-  Sparkles,
-  Percent,
-  KeyRound,
-  Truck,
-  Printer,
-  Mail,
-  ExternalLink,
-  FileText,
-  CheckCircle2,
-  X,
-  Flame,
-  Users,
-  Globe,
-  Smartphone,
-  MessageSquare,
-  Activity,
-  ArrowUpRight,
-  BarChart3,
-  LogOut,
-  Upload,
-  Image as ImageIcon,
-  RotateCcw,
-  Save,
-  Check,
-} from 'lucide-react';
-import { PRODUCTS } from '@/lib/data/mockData';
-import { ProductItem, ProductImageItem } from '@/lib/types/ecommerce';
-import { useAuthStore } from '@/lib/store/useAuthStore';
-import {
-  createAggregatorDispatch,
-  lookupTracking,
-  validateDeliveryAddress,
-  evaluateShipmentPackaging,
-  ShippingLabelData,
-  ROYAL_MAIL_UK_SERVICES,
-} from '@/lib/services/shippingAggregator';
+import { Product } from '@/lib/types/ecommerce';
+import { Truck, Package, Check, Mail, ExternalLink, RefreshCw, Trash2, Plus, Image as ImageIcon } from 'lucide-react';
+import { lookupTracking } from '@/lib/services/shippingAggregator';
 
-interface AdminProductForm {
-  title: string;
-  category: string;
-  subtitle: string;
-  basePrice: number;
-  compareAtPrice: number;
-  stock: number;
-  sku: string;
-  size: string;
-  inci: string;
-  terroir: string;
-  howToUse: string;
-  summary: string;
-  description: string;
-  images: ProductImageItem[];
-  imageUrl?: string;
-  secondaryImageUrl?: string;
-}
-
-interface EditProductFormState {
-  id: string;
-  title: string;
-  slug: string;
-  category: string;
-  subtitle: string;
-  basePrice: number;
-  compareAtPrice: number;
-  stock: number;
-  sku: string;
-  size: string;
-  inci: string;
-  terroir: string;
-  howToUse: string;
-  summary: string;
-  description: string;
-  images: ProductImageItem[];
-  imageUrl?: string;
-  secondaryImageUrl?: string;
-}
-
-const PRESET_IMAGES = [
-  {
-    name: 'Hair Nectar Elixir',
-    category: 'Hair',
-    url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
-  },
-  {
-    name: 'Luxury Glass Bottle',
-    category: 'Parfum',
-    url: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=90&w=1600&auto=format&fit=crop',
-  },
-  {
-    name: 'Botanical Cellular Serum',
-    category: 'Skincare',
-    url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=90&w=1600&auto=format&fit=crop',
-  },
-  {
-    name: 'Artisanal Body Balm',
-    category: 'Body & Bath',
-    url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=90&w=1600&auto=format&fit=crop',
-  },
-  {
-    name: 'Hand-Poured Soy Candle',
-    category: 'Home & Living',
-    url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?q=90&w=1600&auto=format&fit=crop',
-  },
-  {
-    name: 'Sensory Botanical Texture',
-    category: 'Texture',
-    url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=90&w=1600&auto=format&fit=crop',
-  },
-  {
-    name: 'Fine Accessories & Horn',
-    category: 'Accessories',
-    url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=90&w=1600&auto=format&fit=crop',
-  },
+const CATEGORIES = [
+  { label: 'Perfume & Fragrance', value: 'perfume' },
+  { label: 'Luxury Hair & Wigs', value: 'hair' },
+  { label: 'Skincare & Body', value: 'skincare' },
+  { label: 'Cosmetics & Beauty', value: 'cosmetics' },
+  { label: 'Body & Bath', value: 'body-bath' },
+  { label: 'Home & Candles', value: 'candles' },
+  { label: 'Accessories', value: 'accessories' },
 ];
 
-/**
- * Processes image files to maintain high visual fidelity (up to 2048px)
- * while optimizing file size for browser storage and fast rendering.
- */
-function processHighQualityImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // If the file is small (under 300KB), read directly as high-res data URL
-    if (file.size <= 300 * 1024) {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-      return;
-    }
+export default function AdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState<'inventory' | 'orders'>('inventory');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // For larger high-resolution camera files (e.g. 2MB - 25MB), resample cleanly up to 2048px max dimension
-    const img = new window.Image();
-    const objectUrl = URL.createObjectURL(file);
+  // Form states
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [compareAtPrice, setCompareAtPrice] = useState('');
+  const [stock, setStock] = useState('10');
+  const [category, setCategory] = useState('perfume');
+  const [sku, setSku] = useState('');
+  const [description, setDescription] = useState('');
+  const [featured, setFeatured] = useState(true);
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const maxDim = 2048; // Ultra crisp 2K Retina luxury presentation
-      let { width, height } = img;
+  // Orders state
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
 
-      if (width > maxDim || height > maxDim) {
-        if (width > height) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        } else {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
-      }
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-
-      if (!ctx) {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-        return;
-      }
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // Export as high quality JPEG (or PNG if original is PNG)
-      const isPng = file.type === 'image/png';
-      const mime = isPng ? 'image/png' : 'image/jpeg';
-      const quality = 0.92;
-      const dataUrl = canvas.toDataURL(mime, quality);
-      resolve(dataUrl);
-    };
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    };
-
-    img.src = objectUrl;
-  });
-}
-
-export default function AdminDashboard() {
-  const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuthStore();
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    if (useAuthStore.persist?.hasHydrated()) {
-      setHasHydrated(true);
-    }
-    const unsub = useAuthStore.persist?.onFinishHydration?.(() => {
-      setHasHydrated(true);
-    });
-    return () => unsub?.();
-  }, []);
-
-  useEffect(() => {
-    if (!hasHydrated) return;
-    if (!isAuthenticated || user?.role !== 'ADMIN') {
-      router.replace('/login?redirect=/dashboard/admin');
-    }
-  }, [hasHydrated, isAuthenticated, user, router]);
-
-  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'analytics' | 'emails'>('inventory');
-  const [productsList, setProductsList] = useState<ProductItem[]>(PRODUCTS);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
-
-  // Hydrate custom or edited products and real customer orders from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('rycarix_catalog_products');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setProductsList(parsed);
-          } else {
-            setProductsList(PRODUCTS);
-          }
-        } else {
-          setProductsList(PRODUCTS);
-        }
-
-        // Hydrate actual client orders from localStorage and live Stripe API
-        const loadOrders = async () => {
-          let localList: any[] = [];
-          try {
-            const savedOrders = localStorage.getItem('rycarix_orders');
-            if (savedOrders) {
-              const parsed = JSON.parse(savedOrders);
-              if (Array.isArray(parsed)) localList = parsed;
-            }
-          } catch (e) {
-            console.warn('Failed to parse local orders', e);
-          }
-
-          try {
-            const res = await fetch('/api/orders');
-            if (res.ok) {
-              const data = await res.json();
-              if (data.orders && Array.isArray(data.orders)) {
-                // Merge live Stripe orders with any local orders, avoiding duplicates by id
-                const combined = [...data.orders];
-                for (let i = 0; i < combined.length; i++) {
-                  const c = combined[i];
-                  const match = localList.find((l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId));
-                  if (match) {
-                    if (!c.phone && match.phone) {
-                      c.phone = match.phone;
-                      if (c.address) c.address.phone = match.phone;
-                    }
-                    // NEVER REVERT DISPATCH STATUS
-                    if (
-                      match.fulfillment &&
-                      match.fulfillment.toLowerCase().includes('dispatched') &&
-                      (!c.fulfillment || !c.fulfillment.toLowerCase().includes('dispatched'))
-                    ) {
-                      c.fulfillment = match.fulfillment;
-                      c.carrier = match.carrier || c.carrier;
-                      c.trackingNumber = match.trackingNumber || c.trackingNumber;
-                      c.currentStatus = match.currentStatus || 'IN_TRANSIT';
-                      c.estimatedDelivery = match.estimatedDelivery || c.estimatedDelivery;
-                    }
-                  }
-                }
-                for (const l of localList) {
-                  if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
-                    combined.push(l);
-                  }
-                }
-                setAdminOrders(combined);
-                try {
-                  localStorage.setItem('rycarix_orders', JSON.stringify(combined));
-                } catch (e) {}
-                return;
-              }
-            }
-          } catch (fetchErr) {
-            console.warn('Could not fetch live Stripe orders', fetchErr);
-          }
-
-          setAdminOrders(localList);
-        };
-        loadOrders();
-      } catch (e) {
-        console.warn('Failed to load saved products/orders', e);
-      }
-    }
-  }, []);
-
-  const saveCatalog = (newList: ProductItem[]) => {
-    setProductsList(newList);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('rycarix_catalog_products', JSON.stringify(newList));
-      } catch (err) {
-        console.warn('Could not persist products', err);
-      }
-    }
+  const fetchCatalog = async () => {
+    setLoading(true);
     try {
-      fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: newList }),
-      }).catch((e) => console.warn('Could not sync catalog with server API', e));
-    } catch (e) {}
-  };
-
-  const handleResetCatalog = () => {
-    if (confirm('Restore factory default product catalog (all initial products)?')) {
-      saveCatalog(PRODUCTS);
-      setNotification({ message: 'Catalog reset to factory presets.', type: 'info' });
-      setTimeout(() => setNotification(null), 4000);
+      const res = await fetch('/api/products', { cache: 'no-store' });
+      const data = await res.json();
+      if (data.products && Array.isArray(data.products)) {
+        setProducts(data.products);
+      }
+    } catch (err) {
+      console.error('Error loading admin catalog:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Dynamic Product Form State for New Product
-  const initialFormData: AdminProductForm = {
-    title: '',
-    category: 'Hair',
-    subtitle: '',
-    basePrice: 195,
-    compareAtPrice: 0,
-    stock: 50,
-    sku: 'RY-NEW-01',
-    size: '100ml / 3.4 fl. oz.',
-    inci: 'Alcohol Denat, Parfum, Santalum Album Oil, Rosa Damascena Flower Water, Tocopherol.',
-    terroir: 'Luxury Glass Bottle & Fine Botanicals',
-    howToUse: 'Apply 2-3 drops to pulse points or smooth through damp hair lengths.',
-    summary: 'Handcrafted luxury product made with botanical extracts and essential oils.',
-    description: 'Blended according to Rycarix quality protocols in limited batch reserves.',
-    images: [
-      {
-        id: 'img-new-hero',
-        url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
-        alt: 'Primary Product Image',
-        isHero: true,
-      },
-      {
-        id: 'img-new-texture',
-        url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=90&w=1600&auto=format&fit=crop',
-        alt: 'Sensory Texture & Botanicals',
-        isTexture: true,
-      },
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
-    secondaryImageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=90&w=1600&auto=format&fit=crop',
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      let localOrders: any[] = [];
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('rycarix_orders');
+        if (saved) {
+          try {
+            localOrders = JSON.parse(saved);
+          } catch (e) {}
+        }
+      }
+
+      const res = await fetch('/api/orders');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orders && Array.isArray(data.orders)) {
+          const combined = [...data.orders];
+          localOrders.forEach((lo) => {
+            if (!combined.some((co) => co.id === lo.id)) {
+              combined.push(lo);
+            }
+          });
+          setOrders(combined);
+          return;
+        }
+      }
+      setOrders(localOrders);
+    } catch (err) {
+      console.warn('Failed to fetch orders:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
   };
 
-  const [formData, setFormData] = useState<AdminProductForm>(initialFormData);
+  useEffect(() => {
+    fetchCatalog();
+    fetchOrders();
+  }, []);
 
-  // Edit Product Form State
-  const [editFormData, setEditFormData] = useState<EditProductFormState>({
-    id: '',
-    title: '',
-    slug: '',
-    category: 'Hair',
-    subtitle: '',
-    basePrice: 0,
-    compareAtPrice: 0,
-    stock: 0,
-    sku: '',
-    size: '',
-    inci: '',
-    terroir: '',
-    howToUse: '',
-    summary: '',
-    description: '',
-    images: [],
-    imageUrl: '',
-    secondaryImageUrl: '',
-  });
-
-  const [isProcessingImages, setIsProcessingImages] = useState(false);
-  const [addPastedUrl, setAddPastedUrl] = useState('');
-  const [editPastedUrl, setEditPastedUrl] = useState('');
-
-  // Handle multi-image file selection from device
-  const handleMultipleImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    formTarget: 'add' | 'edit'
-  ) => {
+  // Convert uploaded file(s) to persistent Base64 Data URLs so Admin sees immediate preview and storefront renders them
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setIsProcessingImages(true);
-    try {
-      const processed: ProductImageItem[] = [];
-      const now = Date.now();
+    setUploadingImage(true);
+    setStatusMessage(null);
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.size > 25 * 1024 * 1024) {
-          alert(`File "${file.name}" exceeds 25MB limit. Skipping.`);
-          continue;
-        }
-        const dataUrl = await processHighQualityImage(file);
-        processed.push({
-          id: `img-${now}-${i}-${Math.random().toString(36).substring(2, 6)}`,
-          url: dataUrl,
-          alt: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
-          isHero: false,
-          isTexture: false,
-        });
+    try {
+      const readPromises = Array.from(files).map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          })
+      );
+
+      const base64Images = await Promise.all(readPromises);
+      setImages((prev) => [...prev, ...base64Images]);
+    } catch {
+      setStatusMessage({ type: 'error', text: 'Failed to process selected image file.' });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddUrlImage = () => {
+    if (!urlInput.trim()) return;
+    setImages((prev) => [...prev, urlInput.trim()]);
+    setUrlInput('');
+  };
+
+  const removeUploadedImage = (index: number) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatusMessage(null);
+
+    if (!name.trim() || !price || Number(price) <= 0) {
+      setStatusMessage({ type: 'error', text: 'Please enter a valid product name and price.' });
+      return;
+    }
+
+    const validImages = images.length > 0 ? images : ['https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=1200&auto=format&fit=crop'];
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          price: parseFloat(price),
+          compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : undefined,
+          stock: parseInt(stock, 10) || 10,
+          category,
+          sku: sku.trim() || undefined,
+          description: description.trim(),
+          images: validImages,
+          featured,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add product');
       }
 
-      if (formTarget === 'add') {
-        setFormData((prev) => {
-          const list = [...(prev.images || []), ...processed];
-          if (!list.some((img) => img.isHero) && list.length > 0) {
-            list[0].isHero = true;
-          }
-          return {
-            ...prev,
-            images: list,
-            imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
-            secondaryImageUrl: list.find((img) => img.isTexture)?.url || list[1]?.url || '',
-          };
-        });
-      } else {
-        setEditFormData((prev) => {
-          const list = [...(prev.images || []), ...processed];
-          if (!list.some((img) => img.isHero) && list.length > 0) {
-            list[0].isHero = true;
-          }
-          return {
-            ...prev,
-            images: list,
-            imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
-            secondaryImageUrl: list.find((img) => img.isTexture)?.url || list[1]?.url || '',
-          };
-        });
+      // Immediately prepend new product & re-sync catalog
+      setProducts((prev) => [data.product, ...prev]);
+      setName('');
+      setPrice('');
+      setCompareAtPrice('');
+      setStock('10');
+      setSku('');
+      setDescription('');
+      setImages([]);
+      setStatusMessage({
+        type: 'success',
+        text: `"${data.product.name}" is now live in the ${data.product.category} catalog (£${Number(data.product.price).toFixed(2)} • ${data.product.stock} in stock).`,
+      });
+    } catch (err: any) {
+      setStatusMessage({ type: 'error', text: err.message || 'Could not publish product.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this product from the live catalog?')) return;
+    try {
+      const res = await fetch(`/api/products?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        setStatusMessage({ type: 'success', text: 'Product removed from catalog.' });
+        setTimeout(() => setStatusMessage(null), 3000);
       }
     } catch (err) {
-      console.error('Image processing error:', err);
-      alert('Failed to process image files.');
-    } finally {
-      setIsProcessingImages(false);
-      e.target.value = '';
+      console.error('Failed to delete product:', err);
     }
   };
 
-  const handleSetHeroImage = (index: number, formTarget: 'add' | 'edit') => {
-    if (formTarget === 'add') {
-      setFormData((prev) => {
-        const updated = (prev.images || []).map((img, i) => ({
-          ...img,
-          isHero: i === index,
-        }));
-        return {
-          ...prev,
-          images: updated,
-          imageUrl: updated[index]?.url || '',
-        };
+  const handleConfirmDispatch = async (ord: any) => {
+    const trackingNumber = ord.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`;
+    const trackingUrl = `https://www.royalmail.com/track-your-item#/tracking-results/${trackingNumber}`;
+
+    // Send dispatch notification email
+    try {
+      await fetch('/api/email/dispatch-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderNumber: ord.id,
+          recipientEmail: ord.email || ord.customerEmail || 'client@rycarix.com',
+          customerName: ord.customer || ord.customerName || 'Valued Client',
+          carrier: ord.carrier || 'Royal Mail',
+          trackingNumber,
+          trackingUrl,
+          estimatedDeliveryDays: '2–3 working days',
+          shippingAddress: ord.address
+            ? `${ord.address.street || ''}, ${ord.address.city || ''} ${ord.address.postalCode || ''}`
+            : 'United Kingdom',
+        }),
       });
-    } else {
-      setEditFormData((prev) => {
-        const updated = (prev.images || []).map((img, i) => ({
-          ...img,
-          isHero: i === index,
-        }));
-        return {
-          ...prev,
-          images: updated,
-          imageUrl: updated[index]?.url || '',
-        };
-      });
-    }
-  };
-
-  const handleToggleTextureImage = (index: number, formTarget: 'add' | 'edit') => {
-    if (formTarget === 'add') {
-      setFormData((prev) => {
-        const updated = (prev.images || []).map((img, i) => ({
-          ...img,
-          isTexture: i === index ? !img.isTexture : false,
-        }));
-        const textureImg = updated.find((img) => img.isTexture);
-        return {
-          ...prev,
-          images: updated,
-          secondaryImageUrl: textureImg?.url || '',
-        };
-      });
-    } else {
-      setEditFormData((prev) => {
-        const updated = (prev.images || []).map((img, i) => ({
-          ...img,
-          isTexture: i === index ? !img.isTexture : false,
-        }));
-        const textureImg = updated.find((img) => img.isTexture);
-        return {
-          ...prev,
-          images: updated,
-          secondaryImageUrl: textureImg?.url || '',
-        };
-      });
-    }
-  };
-
-  const handleRemoveImage = (index: number, formTarget: 'add' | 'edit') => {
-    if (formTarget === 'add') {
-      setFormData((prev) => {
-        const updated = (prev.images || []).filter((_, i) => i !== index);
-        if (updated.length > 0 && !updated.some((img) => img.isHero)) {
-          updated[0].isHero = true;
-        }
-        return {
-          ...prev,
-          images: updated,
-          imageUrl: updated.find((img) => img.isHero)?.url || updated[0]?.url || '',
-          secondaryImageUrl: updated.find((img) => img.isTexture)?.url || updated[1]?.url || '',
-        };
-      });
-    } else {
-      setEditFormData((prev) => {
-        const updated = (prev.images || []).filter((_, i) => i !== index);
-        if (updated.length > 0 && !updated.some((img) => img.isHero)) {
-          updated[0].isHero = true;
-        }
-        return {
-          ...prev,
-          images: updated,
-          imageUrl: updated.find((img) => img.isHero)?.url || updated[0]?.url || '',
-          secondaryImageUrl: updated.find((img) => img.isTexture)?.url || updated[1]?.url || '',
-        };
-      });
-    }
-  };
-
-  const handleMoveImage = (index: number, direction: 'left' | 'right', formTarget: 'add' | 'edit') => {
-    const targetSetter = formTarget === 'add' ? setFormData : setEditFormData;
-    targetSetter((prev: any) => {
-      const list = [...(prev.images || [])];
-      const targetIndex = direction === 'left' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= list.length) return prev;
-      const temp = list[index];
-      list[index] = list[targetIndex];
-      list[targetIndex] = temp;
-      return {
-        ...prev,
-        images: list,
-        imageUrl: list.find((img: any) => img.isHero)?.url || list[0]?.url || '',
-        secondaryImageUrl: list.find((img: any) => img.isTexture)?.url || list[1]?.url || '',
-      };
-    });
-  };
-
-  const handleAddUrlImage = (formTarget: 'add' | 'edit') => {
-    const url = (formTarget === 'add' ? addPastedUrl : editPastedUrl).trim();
-    if (!url) return;
-
-    const newImg: ProductImageItem = {
-      id: `img-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      url,
-      alt: 'Product Imagery',
-      isHero: false,
-      isTexture: false,
-    };
-
-    if (formTarget === 'add') {
-      setFormData((prev) => {
-        const list = [...(prev.images || []), newImg];
-        if (list.length === 1) list[0].isHero = true;
-        return {
-          ...prev,
-          images: list,
-          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
-        };
-      });
-      setAddPastedUrl('');
-    } else {
-      setEditFormData((prev) => {
-        const list = [...(prev.images || []), newImg];
-        if (list.length === 1) list[0].isHero = true;
-        return {
-          ...prev,
-          images: list,
-          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
-        };
-      });
-      setEditPastedUrl('');
-    }
-  };
-
-  const handleAddPresetImage = (presetUrl: string, presetName: string, formTarget: 'add' | 'edit') => {
-    const newImg: ProductImageItem = {
-      id: `img-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      url: presetUrl,
-      alt: presetName,
-      isHero: false,
-      isTexture: false,
-    };
-
-    if (formTarget === 'add') {
-      setFormData((prev) => {
-        const list = [...(prev.images || []), newImg];
-        if (list.length === 1) list[0].isHero = true;
-        return {
-          ...prev,
-          images: list,
-          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
-        };
-      });
-    } else {
-      setEditFormData((prev) => {
-        const list = [...(prev.images || []), newImg];
-        if (list.length === 1) list[0].isHero = true;
-        return {
-          ...prev,
-          images: list,
-          imageUrl: list.find((img) => img.isHero)?.url || list[0]?.url || '',
-        };
-      });
-    }
-  };
-
-  const handleStartEdit = (product: ProductItem) => {
-    setEditingProduct(product);
-    const initialImages: ProductImageItem[] =
-      Array.isArray(product.images) && product.images.length > 0
-        ? product.images.map((img, idx) => ({
-            ...img,
-            isHero: img.isHero ?? idx === 0,
-          }))
-        : [
-            {
-              id: `img-${Date.now()}-1`,
-              url:
-                product.images?.[0]?.url ||
-                'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=90&w=1600&auto=format&fit=crop',
-              alt: product.title,
-              isHero: true,
-            },
-          ];
-
-    setEditFormData({
-      id: product.id,
-      title: product.title,
-      slug: product.slug,
-      category: product.category,
-      subtitle: product.subtitle || '',
-      basePrice: product.basePrice,
-      compareAtPrice: product.compareAtPrice || 0,
-      stock: product.variants[0]?.inventory ?? 45,
-      sku: product.variants[0]?.sku || `RY-${product.id.slice(-6).toUpperCase()}`,
-      size: product.variants[0]?.title || '100ml / 3.4 fl. oz.',
-      inci: product.ingredients || '',
-      terroir: product.sourcingEthics || '',
-      howToUse: product.howToUse || '',
-      summary: product.summary || '',
-      description: product.description || '',
-      images: initialImages,
-      imageUrl: initialImages.find((img) => img.isHero)?.url || initialImages[0]?.url || '',
-      secondaryImageUrl:
-        initialImages.find((img) => img.isTexture)?.url || initialImages[1]?.url || '',
-    });
-    setShowEditModal(true);
-  };
-
-  const handleCreateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title.trim()) {
-      alert('Please enter a product title.');
-      return;
+    } catch (e) {
+      console.warn('Dispatch email notice could not be sent:', e);
     }
 
-    const imagesToSave: ProductImageItem[] =
-      formData.images && formData.images.length > 0
-        ? formData.images
-        : [
-            {
-              id: `img-${Date.now()}-1`,
-              url:
-                formData.imageUrl?.trim() ||
-                'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=90&w=1600&auto=format&fit=crop',
-              alt: formData.title,
-              isHero: true,
-            },
-          ];
-
-    if (!imagesToSave.some((img) => img.isHero) && imagesToSave.length > 0) {
-      imagesToSave[0].isHero = true;
-    }
-
-    const newSlug =
-      formData.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '') || `product-${Date.now()}`;
-
-    const newProduct: ProductItem = {
-      id: `prod-${Date.now()}`,
-      title: formData.title,
-      slug: newSlug,
-      subtitle: formData.subtitle || `${formData.category} Collection`,
-      summary:
-        formData.summary ||
-        'Handcrafted luxury product made with botanical extracts and essential oils.',
-      description:
-        formData.description ||
-        'Extracted and blended according to Rycarix strict artisanal quality protocols in limited batch reserves.',
-      category: formData.category,
-      basePrice: Number(formData.basePrice) || 0,
-      compareAtPrice:
-        formData.compareAtPrice && Number(formData.compareAtPrice) > 0
-          ? Number(formData.compareAtPrice)
-          : undefined,
-      rating: 5.0,
-      reviewCount: 0,
-      ingredients: formData.inci,
-      howToUse: formData.howToUse || 'Apply 2-3 drops to pulse points or smooth through hair as desired.',
-      sourcingEthics: formData.terroir,
-      attributes: {
-        categoryType: formData.category,
-      },
-      images: imagesToSave,
-      variants: [
-        {
-          id: `var-${Date.now()}`,
-          sku: formData.sku || `RY-${Date.now().toString().slice(-4)}`,
-          title: formData.size || '100ml / 3.4 fl. oz.',
-          price: Number(formData.basePrice) || 0,
-          compareAtPrice:
-            formData.compareAtPrice && Number(formData.compareAtPrice) > 0
-              ? Number(formData.compareAtPrice)
-              : undefined,
-          inventory: Number(formData.stock) || 0,
-          attributes: { size: formData.size || '100ml' },
-        },
-      ],
-    };
-
-    const updatedList = [newProduct, ...productsList];
-    saveCatalog(updatedList);
-    setShowAddModal(false);
-    setFormData(initialFormData);
-    setNotification({
-      message: `Product "${newProduct.title}" created with ${imagesToSave.length} high-quality images.`,
-      type: 'success',
-    });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
-  const handleUpdateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct) return;
-    if (!editFormData.title.trim()) {
-      alert('Product title cannot be empty.');
-      return;
-    }
-
-    const imagesToSave: ProductImageItem[] =
-      editFormData.images && editFormData.images.length > 0
-        ? editFormData.images
-        : editingProduct.images;
-
-    if (!imagesToSave.some((img) => img.isHero) && imagesToSave.length > 0) {
-      imagesToSave[0].isHero = true;
-    }
-
-    const updatedVariants = [
-      {
-        id: editingProduct.variants[0]?.id || `var-${Date.now()}`,
-        sku: editFormData.sku || `RY-${Date.now().toString().slice(-4)}`,
-        title: editFormData.size || '100ml / 3.4 fl. oz.',
-        price: Number(editFormData.basePrice) || 0,
-        compareAtPrice:
-          editFormData.compareAtPrice && Number(editFormData.compareAtPrice) > 0
-            ? Number(editFormData.compareAtPrice)
-            : undefined,
-        inventory: Number(editFormData.stock) || 0,
-        attributes: {
-          ...editingProduct.variants[0]?.attributes,
-          size: editFormData.size || '100ml',
-        },
-      },
-      ...editingProduct.variants.slice(1),
-    ];
-
-    const updatedProduct: ProductItem = {
-      ...editingProduct,
-      title: editFormData.title,
-      slug:
-        editFormData.slug.trim() ||
-        editFormData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      category: editFormData.category,
-      subtitle: editFormData.subtitle || `${editFormData.category} Collection`,
-      summary: editFormData.summary || editingProduct.summary,
-      description: editFormData.description || editingProduct.description,
-      basePrice: Number(editFormData.basePrice) || 0,
-      compareAtPrice:
-        editFormData.compareAtPrice && Number(editFormData.compareAtPrice) > 0
-          ? Number(editFormData.compareAtPrice)
-          : undefined,
-      ingredients: editFormData.inci,
-      sourcingEthics: editFormData.terroir,
-      howToUse: editFormData.howToUse,
-      images: imagesToSave,
-      variants: updatedVariants,
-      attributes: {
-        ...editingProduct.attributes,
-        categoryType: editFormData.category,
-      },
-    };
-
-    const updatedList = productsList.map((p) => (p.id === updatedProduct.id ? updatedProduct : p));
-    saveCatalog(updatedList);
-    setShowEditModal(false);
-    setEditingProduct(null);
-    setNotification({
-      message: `Product "${updatedProduct.title}" updated successfully.`,
-      type: 'success',
-    });
-    setTimeout(() => setNotification(null), 4000);
-  };
-
-  // Real store orders hydrated from localStorage or empty
-  const [adminOrders, setAdminOrders] = useState<any[]>([]);
-  const [trafficData, setTrafficData] = useState<any>(null);
-  const [emailLogs, setEmailLogs] = useState<any[]>([]);
-  const [selectedEmailPreview, setSelectedEmailPreview] = useState<any | null>(null);
-
-  const fetchEmailLogs = () => {
-    fetch('/api/email/logs')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data?.logs)) {
-          setEmailLogs(data.logs);
-        }
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    fetch('/api/analytics/traffic')
-      .then((res) => res.json())
-      .then((data) => setTrafficData(data))
-      .catch(() => {});
-
-    fetchEmailLogs();
-  }, [activeTab]);
-
-  // Dynamic calculations based strictly on real catalog and active orders
-  const totalGMV = adminOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const klarnaVolume = adminOrders
-    .filter((o) => (o.paymentMethod || '').toLowerCase().includes('klarna'))
-    .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const aov = adminOrders.length > 0 ? totalGMV / adminOrders.length : 0;
-
-  const totalActiveInventory = productsList.reduce((acc, p) => {
-    const variantStock = p.variants?.reduce((vAcc: number, v: any) => vAcc + (v.inventory || 0), 0) || 0;
-    return acc + variantStock;
-  }, 0);
-
-  const lowStockCount = productsList.filter((p) =>
-    p.variants?.some((v: any) => (v.inventory || 0) < 20)
-  ).length;
-  const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
-  const [activeLabelData, setActiveLabelData] = useState<ShippingLabelData | null>(null);
-  const [isDispatching, setIsDispatching] = useState(false);
-  const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
-
-  const handleOpenDispatchModal = (ord: any) => {
-    setDispatchModalOrder(ord);
-    setDispatchSuccessMsg('');
-
-    // If order already has a tracking number, load from database
-    if (ord.trackingNumber) {
-      const existing = lookupTracking(ord.trackingNumber);
-      if (existing) {
-        setActiveLabelData(existing);
-        return;
+    // Update order status locally and in state
+    const updatedOrders = orders.map((o) => {
+      if (o.id === ord.id) {
+        return {
+          ...o,
+          fulfillment: 'Dispatched',
+          status: 'SHIPPED',
+          trackingNumber,
+        };
       }
-    }
-
-    // Otherwise evaluate packaging and generate dynamic simulated label
-    const packaging = evaluateShipmentPackaging([
-      { title: ord.items, category: ord.itemCategory },
-    ]);
-    const carrier = ord.carrier?.toLowerCase().includes('royal')
-      ? 'Royal Mail'
-      : ord.carrier?.toLowerCase().includes('evri')
-      ? 'Evri'
-      : packaging.recommendedCarrier;
-    const isRM = carrier === 'Royal Mail';
-    const trackingNumber = isRM
-      ? `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`
-      : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
-
-    const initialServiceLevel =
-      ord.shippingService ||
-      ord.serviceLevel ||
-      ord.shippingMethod ||
-      (isRM
-        ? (packaging.isHazardous ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48, small parcel up to 2kg')
-        : packaging.serviceLevel);
-
-    const simLabel: ShippingLabelData = {
-      trackingNumber,
-      orderNumber: ord.id,
-      carrier,
-      serviceLevel: initialServiceLevel,
-      senderAddress: {
-        name: 'Rycarix Fulfillment Center',
-        company: 'Rycarix Luxury Goods Co.',
-        street: '18 Place Vendôme',
-        city: 'Paris',
-        postalCode: '75001',
-        country: 'France',
-      },
-      recipientAddress: {
-        name: ord.customer || ord.address?.name || 'Valued Client',
-        email: ord.email || ord.address?.email || '',
-        phone: ord.phone || ord.address?.phone || '',
-        street: ord.address?.street || '42 Kensington Palace Gardens',
-        city: ord.address?.city || 'London',
-        state: ord.address?.state || 'Greater London',
-        postalCode: ord.address?.postalCode || 'W8 4QP',
-        country: ord.address?.country || 'United Kingdom',
-      },
-      customerEmail: ord.email || ord.address?.email || '',
-      customerPhone: ord.phone || ord.address?.phone || '',
-      weightKg: 0.85,
-      isHazardous: packaging.isHazardous,
-      unNumber: packaging.unNumber || undefined,
-      hazardClass: packaging.hazardClass || undefined,
-      properShippingName: packaging.isHazardous ? 'Perfumery Products (UN 1266)' : undefined,
-      lqCompliant: true,
-      estimatedDelivery: isRM ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days',
-      currentStatus: 'IN_TRANSIT',
-      milestones: [
-        {
-          timestamp: 'Just now',
-          status: `Label Generated via ${carrier}`,
-          location: 'Rycarix Fulfillment Center, Paris',
-          description: packaging.isHazardous
-            ? `${carrier} barcoded shipping label generated with mandatory UN 1266 Limited Quantity (LQ) diamond marking.`
-            : `${carrier} express doorstep tracking waybill generated.`,
-          isCompleted: true,
-        },
-      ],
-      items: [
-        {
-          title: ord.items,
-          variant: 'Standard Luxury Packaging',
-          quantity: 1,
-          price: ord.total,
-          image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
-          containsAlcohol: packaging.isHazardous,
-        },
-      ],
-    };
-    setActiveLabelData(simLabel);
-  };
-
-  const handlePrintThermalLabel = () => {
-    if (!activeLabelData) return;
-    const printWindow = window.open('', '_blank', 'width=650,height=850');
-    if (!printWindow) {
-      alert('Please allow popups in your browser to print the shipping label.');
-      return;
-    }
-    const isLQ = activeLabelData.isHazardous;
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Rycarix Shipping Label - ${activeLabelData.trackingNumber}</title>
-          <style>
-            @page { size: 4in 6in; margin: 0.15in; }
-            * { box-sizing: border-box; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; color: #000; background: #fff; }
-            .label-card { border: 3px solid #000; padding: 14px; width: 3.7in; margin: 0 auto; }
-            .top-bar { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
-            .brand { font-size: 15px; font-weight: 900; letter-spacing: 1.5px; }
-            .sub { font-size: 8px; text-transform: uppercase; color: #333; margin-top: 2px; }
-            .carrier-box { text-align: right; }
-            .carrier-title { font-size: 13px; font-weight: 900; text-transform: uppercase; }
-            .carrier-service { font-size: 8px; font-family: monospace; }
-            .address-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 8px; font-size: 10px; }
-            .section-label { font-size: 8px; font-weight: 800; color: #444; margin-bottom: 2px; }
-            .recipient-name { font-size: 13px; font-weight: 800; margin-bottom: 2px; }
-            .tracking-wrap { margin-top: 6px; }
-            .tracking-title { font-size: 8px; font-weight: 800; color: #444; text-transform: uppercase; }
-            .tracking-code { font-size: 16px; font-weight: 900; font-family: monospace; letter-spacing: 1px; margin: 4px 0; word-break: break-all; }
-            .barcode-lines { height: 44px; display: flex; align-items: stretch; gap: 2px; margin: 6px 0; background: #f5f5f5; padding: 2px; border: 1px solid #ddd; }
-            .diamond-wrap { text-align: center; margin-top: 10px; border-top: 1px dashed #000; padding-top: 8px; }
-            .lq-diamond { width: 44px; height: 44px; border: 2px solid #000; transform: rotate(45deg); margin: 8px auto; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
-            .lq-bar { height: 11px; background: #000; width: 100%; }
-            .lq-txt { font-size: 7px; font-weight: 900; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="label-card">
-            <div class="top-bar">
-              <div>
-                <div class="brand">RYCARIX FULFILLMENT</div>
-                <div class="sub">Parfum & Care • Dispatch Facility</div>
-              </div>
-              <div class="carrier-box">
-                <div class="carrier-title">${activeLabelData.carrier} Priority</div>
-                <div class="carrier-service">${activeLabelData.serviceLevel}</div>
-              </div>
-            </div>
-
-            <div class="address-grid">
-              <div>
-                <div class="section-label">FROM (SENDER):</div>
-                <div style="font-weight: 700;">Rycarix Fulfillment Center</div>
-                <div>18 Place Vendôme</div>
-                <div>75001 Paris, France</div>
-              </div>
-              <div>
-                <div class="section-label">DELIVER TO (RECIPIENT):</div>
-                <div class="recipient-name">${activeLabelData.recipientAddress.name}</div>
-                ${activeLabelData.recipientAddress.email ? `<div style="font-size: 8px; color: #444;">${activeLabelData.recipientAddress.email}</div>` : ''}
-                ${activeLabelData.recipientAddress.phone ? `<div style="font-size: 8px; font-family: monospace; color: #333; margin-bottom: 2px;">TEL: ${activeLabelData.recipientAddress.phone}</div>` : ''}
-                <div>${activeLabelData.recipientAddress.street}</div>
-                <div>${activeLabelData.recipientAddress.city}, ${activeLabelData.recipientAddress.postalCode}</div>
-                <div>${activeLabelData.recipientAddress.country}</div>
-              </div>
-            </div>
-
-            <div class="tracking-wrap">
-              <div class="tracking-title">WAYBILL / TRACKING NUMBER:</div>
-              <div class="tracking-code">${activeLabelData.trackingNumber}</div>
-              <div class="barcode-lines">
-                ${Array.from({ length: 44 }).map((_, i) => `<div style="background: #000; width: ${(i % 3) + 2}px;"></div>`).join('')}
-              </div>
-            </div>
-
-            ${isLQ ? `
-              <div class="diamond-wrap">
-                <div class="lq-diamond">
-                  <div class="lq-bar"></div>
-                  <div class="lq-txt">LQ</div>
-                  <div class="lq-bar"></div>
-                </div>
-                <div style="font-size: 8px; font-family: monospace; font-weight: 800;">
-                  UN 1266 LIMITED QUANTITY (PERFUMES WITH FLAMMABLE SOLVENTS)
-                </div>
-              </div>
-            ` : ''}
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-  };
-
-  const handleSelectCarrier = (newCarrier: 'Royal Mail' | 'Evri', specificService?: string) => {
-    if (!activeLabelData || !dispatchModalOrder) return;
-    const isRM = newCarrier === 'Royal Mail';
-    const newTracking = isRM
-      ? (activeLabelData.trackingNumber?.startsWith('RY-RM') ? activeLabelData.trackingNumber : `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`)
-      : (activeLabelData.trackingNumber?.startsWith('RY-EVRI') ? activeLabelData.trackingNumber : `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`);
-
-    const newService = specificService || (isRM
-      ? (dispatchModalOrder?.shippingService || (activeLabelData.isHazardous ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48, small parcel up to 2kg'))
-      : 'Evri Express Tracked Delivery (48h Doorstep)');
-
-    setActiveLabelData({
-      ...activeLabelData,
-      carrier: newCarrier,
-      serviceLevel: newService,
-      trackingNumber: newTracking,
-      estimatedDelivery: isRM
-        ? (newService.includes('24') ? 'Tomorrow by 1:00 PM' : 'In 2-3 Business Days')
-        : 'In 1-2 Business Days',
+      return o;
     });
+
+    setOrders(updatedOrders);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('rycarix_orders', JSON.stringify(updatedOrders));
+    }
+
+    setDispatchSuccessMsg(`Order ${ord.id} marked as Dispatched! Tracking: ${trackingNumber}`);
+    setTimeout(() => setDispatchSuccessMsg(''), 5000);
   };
 
-  const handleConfirmDispatch = () => {
-    if (!dispatchModalOrder || !activeLabelData) return;
-    setIsDispatching(true);
-
-    setTimeout(() => {
-      // Register in global shipping database so tracking portal picks it up
-      createAggregatorDispatch({
-        orderNumber: dispatchModalOrder.id,
-        customerName: dispatchModalOrder.customer,
-        customerEmail: dispatchModalOrder.email || dispatchModalOrder.address?.email,
-        customerPhone: dispatchModalOrder.phone || dispatchModalOrder.address?.phone,
-        street: dispatchModalOrder.address?.street || '42 Kensington Palace Gardens',
-        city: dispatchModalOrder.address?.city || 'London',
-        state: dispatchModalOrder.address?.state || 'Greater London',
-        postalCode: dispatchModalOrder.address?.postalCode || 'W8 4QP',
-        country: dispatchModalOrder.address?.country || 'United Kingdom',
-        carrier: activeLabelData.carrier,
-        serviceLevel: activeLabelData.serviceLevel,
-        trackingNumber: activeLabelData.trackingNumber,
-        currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
-        items: [
-          {
-            title: dispatchModalOrder.items,
-            variant: 'Luxury Packaging',
-            quantity: 1,
-            price: dispatchModalOrder.total,
-            image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
-          },
-        ],
-      });
-
-        // Update in local admin orders state and persist to rycarix_orders
-        setAdminOrders((prev) => {
-          const next = prev.map((o) =>
-            o.id === dispatchModalOrder.id
-              ? {
-                  ...o,
-                  fulfillment: `Dispatched via ${activeLabelData.carrier}`,
-                  carrier: `${activeLabelData.carrier} Tracked`,
-                  trackingNumber: activeLabelData.trackingNumber,
-                  currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
-                  estimatedDelivery: activeLabelData.estimatedDelivery,
-                }
-              : o
-          );
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('rycarix_orders', JSON.stringify(next));
-            } catch (e) {
-              console.warn('Could not persist dispatched order', e);
-            }
-          }
-          return next;
-        });
-
-        // Update active modal order state so modal immediately reflects dispatched status
-        setDispatchModalOrder((prev: any) =>
-          prev
-            ? {
-                ...prev,
-                fulfillment: `Dispatched via ${activeLabelData.carrier}`,
-                carrier: `${activeLabelData.carrier} Tracked`,
-                trackingNumber: activeLabelData.trackingNumber,
-                currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
-                estimatedDelivery: activeLabelData.estimatedDelivery,
-              }
-            : null
-        );
-
-        // Notify server API of dispatch update (and persist to Stripe PaymentIntent metadata)
-        try {
-          fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: dispatchModalOrder.id,
-              stripeSessionId: dispatchModalOrder.stripeSessionId,
-              fulfillment: `Dispatched via ${activeLabelData.carrier}`,
-              carrier: `${activeLabelData.carrier} Tracked`,
-              trackingNumber: activeLabelData.trackingNumber,
-              currentStatus: activeLabelData.currentStatus || 'IN_TRANSIT',
-              estimatedDelivery: activeLabelData.estimatedDelivery,
-            }),
-          }).catch((err) => console.warn('Could not update order dispatch on server', err));
-        } catch (e) {}
-
-        // Send automated customer dispatch notification email
-        const targetEmail = dispatchModalOrder.email || dispatchModalOrder.address?.email;
-        if (targetEmail) {
-          try {
-            fetch('/api/email/dispatch-notification', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderNumber: dispatchModalOrder.id,
-                customerName: dispatchModalOrder.customer,
-                customerEmail: targetEmail,
-                carrier: activeLabelData.carrier,
-                trackingNumber: activeLabelData.trackingNumber,
-                serviceLevel: activeLabelData.serviceLevel,
-                estimatedDelivery: activeLabelData.estimatedDelivery,
-                trackingUrl:
-                  typeof window !== 'undefined'
-                    ? `${window.location.origin}/track?ref=${encodeURIComponent(
-                        activeLabelData.trackingNumber || dispatchModalOrder.id
-                      )}`
-                    : undefined,
-                items: dispatchModalOrder.itemsList || [
-                  {
-                    title: dispatchModalOrder.items,
-                    variantTitle: 'Luxury Packaging',
-                    quantity: 1,
-                    price: dispatchModalOrder.total,
-                  },
-                ],
-                address: dispatchModalOrder.address,
-              }),
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.success) {
-                  setNotification({
-                    message: `Dispatch email notification sent to ${targetEmail} (Tracking #${activeLabelData.trackingNumber}).`,
-                    type: 'success',
-                  });
-                  setTimeout(() => setNotification(null), 5000);
-                  fetchEmailLogs();
-                }
-              })
-              .catch((err) => console.warn('Dispatch email notification failed', err));
-          } catch (e) {}
-        }
-
-      setIsDispatching(false);
-      setDispatchSuccessMsg(
-        `Order ${dispatchModalOrder.id} dispatched via ${activeLabelData.carrier}! Tracking #${activeLabelData.trackingNumber} is live.`
-      );
-    }, 600);
-  };
-
-  if (!hasHydrated || !isAuthenticated || user?.role !== 'ADMIN') {
-    return (
-      <div className="min-h-screen bg-ry-pearl flex flex-col items-center justify-center font-sans text-ry-onyx px-4">
-        <div className="w-10 h-10 rounded-full border-2 border-ry-onyx border-t-transparent animate-spin mb-4" />
-        <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone">
-          Verifying Administrator Access...
-        </span>
-      </div>
-    );
-  }
+  // Live metrics calculated directly from the active products list
+  const totalProducts = products.length;
+  const totalUnitsInStock = products.reduce((sum, p) => sum + Number(p.stock ?? 0), 0);
+  const totalInventoryValue = products.reduce(
+    (sum, p) => sum + Number(p.price || 0) * Number(p.stock ?? 1),
+    0
+  );
+  const perfumeCount = products.filter(
+    (p) => p.category?.toLowerCase() === 'perfume' || p.category?.toLowerCase() === 'parfum'
+  ).length;
 
   return (
-    <div className="min-h-screen bg-ry-pearl text-ry-onyx pt-28 pb-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Top Admin Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between pb-8 mb-8 border-b border-ry-ash gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial px-2 py-0.5">
-                Rycarix Admin
-              </span>
-              <span className="text-xs text-ry-stone">
-                Admin: {user?.name || 'Store Administrator'} • Live Store
-              </span>
-            </div>
-            <h1 className="font-serif text-3xl sm:text-4xl text-ry-onyx">
-              Products & Orders Dashboard
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-neutral-50 py-10 px-4 sm:px-8 max-w-7xl mx-auto font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-neutral-900">Rycarix Admin Console</h1>
+          <p className="text-sm text-neutral-600 mt-1">
+            Manage live catalog inventory, pricing, stock levels, and storefront media.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-md border border-neutral-300 bg-white p-1">
             <button
-              onClick={handleResetCatalog}
-              className="px-4 py-3 border border-ry-ash text-ry-stone hover:text-ry-onyx hover:border-ry-onyx text-xs uppercase tracking-editorial flex items-center gap-1.5 transition-colors"
-              title="Reset catalog to factory presets"
+              onClick={() => setActiveTab('inventory')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded ${
+                activeTab === 'inventory' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:text-neutral-900'
+              }`}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Reset Defaults</span>
+              Catalog ({totalProducts})
             </button>
             <button
-              onClick={() => setShowAddModal(true)}
-              className="px-5 py-3 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial flex items-center gap-2 hover:bg-ry-charcoal transition-colors shadow-luxury"
+              onClick={() => setActiveTab('orders')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded flex items-center gap-1.5 ${
+                activeTab === 'orders' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:text-neutral-900'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              <span>Add New Product</span>
-            </button>
-            <button
-              onClick={() => {
-                logout();
-                router.push('/login');
-              }}
-              className="px-4 py-3 border border-ry-ash text-ry-stone hover:text-red-700 hover:border-red-300 text-xs uppercase tracking-editorial flex items-center gap-1.5 transition-colors"
-              title="Sign Out of Admin"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
+              <Package className="w-3 h-3" />
+              Orders ({orders.length})
             </button>
           </div>
+          <Link
+            href="/products"
+            className="inline-flex items-center justify-center px-4 py-2 bg-neutral-900 text-white text-xs font-medium rounded-md hover:bg-neutral-800 transition"
+          >
+            Live Storefront
+          </Link>
         </div>
+      </div>
 
-        {/* Executive KPI Overview Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
-          <div className="bg-ry-white border border-ry-ash p-5">
-            <div className="flex items-center justify-between text-ry-stone mb-2">
-              <span className="text-[10px] uppercase tracking-editorial">Gross Merchandise Value</span>
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
-              £{totalGMV.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-[11px] text-ry-stone font-sans mt-1">
-              {adminOrders.length} {adminOrders.length === 1 ? 'order' : 'orders'} recorded to date
-            </p>
-          </div>
-
-          <div className="bg-ry-white border border-[#FFA8CD]/60 p-5 bg-gradient-to-br from-white to-[#FFF5F8]">
-            <div className="flex items-center justify-between text-ry-stone mb-2">
-              <span className="text-[10px] uppercase tracking-editorial text-[#992255]">
-                Klarna Installments Volume
-              </span>
-              <span className="bg-[#FFA8CD] text-black text-[9px] font-bold px-1.5 py-0.5 rounded-sm">
-                Klarna.
-              </span>
-            </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
-              £{klarnaVolume.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-[11px] text-[#992255] font-sans mt-1">
-              {totalGMV > 0 ? ((klarnaVolume / totalGMV) * 100).toFixed(1) : '0.0'}% of GMV • 0% merchant default liability
-            </p>
-          </div>
-
-          <div className="bg-ry-white border border-ry-ash p-5">
-            <div className="flex items-center justify-between text-ry-stone mb-2">
-              <span className="text-[10px] uppercase tracking-editorial">Average Order Value (AOV)</span>
-              <DollarSign className="w-4 h-4 text-ry-stone" />
-            </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
-              £{aov.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-[11px] text-ry-stone font-sans mt-1">
-              {adminOrders.length > 0 ? 'Live average across customer baskets' : 'Awaiting initial store orders'}
-            </p>
-          </div>
-
-          <div className="bg-ry-white border border-ry-ash p-5">
-            <div className="flex items-center justify-between text-ry-stone mb-2">
-              <span className="text-[10px] uppercase tracking-editorial">Active Inventory Units</span>
-              <Package className="w-4 h-4 text-ry-stone" />
-            </div>
-            <div className="font-serif text-2xl sm:text-3xl text-ry-onyx">
-              {totalActiveInventory} Units
-            </div>
-            <p className="text-[11px] text-ry-stone font-sans mt-1">
-              {lowStockCount} {lowStockCount === 1 ? 'SKU' : 'SKUs'} under low-stock watch ({productsList.length} total products)
-            </p>
-          </div>
+      {/* Real-Time KPI Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <div className="bg-white p-5 rounded-lg border border-neutral-200 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">Total Catalog Products</p>
+          <p className="text-3xl font-bold text-neutral-900 mt-2">{totalProducts}</p>
         </div>
-
-        {/* Tab Navigation */}
-        <div className="flex border-b border-ry-ash mb-8 text-xs uppercase tracking-editorial font-sans">
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`pb-4 px-4 font-medium transition-all relative ${
-              activeTab === 'inventory'
-                ? 'text-ry-onyx border-b-2 border-ry-onyx'
-                : 'text-ry-stone hover:text-ry-onyx'
-            }`}
-          >
-            Dynamic Catalog & Variants ({productsList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('orders')}
-            className={`pb-4 px-4 font-medium transition-all relative ${
-              activeTab === 'orders'
-                ? 'text-ry-onyx border-b-2 border-ry-onyx'
-                : 'text-ry-stone hover:text-ry-onyx'
-            }`}
-          >
-            Fulfillment & Klarna Settlements ({adminOrders.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`pb-4 px-4 font-medium transition-all relative ${
-              activeTab === 'analytics'
-                ? 'text-ry-onyx border-b-2 border-ry-onyx'
-                : 'text-ry-stone hover:text-ry-onyx'
-            }`}
-          >
-            Website Traffic & Analytics
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('emails');
-              fetchEmailLogs();
-            }}
-            className={`pb-4 px-4 font-medium transition-all relative flex items-center gap-1.5 ${
-              activeTab === 'emails'
-                ? 'text-ry-onyx border-b-2 border-ry-onyx'
-                : 'text-ry-stone hover:text-ry-onyx'
-            }`}
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>Automated Customer Emails ({emailLogs.length})</span>
-          </button>
+        <div className="bg-white p-5 rounded-lg border border-neutral-200 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">Total Units in Stock</p>
+          <p className="text-3xl font-bold text-neutral-900 mt-2">{totalUnitsInStock}</p>
         </div>
+        <div className="bg-white p-5 rounded-lg border border-neutral-200 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">Total Catalog Valuation</p>
+          <p className="text-3xl font-bold text-emerald-700 mt-2">
+            £{totalInventoryValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
+        </div>
+        <div className="bg-white p-5 rounded-lg border border-neutral-200 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-neutral-500 font-semibold">Perfume Category Count</p>
+          <p className="text-3xl font-bold text-neutral-900 mt-2">{perfumeCount}</p>
+        </div>
+      </div>
 
-        {/* Tab 1: Inventory & Dynamic Catalog Management */}
-        {activeTab === 'inventory' && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="bg-ry-white border border-ry-ash overflow-hidden">
-              <div className="p-4 bg-ry-pearlDark/30 border-b border-ry-ash flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-serif text-sm">Product Catalog Matrix</span>
-                  <span className="text-ry-stone">
-                    (Supports Haircare, Parfums, and Future Category Expansions)
-                  </span>
+      {dispatchSuccessMsg && (
+        <div className="p-4 mb-6 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-sm font-medium flex items-center gap-2">
+          <Check className="w-4 h-4 text-emerald-600" />
+          <span>{dispatchSuccessMsg}</span>
+        </div>
+      )}
+
+      {activeTab === 'inventory' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Add New Product Form */}
+          <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-neutral-200 shadow-sm h-fit">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Add New Product to Catalog</h2>
+
+            {statusMessage && (
+              <div
+                className={`p-3.5 mb-5 rounded-lg text-sm font-medium ${
+                  statusMessage.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}
+              >
+                {statusMessage.text}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateProduct} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                  Product Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Oud Royale Extrait de Parfum 100ml"
+                  className="w-full px-3.5 py-2.5 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                    Price (£ GBP) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    placeholder="85.00"
+                    className="w-full px-3.5 py-2.5 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
                 </div>
-                <div className="text-[11px] text-ry-stone">
-                  Dynamic JSON Schema Enabled
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                    Stock Quantity *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={stock}
+                    onChange={(e) => setStock(e.target.value)}
+                    placeholder="25"
+                    className="w-full px-3.5 py-2.5 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                    Category *
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-neutral-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                    Compare At Price (£)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={compareAtPrice}
+                    onChange={(e) => setCompareAtPrice(e.target.value)}
+                    placeholder="110.00"
+                    className="w-full px-3.5 py-2.5 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                  Product Description *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe fragrance notes, botanical actives, texture, and origin..."
+                  className="w-full px-3.5 py-2.5 border border-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+
+              {/* Product Image Upload with Real Thumbnail Inspection */}
+              <div>
+                <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
+                  Product Images *
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-neutral-900 file:text-white hover:file:bg-neutral-800 cursor-pointer"
+                />
+                {uploadingImage && (
+                  <p className="text-xs text-amber-600 mt-1.5">Processing image preview...</p>
+                )}
+
+                {/* Optional Image URL Input */}
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="url"
+                    placeholder="Or paste external image URL..."
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    className="flex-1 px-3 py-1.5 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddUrlImage}
+                    className="px-3 py-1.5 bg-neutral-100 text-neutral-800 text-xs font-medium rounded-md hover:bg-neutral-200 cursor-pointer"
+                  >
+                    Add URL
+                  </button>
+                </div>
+
+                {images.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-emerald-700 mb-2">
+                      {images.length} image(s) ready to publish:
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {images.map((imgSrc, idx) => (
+                        <div key={idx} className="relative group border rounded-md overflow-hidden aspect-square bg-neutral-100">
+                          <img
+                            src={imgSrc}
+                            alt={`Upload preview ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeUploadedImage(idx)}
+                            className="absolute top-1 right-1 bg-black/75 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hover:bg-red-600 cursor-pointer"
+                            title="Remove image"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  id="featured-toggle"
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => setFeatured(e.target.checked)}
+                  className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900 cursor-pointer"
+                />
+                <label htmlFor="featured-toggle" className="text-sm text-neutral-700 cursor-pointer">
+                  Feature on Homepage Catalog
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting || uploadingImage}
+                className="w-full py-3 px-4 bg-neutral-900 text-white font-semibold text-sm rounded-md hover:bg-neutral-800 transition disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? 'Publishing to Live Catalog...' : 'Publish Product Now'}
+              </button>
+            </form>
+          </div>
+
+          {/* Live Admin Inventory List */}
+          <div className="lg:col-span-7 bg-white p-6 rounded-xl border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-neutral-900">
+                Active Catalog ({products.length} Products)
+              </h2>
+              <button
+                onClick={fetchCatalog}
+                className="text-xs font-medium text-neutral-600 hover:text-neutral-900 underline cursor-pointer"
+              >
+                Refresh List
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="py-12 text-center text-sm text-neutral-500">Loading catalog inventory...</div>
+            ) : products.length === 0 ? (
+              <div className="py-12 text-center text-sm text-neutral-500">No products in catalog yet.</div>
+            ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
-                    <tr>
-                      <th className="py-3 px-4">Product</th>
-                      <th className="py-3 px-4">Category</th>
-                      <th className="py-3 px-4">Primary Variant</th>
-                      <th className="py-3 px-4">Price</th>
-                      <th className="py-3 px-4">Stock</th>
-                      <th className="py-3 px-4">Clearpay (x4) / Klarna (x3)</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-neutral-200 text-xs uppercase text-neutral-500">
+                      <th className="py-3 px-2">Product</th>
+                      <th className="py-3 px-2">Category</th>
+                      <th className="py-3 px-2">Price</th>
+                      <th className="py-3 px-2">Stock</th>
+                      <th className="py-3 px-2 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-ry-ash/40">
-                    {productsList.map((product) => (
-                      <tr key={product.id} className={`hover:bg-ry-pearl/50 transition-colors ${product.isHidden ? 'opacity-50 bg-ry-ash/10' : ''}`}>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative w-10 h-12 bg-ry-oatmeal overflow-hidden border border-ry-ash/60 shrink-0">
-                              <img
-                                src={
-                                  product.images[0]?.url ||
-                                  'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=800&auto=format&fit=crop'
-                                }
-                                alt={product.title}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div>
-                              <div className="font-serif text-sm font-medium text-ry-onyx flex items-center gap-2">
-                                {product.title}
-                                {product.isHidden && (
-                                  <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] uppercase tracking-wider border border-amber-300 font-medium">
-                                    Hidden
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-ry-stone">{product.slug}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="px-2 py-0.5 bg-ry-oatmeal text-[9px] uppercase tracking-editorial">
-                            {product.category}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-ry-stone">
-                          {product.variants[0]?.title}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-medium text-ry-onyx">
-                          <div>£{product.basePrice.toFixed(2)}</div>
-                          {product.compareAtPrice && product.compareAtPrice > product.basePrice && (
-                            <div className="text-[10px] text-ry-stone line-through">
-                              £{product.compareAtPrice.toFixed(2)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`font-mono ${
-                              (product.variants[0]?.inventory || 0) < 20
-                                ? 'text-amber-700 font-bold'
-                                : 'text-emerald-700'
-                            }`}
-                          >
-                            {product.variants[0]?.inventory || 45} units
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-ry-stone">
-                          <div>£{(product.basePrice / 4).toFixed(2)} <span className="text-[10px] text-ry-stone/70">x4</span></div>
-                          <div className="text-[10px] text-ry-stone/60">or £{(product.basePrice / 3).toFixed(2)} x3</div>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                  <tbody className="divide-y divide-neutral-100 text-sm">
+                    {products.map((product) => (
+                      <tr key={product.id} className="hover:bg-neutral-50">
+                        <td className="py-3 px-2 flex items-center gap-3">
+                          <img
+                            src={product.images?.[0] || '/images/media_1791069473262.jpg'}
+                            alt={product.name}
+                            className="w-12 h-12 rounded object-cover border border-neutral-200 flex-shrink-0"
+                          />
+                          <div>
                             <Link
                               href={`/products/${product.slug}`}
-                              className="p-1.5 text-ry-stone hover:text-ry-onyx"
-                              title="View PDP"
+                              className="font-medium text-neutral-900 hover:underline line-clamp-1"
                             >
-                              <Eye className="w-4 h-4" />
+                              {product.name}
                             </Link>
-                            <button
-                              onClick={() => handleStartEdit(product)}
-                              className="p-1.5 text-ry-stone hover:text-ry-onyx transition-colors"
-                              title="Edit Product, Image & Pricing"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                const updated = productsList.map((p) =>
-                                  p.id === product.id ? { ...p, isHidden: !p.isHidden } : p
-                                );
-                                saveCatalog(updated);
-                                setNotification({
-                                  message: product.isHidden
-                                    ? `"${product.title}" is now visible on the storefront.`
-                                    : `"${product.title}" is now hidden from the storefront.`,
-                                  type: 'info',
-                                });
-                                setTimeout(() => setNotification(null), 4000);
-                              }}
-                              className={`p-1.5 transition-colors ${product.isHidden ? 'text-amber-600 hover:text-ry-onyx' : 'text-ry-stone hover:text-amber-600'}`}
-                              title={product.isHidden ? 'Show on storefront' : 'Hide from storefront'}
-                            >
-                              {product.isHidden ? <EyeOff className="w-4 h-4" /> : <EyeOff className="w-4 h-4 opacity-40" />}
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Archive product "${product.title}"?`)) {
-                                  const updated = productsList.filter((p) => p.id !== product.id);
-                                  saveCatalog(updated);
-                                  setNotification({
-                                    message: `Product "${product.title}" removed from catalog.`,
-                                    type: 'info',
-                                  });
-                                  setTimeout(() => setNotification(null), 4000);
-                                }
-                              }}
-                              className="p-1.5 text-ry-stone hover:text-red-700 transition-colors"
-                              title="Archive Product"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <p className="text-xs text-neutral-400">{product.sku}</p>
                           </div>
+                        </td>
+                        <td className="py-3 px-2 capitalize text-neutral-700">{product.category}</td>
+                        <td className="py-3 px-2 font-semibold text-neutral-900">
+                          £{Number(product.price).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-2">
+                          <span
+                            className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                              Number(product.stock ?? 0) > 0
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-red-50 text-red-700'
+                            }`}
+                          >
+                            {Number(product.stock ?? 0)} in stock
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-right">
+                          <button
+                            onClick={() => handleDeleteProduct(product.id)}
+                            className="text-xs text-red-600 hover:text-red-800 font-medium cursor-pointer"
+                          >
+                            Remove
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Orders & Shipping Aggregator Dispatch Monitor */}
-        {activeTab === 'orders' && (
-          <div className="space-y-4 animate-fade-in">
-            {/* Dispatch Integration Banner */}
-            <div className="bg-ry-white border border-ry-ash p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-ry-onyx text-ry-white flex items-center justify-center shrink-0">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-serif text-sm text-ry-onyx font-medium">
-                      Evri & Royal Mail Courier Dispatch Gateway
-                    </span>
-                    <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[9px] font-medium uppercase tracking-wider">
-                      Evri & Royal Mail Active
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-ry-stone mt-0.5">
-                    Integrated parcel fulfillment via Evri and Royal Mail Tracked 24. Supports UN 1266 Limited Quantity (LQ) perfume hazmat marking, automatic address validation, and live GPS delivery tracking.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  href="/track"
-                  target="_blank"
-                  className="px-3.5 py-2 bg-ry-pearl hover:bg-ry-oatmeal border border-ry-ash text-xs uppercase tracking-editorial font-medium flex items-center gap-1.5 transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>View Customer Portal</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Orders Table */}
-            <div className="bg-ry-white border border-ry-ash overflow-hidden">
-              <div className="p-4 bg-ry-pearlDark/30 border-b border-ry-ash flex items-center justify-between text-xs">
-                <span className="font-serif text-sm">Fulfillment & Klarna Settlement Ledger</span>
-                <span className="text-emerald-700 font-medium">
-                  All Klarna Funds Disbursed Within 24h
-                </span>
-              </div>
-
-              {adminOrders.length === 0 ? (
-                <div className="p-12 text-center text-ry-stone">
-                  <Package className="w-10 h-10 mx-auto mb-3 stroke-[1.4] text-ry-stone/60" />
-                  <h4 className="font-serif text-lg text-ry-onyx mb-1">No Orders Placed Yet</h4>
-                  <p className="text-xs text-ry-stone max-w-md mx-auto">
-                    When customers place orders using Stripe Card, Klarna (Pay in 3), or Clearpay (Pay in 4), customer delivery addresses, parcel packaging classifications (UN 1266 LQ), and dispatch tracking will appear here in real time.
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
-                      <tr>
-                        <th className="py-3 px-4">Order Ref</th>
-                        <th className="py-3 px-4">Client & Destination</th>
-                        <th className="py-3 px-4">Items</th>
-                        <th className="py-3 px-4">Total</th>
-                        <th className="py-3 px-4">Payment Method</th>
-                        <th className="py-3 px-4">Fulfillment Status</th>
-                        <th className="py-3 px-4">Dispatch & Tracking</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ry-ash/40">
-                      {adminOrders.map((ord) => (
-                        <tr key={ord.id} className="hover:bg-ry-pearl/50">
-                          <td className="py-3.5 px-4 font-mono font-medium">{ord.id}</td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-medium text-ry-onyx">{ord.customer}</div>
-                            <div className="text-[10px] text-ry-stone">{ord.email}</div>
-                            {(ord.phone || ord.address?.phone) && (
-                              <div className="text-[10px] text-ry-stone font-mono">{ord.phone || ord.address?.phone}</div>
-                            )}
-                            <div className="text-[10px] text-ry-stone/80 truncate max-w-[180px]">
-                              {ord.address?.street ? `${ord.address.street}, ` : ''}{ord.address?.city}, {ord.address?.country}
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-ry-stone">
-                            <div>{ord.items}</div>
-                            {ord.items?.toLowerCase().includes('extrait') && (
-                              <span className="inline-flex items-center gap-1 text-[9px] text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 mt-0.5">
-                                <Flame className="w-2.5 h-2.5 text-amber-600" /> UN 1266 LQ (Contains Alcohol)
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 font-mono">£{ord.total?.toFixed(2)}</td>
-                          <td className="py-3.5 px-4">
-                            {ord.paymentMethod?.toLowerCase().includes('klarna') ? (
-                              <span className="inline-flex items-center gap-1 bg-[#FFF0F5] border border-[#FFA8CD] text-[#801040] px-2 py-0.5 text-[10px] font-semibold">
-                                Klarna Pay in 3
-                              </span>
-                            ) : ord.paymentMethod?.toLowerCase().includes('clearpay') ? (
-                              <span className="inline-flex items-center gap-1 bg-[#E6F9F5] border border-[#B2ECE1] text-[#0A5C4E] px-2 py-0.5 text-[10px] font-semibold">
-                                Clearpay Pay in 4
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 bg-ry-oatmeal text-[10px]">
-                                {ord.paymentMethod}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`px-2 py-1 text-[10px] uppercase tracking-editorial inline-block ${
-                              ord.fulfillment?.includes('Dispatched') || ord.fulfillment?.includes('In Transit')
-                                ? 'bg-ry-onyx text-ry-white'
-                                : 'bg-amber-100 text-amber-900 border border-amber-300'
-                            }`}>
-                              {ord.fulfillment}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {ord.fulfillment?.includes('Dispatched') || ord.fulfillment?.includes('In Transit') ? (
-                              <div className="space-y-1.5">
-                                {ord.trackingNumber && (
-                                  <Link
-                                    href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
-                                    target="_blank"
-                                    className="inline-flex items-center gap-1 text-ry-onyx font-medium hover:underline text-[11px] font-mono group"
-                                  >
-                                    <span>{ord.trackingNumber}</span>
-                                    <ExternalLink className="w-3 h-3 text-ry-stone group-hover:text-ry-onyx" />
-                                  </Link>
-                                )}
-                                <div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenDispatchModal(ord)}
-                                    className="px-2.5 py-1 bg-ry-pearl border border-ry-ash hover:bg-ry-oatmeal text-[10px] text-ry-onyx font-medium flex items-center gap-1 transition-colors"
-                                  >
-                                    <FileText className="w-3 h-3 text-ry-stone" />
-                                    <span>View / Print Dispatch Label</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDispatchModal(ord)}
-                                className="px-3.5 py-2 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial font-semibold hover:bg-ry-burgundyLight active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-sm"
-                              >
-                                <Truck className="w-3.5 h-3.5" />
-                                <span>Prepare Courier Dispatch</span>
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Website Traffic & Live Analytics */}
-        {activeTab === 'analytics' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Realtime Live Visitor & Integration Status Header */}
-            <div className="bg-ry-white border border-ry-ash p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-                </span>
-                <div>
-                  <h3 className="font-serif text-lg text-ry-onyx flex items-center gap-2">
-                    <span>
-                      {trafficData?.metrics?.activeLiveVisitors ?? 0} Active Session
-                      {(trafficData?.metrics?.activeLiveVisitors ?? 0) === 1 ? '' : 's'} Live
-                    </span>
-                  </h3>
-                  <p className="text-xs text-ry-stone">
-                    Live telemetry tracking real pageviews, active shopping carts, and category interest.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-editorial font-sans">
-                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 flex items-center gap-1.5 font-medium">
-                  <MessageSquare className="w-3 h-3 text-emerald-600" />
-                  <span>Tawk.to Live Support: Online</span>
-                </div>
-                <div className="px-3 py-1.5 bg-ry-pearl border border-ry-ash text-ry-onyx flex items-center gap-1.5 font-medium">
-                  <Globe className="w-3 h-3 text-ry-stone" />
-                  <span>
-                    Google Analytics: {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? 'Connected' : 'Standby'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Top 4 KPI Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-ry-white border border-ry-ash p-5">
-                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
-                  <span>Today's Unique Visitors</span>
-                  <Users className="w-4 h-4 text-ry-stone" />
-                </div>
-                <div className="font-serif text-3xl text-ry-onyx">
-                  {trafficData?.metrics?.todayUniqueVisitors ?? 0}
-                </div>
-                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
-                  Unique visitors browsing store
-                </span>
-              </div>
-
-              <div className="bg-ry-white border border-ry-ash p-5">
-                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
-                  <span>Today's Total Pageviews</span>
-                  <Activity className="w-4 h-4 text-ry-stone" />
-                </div>
-                <div className="font-serif text-3xl text-ry-onyx">
-                  {trafficData?.metrics?.todayPageviews ?? 0}
-                </div>
-                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
-                  Verified live page impressions
-                </span>
-              </div>
-
-              <div className="bg-ry-white border border-ry-ash p-5">
-                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
-                  <span>Avg. Dwell Time</span>
-                  <Clock className="w-4 h-4 text-ry-stone" />
-                </div>
-                <div className="font-serif text-3xl text-ry-onyx">
-                  {trafficData?.metrics?.avgSessionDuration ?? '0m 00s'}
-                </div>
-                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
-                  Active session duration
-                </span>
-              </div>
-
-              <div className="bg-ry-white border border-ry-ash p-5">
-                <div className="flex items-center justify-between text-ry-stone mb-1 text-[10px] uppercase tracking-editorial">
-                  <span>Store Conversion Rate</span>
-                  <Percent className="w-4 h-4 text-ry-stone" />
-                </div>
-                <div className="font-serif text-3xl text-ry-onyx">
-                  {adminOrders.length > 0 && (trafficData?.metrics?.todayUniqueVisitors || 0) > 0
-                    ? ((adminOrders.length / trafficData.metrics.todayUniqueVisitors) * 100).toFixed(2) + '%'
-                    : '0.00%'}
-                </div>
-                <span className="text-[11px] text-ry-stone font-sans mt-1 inline-block">
-                  {adminOrders.length} {adminOrders.length === 1 ? 'order' : 'orders'} completed
-                </span>
-              </div>
-            </div>
-
-            {/* Category Performance & Traffic Attribution */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Category Traffic Share */}
-              <div className="bg-ry-white border border-ry-ash p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-serif text-lg text-ry-onyx">Category Traffic & Sales Velocity</h3>
-                  <span className="text-[10px] uppercase tracking-editorial px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 font-medium">
-                    Hair is Flagship Line
-                  </span>
-                </div>
-                <p className="text-xs text-ry-stone mb-6">
-                  Real traffic share and revenue distribution across boutique categories.
-                </p>
-
-                <div className="space-y-4 text-xs font-sans">
-                  {(trafficData?.categoryTraffic || [
-                    { name: 'Hair (Flagship Category)', views: 0, share: '0.0%', badge: 'Main Line' },
-                    { name: 'Parfum', views: 0, share: '0.0%' },
-                    { name: 'Skincare', views: 0, share: '0.0%' },
-                    { name: 'Body & Bath', views: 0, share: '0.0%' },
-                    { name: 'Home & Candles', views: 0, share: '0.0%' },
-                  ]).map((cat: any, idx: number) => (
-                    <div key={idx}>
-                      <div className="flex justify-between mb-1.5 items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-ry-onyx">{cat.name}</span>
-                          {cat.badge && (
-                            <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial">
-                              {cat.badge}
-                            </span>
-                          )}
-                        </div>
-                        <div className="font-mono text-right">
-                          <strong className="text-ry-onyx">{cat.views} views</strong>
-                          <span className="text-ry-stone ml-2 font-medium">{cat.share} share</span>
-                        </div>
-                      </div>
-                      <div className="w-full bg-ry-ash/40 h-2">
-                        <div
-                          className="bg-ry-onyx h-full transition-all duration-500"
-                          style={{ width: cat.share !== '0.0%' ? cat.share : '0%' }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Traffic Acquisition Sources */}
-              <div className="bg-ry-white border border-ry-ash p-6">
-                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Traffic Acquisition Channels</h3>
-                <p className="text-xs text-ry-stone mb-6">
-                  Where store visitors and luxury purchasers are arriving from.
-                </p>
-
-                <div className="space-y-4 text-xs font-sans">
-                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
-                    <div>
-                      <div className="font-medium text-ry-onyx">Direct / Store Domain</div>
-                      <div className="text-[11px] text-ry-stone">Direct navigation to rycarix.com</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono font-medium block">
-                        {(trafficData?.metrics?.todayUniqueVisitors ?? 0) > 0
-                          ? `${trafficData?.metrics?.todayUniqueVisitors} ${trafficData?.metrics?.todayUniqueVisitors === 1 ? 'visitor' : 'visitors'}`
-                          : '0 visitors'}
-                      </span>
-                      <span className="text-ry-stone text-[10px]">Verified Direct Channel</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
-                    <div>
-                      <div className="font-medium text-ry-onyx">Instagram / Social Links</div>
-                      <div className="text-[11px] text-ry-stone">Bio links and campaign referrals</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono font-medium block">0 visitors</span>
-                      <span className="text-ry-stone text-[10px]">Awaiting Campaign</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2 border-b border-ry-ash/40">
-                    <div>
-                      <div className="font-medium text-ry-onyx">Google Organic Search</div>
-                      <div className="text-[11px] text-ry-stone">Search queries & organic index</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono font-medium block">0 visitors</span>
-                      <span className="text-ry-stone text-[10px]">SEO Tags Ready</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between py-2">
-                    <div>
-                      <div className="font-medium text-ry-onyx">Direct Concierge Invitations</div>
-                      <div className="text-[11px] text-ry-stone">VIP client links & direct shares</div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono font-medium block">0 visitors</span>
-                      <span className="text-ry-stone text-[10px]">Concierge Portal</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Row: Top Pages, Devices & Integrations */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Top Visited Products */}
-              <div className="lg:col-span-2 bg-ry-white border border-ry-ash p-6">
-                <h3 className="font-serif text-lg mb-2 text-ry-onyx">Catalog Products & Status</h3>
-                <p className="text-xs text-ry-stone mb-4">
-                  Active products published to the catalog and ready for customer purchase.
-                </p>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-ry-pearl border-b border-ry-ash text-[10px] uppercase tracking-editorial text-ry-stone">
-                      <tr>
-                        <th className="py-2.5 px-3">Product / Route</th>
-                        <th className="py-2.5 px-3">Category</th>
-                        <th className="py-2.5 px-3">Price</th>
-                        <th className="py-2.5 px-3 text-right">Inventory</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ry-ash/40">
-                      {productsList.slice(0, 5).map((p) => (
-                        <tr key={p.id}>
-                          <td className="py-2.5 px-3 font-medium text-ry-onyx flex items-center gap-1.5">
-                            <span className="px-1.5 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase font-mono">
-                              {p.category}
-                            </span>
-                            <span className="truncate max-w-[240px]">{p.title}</span>
-                          </td>
-                          <td className="py-2.5 px-3 text-ry-stone">{p.category}</td>
-                          <td className="py-2.5 px-3 font-mono font-medium">£{p.basePrice.toFixed(2)}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700">
-                            {p.variants?.reduce((acc, v) => acc + (v.inventory || 0), 0) || 0} in stock
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Integrations & Devices Card */}
-              <div className="space-y-6">
-                {/* Tawk.to Live Concierge Card */}
-                <div className="bg-ry-white border border-ry-ash p-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] uppercase tracking-editorial font-medium text-ry-stone">
-                      Live Customer Support
-                    </span>
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] uppercase tracking-editorial font-semibold">
-                      Connected
-                    </span>
-                  </div>
-                  <h4 className="font-serif text-base text-ry-onyx mb-1">Tawk.to Chat Widget</h4>
-                  <p className="text-xs text-ry-stone mb-3">
-                    Live chat advisor ready to answer hair inquiries & order questions across the website.
-                  </p>
-                  <div className="p-2.5 bg-ry-pearl border border-ry-ash text-[11px] font-mono text-ry-stone space-y-1">
-                    <div>Property: <strong className="text-ry-onyx">6adbc0451558303471484219</strong></div>
-                    <div>Widget ID: <strong className="text-ry-onyx">1k5l6e4bp</strong></div>
-                  </div>
-                </div>
-
-                {/* Device Split */}
-                <div className="bg-ry-white border border-ry-ash p-5">
-                  <h4 className="font-serif text-base text-ry-onyx mb-1">Device Breakdown</h4>
-                  <p className="text-xs text-ry-stone mb-3">Visitor breakdown by browser viewport.</p>
-                  <div className="space-y-2 text-xs font-sans">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span>Mobile (iOS & Android)</span>
-                        <span className="font-mono font-medium">
-                          {trafficData?.deviceBreakdown?.[0]?.percentage ?? 0}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-ry-ash/40 h-1.5">
-                        <div
-                          className="bg-ry-onyx h-full transition-all"
-                          style={{ width: `${trafficData?.deviceBreakdown?.[0]?.percentage ?? 0}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span>Desktop (macOS & Windows)</span>
-                        <span className="font-mono font-medium">
-                          {trafficData?.deviceBreakdown?.[1]?.percentage ?? 0}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-ry-ash/40 h-1.5">
-                        <div
-                          className="bg-ry-stone h-full transition-all"
-                          style={{ width: `${trafficData?.deviceBreakdown?.[1]?.percentage ?? 0}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span>Tablet (iPad)</span>
-                        <span className="font-mono font-medium">
-                          {trafficData?.deviceBreakdown?.[2]?.percentage ?? 0}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-ry-ash/40 h-1.5">
-                        <div
-                          className="bg-ry-ash h-full transition-all"
-                          style={{ width: `${trafficData?.deviceBreakdown?.[2]?.percentage ?? 0}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Klarna & Payment Conversion Impact Section */}
-            <div className="bg-ry-white border border-ry-ash p-6">
-              <h3 className="font-serif text-lg mb-2 text-ry-onyx">Klarna 4-Pay Gateway Telemetry</h3>
-              <p className="text-xs text-ry-stone mb-4">
-                Real-time installment settlement monitoring for high-ticket hair and luxury perfumery.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-sans">
-                <div className="p-4 bg-ry-pearl border border-ry-ash">
-                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
-                    Klarna Gateway Status
-                  </span>
-                  <div className="font-serif text-2xl text-emerald-700">Active</div>
-                  <p className="text-[11px] text-ry-stone mt-1">
-                    Stripe + Klarna payment intent pipeline operational
-                  </p>
-                </div>
-
-                <div className="p-4 bg-ry-pearl border border-ry-ash">
-                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
-                    Klarna GMV Volume
-                  </span>
-                  <div className="font-serif text-2xl text-ry-onyx">
-                    £{klarnaVolume.toFixed(2)}
-                  </div>
-                  <p className="text-[11px] text-ry-stone mt-1">
-                    Direct merchant settlement with 0% liability
-                  </p>
-                </div>
-
-                <div className="p-4 bg-ry-pearl border border-ry-ash">
-                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-1">
-                    Klarna Checkout Share
-                  </span>
-                  <div className="font-serif text-2xl text-[#992255]">
-                    {totalGMV > 0 ? ((klarnaVolume / totalGMV) * 100).toFixed(1) + '%' : '0.0%'}
-                  </div>
-                  <p className="text-[11px] text-ry-stone mt-1">
-                    Proportion of completed orders using 4-Pay
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: Automated Customer Emails & Notification Logs */}
-        {activeTab === 'emails' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Header Status & Notification Pipeline Card */}
-            <div className="bg-ry-white border border-ry-ash p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 bg-ry-onyx text-ry-white flex items-center justify-center shrink-0">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-serif text-base text-ry-onyx">
-                      Automated Customer Email Pipeline
-                    </h3>
-                    <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[9px] uppercase tracking-wider font-semibold">
-                      Live Trigger Engine Active
-                    </span>
-                  </div>
-                  <p className="text-xs text-ry-stone mt-1 max-w-2xl leading-relaxed">
-                    1. <strong>Order Confirmation:</strong> Sent automatically immediately upon customer purchase with itemized summary, delivery address, and pricing.<br />
-                    2. <strong>Dispatch Notification:</strong> Sent automatically when you click &quot;Confirm Dispatch&quot; with the live tracking number, carrier name, and courier milestone link.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    fetch('/api/email/order-confirmation', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        orderNumber: `RY-${Math.floor(10000 + Math.random() * 90000)}`,
-                        customerName: 'Valued Client (Test)',
-                        customerEmail: user?.email || 'client@rycarix.com',
-                        total: 135.0,
-                        items: [
-                          {
-                            title: 'Santal Sublime Extrait de Parfum',
-                            variantTitle: '100ml / 3.4 fl. oz.',
-                            quantity: 1,
-                            price: 135.0,
-                          },
-                        ],
-                      }),
-                    })
-                      .then((res) => res.json())
-                      .then(() => {
-                        fetchEmailLogs();
-                        setNotification({
-                          message: `Test Order Confirmation email generated!`,
-                          type: 'success',
-                        });
-                        setTimeout(() => setNotification(null), 4000);
-                      });
-                  }}
-                  className="px-3.5 py-2 bg-ry-pearl border border-ry-ash text-ry-onyx text-xs uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors"
-                >
-                  + Test Order Email
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    fetch('/api/email/dispatch-notification', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        orderNumber: `RY-${Math.floor(10000 + Math.random() * 90000)}`,
-                        customerName: 'Valued Client (Test)',
-                        customerEmail: user?.email || 'client@rycarix.com',
-                        carrier: 'Royal Mail Tracked 24',
-                        trackingNumber: `RY-RM-${Math.floor(100000 + Math.random() * 900000)}GB`,
-                        serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
-                        estimatedDelivery: 'Tomorrow by 1:00 PM',
-                      }),
-                    })
-                      .then((res) => res.json())
-                      .then(() => {
-                        fetchEmailLogs();
-                        setNotification({
-                          message: `Test Dispatch Notification email generated!`,
-                          type: 'success',
-                        });
-                        setTimeout(() => setNotification(null), 4000);
-                      });
-                  }}
-                  className="px-3.5 py-2 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-semibold hover:bg-ry-burgundyLight transition-colors"
-                >
-                  + Test Dispatch Email
-                </button>
-
-                <button
-                  type="button"
-                  onClick={fetchEmailLogs}
-                  className="p-2 border border-ry-ash text-ry-stone hover:text-ry-onyx hover:bg-ry-pearl transition-colors"
-                  title="Refresh Email Logs"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Email Logs Table */}
-            <div className="bg-ry-white border border-ry-ash overflow-hidden">
-              <div className="p-4 bg-ry-pearlDark/30 border-b border-ry-ash flex items-center justify-between text-xs">
-                <span className="font-serif text-sm">Automated Email Dispatch Telemetry</span>
-                <span className="text-[11px] text-ry-stone">
-                  {emailLogs.length} automated emails recorded
-                </span>
-              </div>
-
-              {emailLogs.length === 0 ? (
-                <div className="p-12 text-center text-ry-stone font-sans">
-                  <Mail className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="font-serif text-base text-ry-onyx mb-1">No Automated Emails Sent Yet</p>
-                  <p className="text-xs text-ry-stone max-w-md mx-auto mb-4">
-                    Automated emails will appear here when a customer completes checkout or when you confirm dispatch in the Fulfillment tab.
-                  </p>
-                  <div className="flex justify-center gap-2">
-                    <a
-                      href="/api/email/preview?type=order_confirmation"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 border border-ry-ash bg-ry-pearl text-[11px] uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Preview Order Confirmation HTML</span>
-                    </a>
-                    <a
-                      href="/api/email/preview?type=dispatch_notification"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 border border-ry-ash bg-ry-pearl text-[11px] uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Preview Dispatch Email HTML</span>
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-ry-pearl border-b border-ry-ash uppercase tracking-editorial text-[10px] text-ry-stone">
-                      <tr>
-                        <th className="py-3 px-4">Trigger / Email Type</th>
-                        <th className="py-3 px-4">Order Ref</th>
-                        <th className="py-3 px-4">Customer Recipient</th>
-                        <th className="py-3 px-4">Courier / Tracking</th>
-                        <th className="py-3 px-4">Timestamp</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ry-ash/40">
-                      {emailLogs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-ry-pearl/50 transition-colors">
-                          <td className="py-3 px-4 font-medium">
-                            <span
-                              className={`px-2 py-0.5 text-[9px] uppercase tracking-wider font-semibold border ${
-                                log.type === 'ORDER_CONFIRMATION'
-                                  ? 'bg-amber-50 text-amber-900 border-amber-300'
-                                  : 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                              }`}
-                            >
-                              {log.type === 'ORDER_CONFIRMATION' ? 'Order Confirmation' : 'Dispatch Notice'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-mono font-medium text-ry-onyx">
-                            {log.orderNumber}
-                          </td>
-                          <td className="py-3 px-4 text-ry-charcoal">
-                            <div>{log.to}</div>
-                          </td>
-                          <td className="py-3 px-4 font-mono text-[11px] text-ry-stone">
-                            {log.carrier && (
-                              <div className="font-semibold text-ry-onyx">{log.carrier}</div>
-                            )}
-                            {log.trackingNumber ? log.trackingNumber : '—'}
-                          </td>
-                          <td className="py-3 px-4 text-ry-stone text-[11px]">
-                            {new Date(log.timestamp).toLocaleString('en-GB', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-300 text-emerald-800 text-[9px] uppercase tracking-wider font-medium">
-                              {log.status === 'DELIVERED' ? '✓ Delivered' : '✓ Generated (Preview Ready)'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedEmailPreview(log)}
-                                className="px-2.5 py-1 bg-ry-pearl border border-ry-ash text-ry-onyx hover:bg-ry-onyx hover:text-ry-white text-[10px] uppercase tracking-editorial transition-colors"
-                              >
-                                Preview HTML
-                              </button>
-                              <a
-                                href={`/api/email/preview?id=${encodeURIComponent(log.id)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1 text-ry-stone hover:text-ry-onyx"
-                                title="Open full email in new tab"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </a>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* In-Dashboard Email Preview Modal */}
-            {selectedEmailPreview && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in font-sans">
-                <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-                  <div className="p-4 bg-ry-onyx text-ry-white flex items-center justify-between border-b border-ry-ash">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-editorial text-ry-ash font-medium">
-                        Luxury HTML Email Preview
-                      </div>
-                      <div className="font-serif text-sm">
-                        {selectedEmailPreview.subject}
-                      </div>
-                      <div className="text-[11px] text-ry-stone font-mono">
-                        To: {selectedEmailPreview.to} &nbsp;•&nbsp; Order: {selectedEmailPreview.orderNumber}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`/api/email/preview?id=${encodeURIComponent(selectedEmailPreview.id)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1 bg-ry-white/10 hover:bg-ry-white/20 text-white text-[10px] uppercase tracking-editorial flex items-center gap-1 border border-white/20"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>Full Screen</span>
-                      </a>
-                      <button
-                        onClick={() => setSelectedEmailPreview(null)}
-                        className="p-1.5 text-ry-ash hover:text-ry-white transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto bg-neutral-100 p-4">
-                    <div className="max-w-2xl mx-auto bg-white shadow-md border border-neutral-300">
-                      <iframe
-                        srcDoc={selectedEmailPreview.html}
-                        className="w-full min-h-[600px] border-none"
-                        title="Rendered Email Preview"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
             )}
           </div>
-        )}
-
-        {/* Dynamic Product Creation Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex justify-between items-center pb-4 mb-6 border-b border-ry-ash">
-                <div>
-                  <h3 className="font-serif text-2xl">Add Dynamic Product</h3>
-                  <p className="text-xs text-ry-stone font-sans">
-                    Extensible architecture ready for Haircare, Parfum, Skincare, or future categories.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="text-ry-stone hover:text-ry-onyx p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateProduct} className="space-y-5 text-xs font-sans">
-                {/* Multi-Image Gallery Manager */}
-                <div className="bg-ry-white border border-ry-ash p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ry-ash/40 pb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
-                          Product Images & Visual Gallery
-                        </label>
-                        <span className="px-2 py-0.5 bg-ry-oatmeal text-ry-onyx text-[10px] font-mono font-medium border border-ry-ash">
-                          {formData.images?.length || 0} {formData.images?.length === 1 ? 'asset' : 'assets'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-ry-stone mt-0.5">
-                        Upload multiple high-resolution photos. Set your Hero (cover) and Texture views.
-                      </p>
-                    </div>
-
-                    <label className="cursor-pointer px-4 py-2 bg-ry-burgundy text-ry-white text-[11px] uppercase tracking-editorial font-medium flex items-center justify-center gap-2 hover:bg-ry-burgundyLight transition-colors shrink-0 shadow-sm">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{isProcessingImages ? 'Optimizing...' : 'Upload Image(s)'}</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isProcessingImages}
-                        onChange={(e) => handleMultipleImageUpload(e, 'add')}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Visual Gallery Grid */}
-                  {formData.images && formData.images.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                      {formData.images.map((img, idx) => (
-                        <div
-                          key={img.id || idx}
-                          className={`relative group bg-ry-oatmeal border overflow-hidden flex flex-col justify-between transition-all ${
-                            img.isHero
-                              ? 'border-ry-onyx ring-2 ring-ry-onyx bg-white'
-                              : img.isTexture
-                              ? 'border-amber-700/80 ring-1 ring-amber-700/50 bg-white'
-                              : 'border-ry-ash/80 hover:border-ry-stone bg-white/70'
-                          }`}
-                        >
-                          {/* Image preview */}
-                          <div className="relative aspect-[4/5] w-full overflow-hidden bg-ry-pearl">
-                            <img
-                              src={img.url}
-                              alt={img.alt || `Product Image ${idx + 1}`}
-                              className="w-full h-full object-cover object-center"
-                            />
-
-                            {/* Badges */}
-                            <div className="absolute top-1 left-1 flex flex-col gap-1 pointer-events-none">
-                              {img.isHero && (
-                                <span className="px-1.5 py-0.5 bg-ry-onyx text-ry-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
-                                  ★ HERO
-                                </span>
-                              )}
-                              {img.isTexture && (
-                                <span className="px-1.5 py-0.5 bg-amber-800 text-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
-                                  TEXTURE
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Remove button */}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(idx, 'add')}
-                              className="absolute top-1 right-1 p-1 bg-ry-onyx/80 hover:bg-red-700 text-white rounded-full opacity-80 hover:opacity-100 transition-all"
-                              title="Remove image"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-
-                          {/* Quick Toolbar */}
-                          <div className="p-1.5 bg-ry-white border-t border-ry-ash/40 flex flex-col gap-1 text-[9px]">
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleSetHeroImage(idx, 'add')}
-                                className={`flex-1 py-1 text-center font-medium transition-colors ${
-                                  img.isHero
-                                    ? 'bg-ry-onyx text-white font-bold'
-                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
-                                }`}
-                                title="Set as primary Hero image"
-                              >
-                                {img.isHero ? '✓ Main Hero' : 'Make Hero'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleToggleTextureImage(idx, 'add')}
-                                className={`flex-1 py-1 text-center font-medium transition-colors ${
-                                  img.isTexture
-                                    ? 'bg-amber-800 text-white font-bold'
-                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
-                                }`}
-                                title="Tag as sensory texture hover"
-                              >
-                                {img.isTexture ? '✓ Texture' : 'Texture'}
-                              </button>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-1 border-t border-ry-ash/30 text-[9px] text-ry-stone">
-                              <button
-                                type="button"
-                                disabled={idx === 0}
-                                onClick={() => handleMoveImage(idx, 'left', 'add')}
-                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
-                                title="Move left"
-                              >
-                                ← Earlier
-                              </button>
-                              <span className="font-mono text-[9px]">#{idx + 1}</span>
-                              <button
-                                type="button"
-                                disabled={idx === formData.images.length - 1}
-                                onClick={() => handleMoveImage(idx, 'right', 'add')}
-                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
-                                title="Move right"
-                              >
-                                Later →
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-ry-ash/80 p-8 text-center bg-ry-pearl/40">
-                      <ImageIcon className="w-8 h-8 mx-auto text-ry-stone/40 mb-2" />
-                      <p className="text-xs font-serif text-ry-onyx">No Images Added Yet</p>
-                      <p className="text-[11px] text-ry-stone mt-1">
-                        Click &quot;Upload Image(s)&quot; to select multiple files from your computer, or choose from presets below.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Add via URL & Curated Presets */}
-                  <div className="pt-2 border-t border-ry-ash/40 space-y-2.5">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Or paste high-resolution image URL (https://...)"
-                        value={addPastedUrl}
-                        onChange={(e) => setAddPastedUrl(e.target.value)}
-                        className="flex-1 bg-ry-pearl border border-ry-ash p-2 text-xs focus:border-ry-onyx outline-none font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddUrlImage('add')}
-                        className="px-4 py-2 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors shrink-0"
-                      >
-                        + Add Image URL
-                      </button>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
-                        Curated Image Presets (Click to add to gallery):
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {PRESET_IMAGES.map((preset) => (
-                          <button
-                            key={preset.name}
-                            type="button"
-                            onClick={() => handleAddPresetImage(preset.url, preset.name, 'add')}
-                            className="px-2 py-1 text-[10px] border border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx transition-all flex items-center gap-1"
-                          >
-                            <span>+ {preset.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Form fields: Title, Category, Subtitle */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Product Title *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g., Iris Sublime Extrait"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Category
-                    </label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    >
-                      <option value="Hair">Hair (Main Seller)</option>
-                      <option value="Parfum">Parfum</option>
-                      <option value="Skincare">Skincare</option>
-                      <option value="Body & Bath">Body & Bath</option>
-                      <option value="Home & Candles">Home & Candles</option>
-                      <option value="Accessories">Accessories</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Product Subtitle / Tagline
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Luxury Concentrated Extrait de Parfum"
-                    value={formData.subtitle}
-                    onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                {/* Pricing & Inventory */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Price (£) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.basePrice}
-                      onChange={(e) =>
-                        setFormData({ ...formData, basePrice: Number(e.target.value) })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Compare Price (£)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Optional"
-                      value={formData.compareAtPrice || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, compareAtPrice: Number(e.target.value) })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Inventory Units *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      value={formData.stock}
-                      onChange={(e) =>
-                        setFormData({ ...formData, stock: Number(e.target.value) })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      SKU Code
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                    Primary Variant Size / Volume
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.size}
-                    onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                {/* Summary & Description */}
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                    Short Summary (PDP Header)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.summary}
-                    onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Full Product Description
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Ingredients & Scent Notes Profile
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={formData.inci}
-                    onChange={(e) => setFormData({ ...formData, inci: e.target.value })}
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Origin & Sourcing Materials
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.terroir}
-                      onChange={(e) => setFormData({ ...formData, terroir: e.target.value })}
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Application Ritual / How To Use
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.howToUse}
-                      onChange={(e) => setFormData({ ...formData, howToUse: e.target.value })}
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 flex justify-end gap-3 border-t border-ry-ash">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="px-5 py-2.5 border border-ry-ash text-ry-stone hover:text-ry-onyx uppercase tracking-editorial text-[11px]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 bg-ry-onyx text-ry-white uppercase tracking-editorial text-[11px] hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Publish to Catalog</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Edit Product Modal */}
-        {showEditModal && editingProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-ry-pearl border border-ry-ash w-full max-w-3xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex justify-between items-center pb-4 mb-6 border-b border-ry-ash">
-                <div>
-                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone block">
-                    Product Ref: {editingProduct.id}
-                  </span>
-                  <h3 className="font-serif text-2xl text-ry-onyx">Edit Product: {editingProduct.title}</h3>
-                  <p className="text-xs text-ry-stone font-sans">
-                    Modify product imagery, pricing, inventory count, and product details.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setEditingProduct(null);
-                  }}
-                  className="text-ry-stone hover:text-ry-onyx p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleUpdateProduct} className="space-y-5 text-xs font-sans">
-                {/* Multi-Image Gallery Manager */}
-                <div className="bg-ry-white border border-ry-ash p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ry-ash/40 pb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <label className="block uppercase tracking-editorial text-[10px] text-ry-stone font-semibold">
-                          Product Images & Visual Gallery
-                        </label>
-                        <span className="px-2 py-0.5 bg-ry-oatmeal text-ry-onyx text-[10px] font-mono font-medium border border-ry-ash">
-                          {editFormData.images?.length || 0} {editFormData.images?.length === 1 ? 'asset' : 'assets'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-ry-stone mt-0.5">
-                        Manage high-resolution images for this product. Reorder, choose Hero, or set Texture views.
-                      </p>
-                    </div>
-
-                    <label className="cursor-pointer px-4 py-2 bg-ry-burgundy text-ry-white text-[11px] uppercase tracking-editorial font-medium flex items-center justify-center gap-2 hover:bg-ry-burgundyLight transition-colors shrink-0 shadow-sm">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{isProcessingImages ? 'Optimizing...' : 'Upload Image(s)'}</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isProcessingImages}
-                        onChange={(e) => handleMultipleImageUpload(e, 'edit')}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Visual Gallery Grid */}
-                  {editFormData.images && editFormData.images.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                      {editFormData.images.map((img, idx) => (
-                        <div
-                          key={img.id || idx}
-                          className={`relative group bg-ry-oatmeal border overflow-hidden flex flex-col justify-between transition-all ${
-                            img.isHero
-                              ? 'border-ry-onyx ring-2 ring-ry-onyx bg-white'
-                              : img.isTexture
-                              ? 'border-amber-700/80 ring-1 ring-amber-700/50 bg-white'
-                              : 'border-ry-ash/80 hover:border-ry-stone bg-white/70'
-                          }`}
-                        >
-                          {/* Image preview */}
-                          <div className="relative aspect-[4/5] w-full overflow-hidden bg-ry-pearl">
-                            <img
-                              src={img.url}
-                              alt={img.alt || `Product Image ${idx + 1}`}
-                              className="w-full h-full object-cover object-center"
-                            />
-
-                            {/* Badges */}
-                            <div className="absolute top-1 left-1 flex flex-col gap-1 pointer-events-none">
-                              {img.isHero && (
-                                <span className="px-1.5 py-0.5 bg-ry-onyx text-ry-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
-                                  ★ HERO
-                                </span>
-                              )}
-                              {img.isTexture && (
-                                <span className="px-1.5 py-0.5 bg-amber-800 text-white text-[8px] font-mono uppercase tracking-wider font-bold shadow-xs">
-                                  TEXTURE
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Remove button */}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(idx, 'edit')}
-                              className="absolute top-1 right-1 p-1 bg-ry-onyx/80 hover:bg-red-700 text-white rounded-full opacity-80 hover:opacity-100 transition-all"
-                              title="Remove image"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-
-                          {/* Quick Toolbar */}
-                          <div className="p-1.5 bg-ry-white border-t border-ry-ash/40 flex flex-col gap-1 text-[9px]">
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleSetHeroImage(idx, 'edit')}
-                                className={`flex-1 py-1 text-center font-medium transition-colors ${
-                                  img.isHero
-                                    ? 'bg-ry-onyx text-white font-bold'
-                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
-                                }`}
-                                title="Set as primary Hero image"
-                              >
-                                {img.isHero ? '✓ Main Hero' : 'Make Hero'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleToggleTextureImage(idx, 'edit')}
-                                className={`flex-1 py-1 text-center font-medium transition-colors ${
-                                  img.isTexture
-                                    ? 'bg-amber-800 text-white font-bold'
-                                    : 'bg-ry-pearl hover:bg-ry-oatmeal text-ry-charcoal'
-                                }`}
-                                title="Tag as sensory texture hover"
-                              >
-                                {img.isTexture ? '✓ Texture' : 'Texture'}
-                              </button>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-1 border-t border-ry-ash/30 text-[9px] text-ry-stone">
-                              <button
-                                type="button"
-                                disabled={idx === 0}
-                                onClick={() => handleMoveImage(idx, 'left', 'edit')}
-                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
-                                title="Move left"
-                              >
-                                ← Earlier
-                              </button>
-                              <span className="font-mono text-[9px]">#{idx + 1}</span>
-                              <button
-                                type="button"
-                                disabled={idx === (editFormData.images?.length || 0) - 1}
-                                onClick={() => handleMoveImage(idx, 'right', 'edit')}
-                                className="hover:text-ry-onyx disabled:opacity-30 disabled:hover:text-ry-stone p-0.5"
-                                title="Move right"
-                              >
-                                Later →
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-ry-ash/80 p-8 text-center bg-ry-pearl/40">
-                      <ImageIcon className="w-8 h-8 mx-auto text-ry-stone/40 mb-2" />
-                      <p className="text-xs font-serif text-ry-onyx">No Images In Gallery</p>
-                      <p className="text-[11px] text-ry-stone mt-1">
-                        Click &quot;Upload Image(s)&quot; to select multiple files from your computer, or choose from presets below.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Add via URL & Curated Presets */}
-                  <div className="pt-2 border-t border-ry-ash/40 space-y-2.5">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Or paste high-resolution image URL (https://...)"
-                        value={editPastedUrl}
-                        onChange={(e) => setEditPastedUrl(e.target.value)}
-                        className="flex-1 bg-ry-pearl border border-ry-ash p-2 text-xs focus:border-ry-onyx outline-none font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddUrlImage('edit')}
-                        className="px-4 py-2 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors shrink-0"
-                      >
-                        + Add Image URL
-                      </button>
-                    </div>
-
-                    <div>
-                      <div className="text-[10px] text-ry-stone uppercase tracking-editorial mb-1">
-                        Curated Image Presets (Click to add to gallery):
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {PRESET_IMAGES.map((preset) => (
-                          <button
-                            key={preset.name}
-                            type="button"
-                            onClick={() => handleAddPresetImage(preset.url, preset.name, 'edit')}
-                            className="px-2 py-1 text-[10px] border border-ry-ash/70 bg-ry-pearl hover:border-ry-onyx text-ry-stone hover:text-ry-onyx transition-all flex items-center gap-1"
-                          >
-                            <span>+ {preset.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Core Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Product Title *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editFormData.title}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, title: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-serif text-sm font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Category
-                    </label>
-                    <select
-                      value={editFormData.category}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, category: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    >
-                      <option value="Hair">Hair (Main Seller)</option>
-                      <option value="Parfum">Parfum</option>
-                      <option value="Skincare">Skincare</option>
-                      <option value="Body & Bath">Body & Bath</option>
-                      <option value="Home & Candles">Home & Candles</option>
-                      <option value="Accessories">Accessories</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      URL Slug
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.slug}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, slug: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Product Subtitle / Tagline
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.subtitle}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, subtitle: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Pricing & Stock */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Price (£) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={editFormData.basePrice}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, basePrice: Number(e.target.value) })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Compare Price (£)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="Optional"
-                      value={editFormData.compareAtPrice || ''}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          compareAtPrice: Number(e.target.value),
-                        })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      Inventory Units *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      value={editFormData.stock}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, stock: Number(e.target.value) })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                      SKU Code
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editFormData.sku}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, sku: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                    Primary Variant Size / Volume
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.size}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, size: e.target.value })
-                    }
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                {/* Summary & Description */}
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1 font-semibold">
-                    Short Summary (PDP Header)
-                  </label>
-                  <input
-                    type="text"
-                    value={editFormData.summary}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, summary: e.target.value })
-                    }
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Full Product Description
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editFormData.description}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, description: e.target.value })
-                    }
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                    Ingredients & Scent Notes Profile
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editFormData.inci}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, inci: e.target.value })
-                    }
-                    className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Origin & Sourcing Materials
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.terroir}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, terroir: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block uppercase tracking-editorial text-[10px] text-ry-stone mb-1">
-                      Application Ritual / How To Use
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.howToUse}
-                      onChange={(e) =>
-                        setEditFormData({ ...editFormData, howToUse: e.target.value })
-                      }
-                      className="w-full bg-ry-white border border-ry-ash p-2.5 focus:border-ry-onyx outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-4 flex justify-end gap-3 border-t border-ry-ash">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEditModal(false);
-                      setEditingProduct(null);
-                    }}
-                    className="px-5 py-2.5 border border-ry-ash text-ry-stone hover:text-ry-onyx uppercase tracking-editorial text-[11px]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 bg-ry-onyx text-ry-white uppercase tracking-editorial text-[11px] hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Changes to Catalog</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Shipping Aggregator Dispatch & Label Inspection Modal */}
-        {dispatchModalOrder && activeLabelData && (
-          <div className="fixed inset-0 bg-ry-onyx/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fade-in font-sans">
-            <div className="bg-ry-white max-w-2xl w-full border border-ry-ash shadow-2xl p-6 sm:p-8 my-8 relative">
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setDispatchModalOrder(null)}
-                className="absolute top-4 right-4 p-2 text-ry-stone hover:text-ry-onyx transition-colors"
-                aria-label="Close Modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {/* Modal Header */}
-              <div className="border-b border-ry-ash/60 pb-4 mb-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial px-2 py-0.5">
-                    Evri & Royal Mail Dispatch Gateway
-                  </span>
-                  <span className="text-xs text-ry-stone">
-                    Order Ref: {dispatchModalOrder.id} • {dispatchModalOrder.customer}
-                  </span>
-                </div>
-                <h3 className="font-serif text-2xl text-ry-onyx">
-                  Courier Dispatch & Hazard Labeling
-                </h3>
-              </div>
-
-              {dispatchSuccessMsg && (
-                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>{dispatchSuccessMsg}</span>
-                </div>
-              )}
-
-              {/* Courier Selection Toggle: Royal Mail vs Evri */}
-              {!dispatchModalOrder.trackingNumber && (
-                <div className="mb-6 p-4 bg-ry-pearl border border-ry-ash">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
-                      1. Select Courier Partner
-                    </span>
-                    <span className="text-[10px] text-ry-stone/80 font-mono">
-                      Active Delivery Partners
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Royal Mail Option */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCarrier('Royal Mail')}
-                      className={`p-3 text-left border transition-all flex flex-col justify-between ${
-                        activeLabelData.carrier === 'Royal Mail'
-                          ? 'border-ry-onyx bg-white ring-1 ring-ry-onyx shadow-xs'
-                          : 'border-ry-ash/80 bg-white/60 hover:border-ry-onyx/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="font-serif font-bold text-sm text-ry-onyx flex items-center gap-1.5">
-                          <Truck className="w-4 h-4 text-red-700" />
-                          Royal Mail
-                        </span>
-                        {activeLabelData.carrier === 'Royal Mail' && (
-                          <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold border border-emerald-300">
-                            SELECTED
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] font-medium text-ry-onyx">
-                        Royal Mail Tracked UK
-                      </div>
-                      <div className="text-[10px] text-ry-stone mt-1">
-                        Standard (£3.50) • Tracked 48 (£4.50) • Tracked 24 (£5.00)
-                      </div>
-                    </button>
-
-                    {/* Evri Option */}
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCarrier('Evri')}
-                      className={`p-3 text-left border transition-all flex flex-col justify-between ${
-                        activeLabelData.carrier === 'Evri'
-                          ? 'border-ry-onyx bg-white ring-1 ring-ry-onyx shadow-xs'
-                          : 'border-ry-ash/80 bg-white/60 hover:border-ry-onyx/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="font-serif font-bold text-sm text-ry-onyx flex items-center gap-1.5">
-                          <Truck className="w-4 h-4 text-sky-700" />
-                          Evri
-                        </span>
-                        {activeLabelData.carrier === 'Evri' && (
-                          <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-mono font-bold border border-emerald-300">
-                            SELECTED
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] font-medium text-ry-onyx">
-                        Evri Express Tracked Delivery
-                      </div>
-                      <div className="text-[10px] text-ry-stone mt-1">
-                        GPS Safe Place Digital Photo Proof • 7-Day Residential Doorstep Courier
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Royal Mail UK Services Selector */}
-                  {activeLabelData.carrier === 'Royal Mail' && (
-                    <div className="mt-3 pt-3 border-t border-ry-ash/60">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
-                          Royal Mail UK Service Level
-                        </span>
-                        <span className="text-[9px] text-ry-stone">
-                          {dispatchModalOrder?.shippingService ? `Customer Selected: ${dispatchModalOrder.shippingService}` : 'Official Rates'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {ROYAL_MAIL_UK_SERVICES.map((rm) => {
-                          const isCurrent =
-                            activeLabelData.serviceLevel?.toLowerCase().includes(rm.service.toLowerCase()) ||
-                            activeLabelData.serviceLevel?.toLowerCase().includes(rm.carrierName.toLowerCase()) ||
-                            (rm.id === 'rm-tracked-24-small' && activeLabelData.serviceLevel?.includes('24') && !activeLabelData.serviceLevel?.includes('48')) ||
-                            (rm.id === 'rm-tracked-48-small' && activeLabelData.serviceLevel?.includes('48') && !activeLabelData.serviceLevel?.toLowerCase().includes('medium'));
-
-                          return (
-                            <button
-                              key={rm.id}
-                              type="button"
-                              onClick={() => handleSelectCarrier('Royal Mail', rm.service)}
-                              className={`p-2.5 text-left border text-xs transition-all flex flex-col justify-between ${
-                                isCurrent
-                                  ? 'border-ry-onyx bg-white ring-1 ring-ry-onyx shadow-xs'
-                                  : 'border-ry-ash/70 bg-white/60 hover:border-ry-onyx/50'
-                              }`}
-                            >
-                              <div>
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="font-semibold text-ry-onyx text-[11px]">
-                                    {rm.service}
-                                  </span>
-                                  <span className="font-serif font-bold text-ry-onyx text-xs">
-                                    £{rm.price.toFixed(2)}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] text-ry-stone leading-tight">
-                                  {rm.weightLimit}
-                                </div>
-                              </div>
-                              <div className="mt-2 pt-1 border-t border-ry-ash/40 text-[9px] text-ry-charcoal font-medium">
-                                {rm.recommendation}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Step 2: Address Validation & Dangerous Goods Verification */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-xs">
-                {/* Address Check */}
-                <div className="p-4 bg-ry-pearl border border-ry-ash/70">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
-                      2. Address Normalization
-                    </span>
-                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 border border-emerald-300 font-mono">
-                      VALIDATED
-                    </span>
-                  </div>
-                  <div className="font-medium text-ry-onyx">{dispatchModalOrder.customer}</div>
-                  {dispatchModalOrder.email && (
-                    <div className="text-[11px] text-ry-stone">{dispatchModalOrder.email}</div>
-                  )}
-                  {(dispatchModalOrder.phone || dispatchModalOrder.address?.phone) && (
-                    <div className="text-[11px] text-ry-stone font-mono">{dispatchModalOrder.phone || dispatchModalOrder.address?.phone}</div>
-                  )}
-                  <div className="text-ry-stone mt-1 leading-relaxed">
-                    {dispatchModalOrder.address?.street}<br />
-                    {dispatchModalOrder.address?.city}, {dispatchModalOrder.address?.state} {dispatchModalOrder.address?.postalCode}<br />
-                    {dispatchModalOrder.address?.country}
-                  </div>
-                </div>
-
-                {/* Hazmat / LQ Check */}
-                <div className={`p-4 border ${
-                  activeLabelData.isHazardous
-                    ? 'bg-amber-50/70 border-amber-300'
-                    : 'bg-ry-pearl border-ry-ash/70'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] uppercase tracking-editorial text-ry-stone font-semibold">
-                      3. Dangerous Goods (LQ) Check
-                    </span>
-                    <span className={`text-[9px] px-1.5 py-0.2 border font-mono ${
-                      activeLabelData.isHazardous
-                        ? 'bg-amber-200 text-amber-900 border-amber-400 font-bold'
-                        : 'bg-ry-white text-ry-stone border-ry-ash'
-                    }`}>
-                      {activeLabelData.isHazardous ? 'UN 1266 REQUIRED' : 'NON-REGULATED'}
-                    </span>
-                  </div>
-                  {activeLabelData.isHazardous ? (
-                    <div>
-                      <div className="font-semibold text-amber-950 flex items-center gap-1">
-                        <Flame className="w-3.5 h-3.5 text-amber-700" />
-                        Perfumery Products (Alcohol Denat &gt;24% ABV)
-                      </div>
-                      <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
-                        Class 3 Flammable Liquid PG II/III. Package automatically tagged with mandatory Limited Quantity (LQ) diamond marking for {activeLabelData.carrier} transport.
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="font-medium text-ry-onyx">Standard Cosmetic Goods</div>
-                      <p className="text-[11px] text-ry-stone mt-1">
-                        Product does not exceed solvent flashpoint thresholds. Standard shipping documentation accepted by {activeLabelData.carrier}.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Step 3: Courier Tracking Number & Live Delivery Status Input */}
-              <div className="mb-6 p-4 bg-ry-pearl/60 border border-ry-ash/80 text-xs">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase tracking-editorial text-ry-onyx font-bold">
-                    4. Live Courier Tracking Details & Customer Milestone
-                  </span>
-                  <span className="text-[9px] text-ry-stone">
-                    Paste real carrier waybill or use Rycarix reference
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                  <div className="sm:col-span-1">
-                    <label className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1">
-                      Carrier
-                    </label>
-                    <select
-                      value={activeLabelData.carrier}
-                      onChange={(e) => handleSelectCarrier(e.target.value as any)}
-                      className="w-full bg-white border border-ry-ash p-2 text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx"
-                    >
-                      <option value="Royal Mail">Royal Mail</option>
-                      <option value="Evri">Evri</option>
-                      <option value="DHL">DHL Express</option>
-                      <option value="FedEx">FedEx</option>
-                      <option value="UPS">UPS</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-1">
-                    <label className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1">
-                      Tracking / Waybill Number
-                    </label>
-                    <input
-                      type="text"
-                      value={activeLabelData.trackingNumber}
-                      onChange={(e) =>
-                        setActiveLabelData({ ...activeLabelData, trackingNumber: e.target.value.trim() })
-                      }
-                      placeholder="e.g. GB123456789 or 16-digit"
-                      className="w-full bg-white border border-ry-ash p-2 text-xs font-mono text-ry-onyx focus:outline-none focus:border-ry-onyx"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-1">
-                    <label className="text-[9px] uppercase tracking-editorial text-ry-stone block mb-1">
-                      Current Milestone Shown to Customer
-                    </label>
-                    <select
-                      value={activeLabelData.currentStatus}
-                      onChange={(e) =>
-                        setActiveLabelData({ ...activeLabelData, currentStatus: e.target.value as any })
-                      }
-                      className="w-full bg-white border border-ry-ash p-2 text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx"
-                    >
-                      <option value="IN_TRANSIT">In Transit (Collected & En Route to Hub)</option>
-                      <option value="OUT_FOR_DELIVERY">Out for Delivery (With Doorstep Courier)</option>
-                      <option value="DELIVERED">Delivered to Recipient Doorstep</option>
-                      <option value="DISPATCH_PENDING">Order Placed & Packed (Pending Collection)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 4: Commercial Shipping Label Simulation */}
-              <div className="mb-6">
-                <span className="text-[10px] uppercase tracking-editorial text-ry-stone block mb-2 font-semibold">
-                  5. Generated Thermal Shipping Label & Barcode
-                </span>
-
-                <div className="border-2 border-ry-onyx p-4 sm:p-6 bg-white text-black font-sans relative">
-                  {/* Label Top Bar */}
-                  <div className="flex items-center justify-between border-b-2 border-black pb-3 mb-3">
-                    <div>
-                      <span className="font-serif text-lg tracking-wider uppercase font-bold block">
-                        RYCARIX FULFILLMENT
-                      </span>
-                      <span className="text-[9px] uppercase tracking-wider text-neutral-600 block">
-                        {activeLabelData.carrier === 'Royal Mail'
-                          ? 'Royal Mail Delivery Network • UK & Worldwide'
-                          : 'Evri National Parcel Hub • Express Doorstep'}
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="text-sm font-bold uppercase">
-                        {activeLabelData.carrier === 'Royal Mail'
-                          ? 'ROYAL MAIL TRACKED 24'
-                          : `${activeLabelData.carrier.toUpperCase()} EXPRESS`}
-                      </div>
-                      <span className="text-[9px] font-mono text-neutral-600 block">
-                        {activeLabelData.serviceLevel}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Sender & Recipient Columns */}
-                  <div className="grid grid-cols-2 gap-4 text-[11px] border-b-2 border-black pb-3 mb-3">
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">FROM:</span>
-                      <div className="font-medium">Rycarix Fulfillment Center</div>
-                      <div className="text-neutral-600">18 Place Vendôme, 75001 Paris, France</div>
-                    </div>
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">DELIVER TO:</span>
-                      <div className="font-bold text-sm">{activeLabelData.recipientAddress.name}</div>
-                      {activeLabelData.recipientAddress.email && (
-                        <div className="text-[10px] text-neutral-600">{activeLabelData.recipientAddress.email}</div>
-                      )}
-                      {activeLabelData.recipientAddress.phone && (
-                        <div className="text-[10px] text-neutral-600 font-mono">TEL: {activeLabelData.recipientAddress.phone}</div>
-                      )}
-                      <div className="text-neutral-700 leading-snug mt-0.5">
-                        {activeLabelData.recipientAddress.street}<br />
-                        {activeLabelData.recipientAddress.city}, {activeLabelData.recipientAddress.state} {activeLabelData.recipientAddress.postalCode}<br />
-                        {activeLabelData.recipientAddress.country}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tracking Number & Hazardous Diamond Side-by-Side */}
-                  <div className="flex items-center justify-between gap-4 pt-1">
-                    <div className="flex-1">
-                      <span className="text-[9px] uppercase font-bold text-neutral-500 block">
-                        TRACKING NUMBER / WAYBILL:
-                      </span>
-                      <div className="font-mono text-base sm:text-lg font-bold tracking-wider">
-                        {activeLabelData.trackingNumber}
-                      </div>
-
-                      {/* Simulated Barcode Lines */}
-                      <div className="h-10 mt-2 flex items-stretch gap-[2px] bg-neutral-100 p-1 border border-neutral-300">
-                        {[1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 3, 1, 2, 4, 2, 1, 3, 2, 1, 4, 1, 3, 2, 4, 1, 2, 3].map((w, i) => (
-                          <div
-                            key={i}
-                            className="bg-black"
-                            style={{ width: `${w * 2}px` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Hazardous UN 1266 Limited Quantity (LQ) Diamond Label */}
-                    {activeLabelData.isHazardous && (
-                      <div className="shrink-0 flex flex-col items-center justify-center p-2 border border-black/30 bg-neutral-50">
-                        <div className="w-14 h-14 border-2 border-black rotate-45 flex flex-col justify-between overflow-hidden bg-white p-0.5 shadow-xs my-2">
-                          <div className="w-full h-3.5 bg-black" />
-                          <div className="text-center font-bold text-[7px] text-black">LQ</div>
-                          <div className="w-full h-3.5 bg-black" />
-                        </div>
-                        <span className="text-[8px] font-mono font-bold mt-2 uppercase tracking-tight">
-                          UN 1266 LIMITED QTY
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-ry-ash/70">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePrintThermalLabel}
-                    className="px-4 py-2.5 bg-ry-pearl hover:bg-ry-oatmeal border border-ry-ash text-xs uppercase tracking-editorial font-medium flex items-center gap-2 transition-colors"
-                  >
-                    <Printer className="w-4 h-4 text-ry-stone" />
-                    <span>Print Label (PDF)</span>
-                  </button>
-
-                  <Link
-                    href={`/track?ref=${encodeURIComponent(activeLabelData.trackingNumber)}`}
-                    target="_blank"
-                    className="px-4 py-2.5 bg-ry-white hover:bg-ry-pearl border border-ry-ash text-xs uppercase tracking-editorial font-medium flex items-center gap-2 transition-colors text-ry-onyx"
-                  >
-                    <Truck className="w-4 h-4 text-ry-stone" />
-                    <span>Open Branded Tracking Portal</span>
-                    <ExternalLink className="w-3 h-3 text-ry-stone" />
-                  </Link>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDispatchModalOrder(null)}
-                    className="px-4 py-2.5 border border-ry-ash text-ry-stone hover:text-ry-onyx uppercase tracking-editorial text-xs transition-colors"
-                  >
-                    Close
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isDispatching}
-                    onClick={handleConfirmDispatch}
-                    className="px-6 py-2.5 bg-ry-burgundy text-ry-white uppercase tracking-editorial text-xs font-semibold hover:bg-ry-burgundyLight transition-colors flex items-center gap-2 disabled:opacity-50 shadow-sm"
-                  >
-                    {isDispatching ? (
-                      <span>Saving Dispatch Details...</span>
-                    ) : (
-                      <>
-                        <Package className="w-4 h-4" />
-                        <span>
-                          {dispatchModalOrder.fulfillment?.includes('Dispatched')
-                            ? 'Update Live Tracking Details'
-                            : `Confirm Dispatch via ${activeLabelData.carrier}`}
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Admin Notification Toast */}
-        {notification && (
-          <div className="fixed bottom-6 right-6 z-50 bg-ry-onyx text-ry-white px-5 py-3.5 border border-ry-ash/40 shadow-2xl flex items-center gap-3 animate-fade-in font-sans">
-            {notification.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            ) : (
-              <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
-            )}
-            <span className="text-xs font-medium tracking-wide">{notification.message}</span>
+        </div>
+      ) : (
+        /* Orders & Dispatch Tab */
+        <div className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-neutral-900">
+              Customer Orders & Dispatch ({orders.length})
+            </h2>
             <button
-              onClick={() => setNotification(null)}
-              className="text-ry-ash hover:text-ry-white transition-colors ml-2"
-              title="Dismiss notification"
+              onClick={fetchOrders}
+              className="text-xs font-medium text-neutral-600 hover:text-neutral-900 underline flex items-center gap-1 cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh Orders
             </button>
           </div>
-        )}
 
-      </div>
+          {ordersLoading ? (
+            <div className="py-12 text-center text-sm text-neutral-500">Loading orders...</div>
+          ) : orders.length === 0 ? (
+            <div className="py-12 text-center text-sm text-neutral-500">
+              No orders placed yet. Orders will appear here upon customer checkout.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-neutral-200 text-xs uppercase text-neutral-500">
+                    <th className="py-3 px-3">Order ID</th>
+                    <th className="py-3 px-3">Customer</th>
+                    <th className="py-3 px-3">Items</th>
+                    <th className="py-3 px-3">Total</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3">Tracking</th>
+                    <th className="py-3 px-3 text-right">Fulfillment</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 text-sm">
+                  {orders.map((ord) => {
+                    const isDispatched =
+                      (ord.fulfillment && ord.fulfillment.toLowerCase().includes('dispatched')) ||
+                      ord.status === 'SHIPPED';
+
+                    return (
+                      <tr key={ord.id} className="hover:bg-neutral-50">
+                        <td className="py-3 px-3 font-mono font-medium text-neutral-900">{ord.id}</td>
+                        <td className="py-3 px-3">
+                          <p className="font-medium text-neutral-900">{ord.customer || ord.customerName || 'Client'}</p>
+                          <p className="text-xs text-neutral-400">{ord.email || ord.customerEmail || ''}</p>
+                        </td>
+                        <td className="py-3 px-3 text-xs text-neutral-600 max-w-xs truncate">
+                          {typeof ord.items === 'string'
+                            ? ord.items
+                            : Array.isArray(ord.items)
+                            ? ord.items.map((i: any) => `${i.title || i.name} x${i.quantity || 1}`).join(', ')
+                            : 'Order items'}
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-neutral-900">
+                          £{Number(ord.total || 0).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                              isDispatched ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            {isDispatched ? 'Dispatched' : 'Ready for Dispatch'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-xs">
+                          {ord.trackingNumber ? (
+                            <a
+                              href={`https://www.royalmail.com/track-your-item#/tracking-results/${ord.trackingNumber}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              <span>{ord.trackingNumber}</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="text-neutral-400">Pending</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          {isDispatched ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                              <Check className="w-3.5 h-3.5" /> Dispatched
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleConfirmDispatch(ord)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded hover:bg-neutral-800 transition cursor-pointer"
+                            >
+                              <Truck className="w-3 h-3" />
+                              Confirm Dispatch
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

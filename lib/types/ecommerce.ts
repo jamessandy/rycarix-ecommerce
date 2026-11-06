@@ -1,3 +1,21 @@
+export interface Product {
+  id: string;
+  name: string;
+  title?: string;
+  slug: string;
+  description: string;
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+  category: string;
+  images: string[];
+  featured?: boolean;
+  rating?: number;
+  reviewsCount?: number;
+  sku?: string;
+  createdAt?: string;
+}
+
 export interface ProductAttributeMap {
   // Haircare attributes
   hairType?: string[];

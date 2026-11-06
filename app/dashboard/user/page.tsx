@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore, UserAddress } from '@/lib/store/useAuthStore';
+import { useWishlistStore } from '@/lib/store/useWishlistStore';
 
 function UserDashboardContent() {
   const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses' | 'profile'>(
@@ -31,6 +32,7 @@ function UserDashboardContent() {
   );
   const { addItem, openCart, clearCart } = useCartStore();
   const { user, isAuthenticated, logout, updateProfile, addAddress } = useAuthStore();
+  const { items: wishlistItems, removeItem: removeWishlistItem } = useWishlistStore();
   
   const searchParams = useSearchParams();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
@@ -348,6 +350,16 @@ function UserDashboardContent() {
             Orders & Tracking ({displayedOrders.length})
           </button>
           <button
+            onClick={() => setActiveTab('wishlist')}
+            className={`pb-4 px-4 transition-all relative shrink-0 ${
+              activeTab === 'wishlist'
+                ? 'text-ry-onyx border-b-2 border-ry-onyx'
+                : 'text-ry-stone hover:text-ry-onyx'
+            }`}
+          >
+            Saved Wishlist ({wishlistItems.length})
+          </button>
+          <button
             onClick={() => setActiveTab('addresses')}
             className={`pb-4 px-4 transition-all relative shrink-0 ${
               activeTab === 'addresses'
@@ -566,6 +578,100 @@ function UserDashboardContent() {
                   </div>
                 );
               })
+            )}
+          </div>
+        )}
+
+        {/* TAB: SAVED WISHLIST */}
+        {activeTab === 'wishlist' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between border-b border-ry-ash/60 pb-4">
+              <div>
+                <h3 className="font-serif text-xl">Saved Wishlist</h3>
+                <p className="text-xs text-ry-stone">
+                  {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'} saved to your account.
+                </p>
+              </div>
+              <Link
+                href="/products"
+                className="px-4 py-2 border border-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-onyx hover:text-white transition"
+              >
+                Continue Browsing
+              </Link>
+            </div>
+
+            {wishlistItems.length === 0 ? (
+              <div className="text-center py-16 bg-ry-white border border-ry-ash/70 p-8">
+                <Heart className="w-10 h-10 mx-auto text-ry-stone/40 mb-3" />
+                <h4 className="font-serif text-lg mb-1">Your wishlist is currently empty</h4>
+                <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
+                  Save your favourite fragrances, hair elixirs, and skincare essentials to keep track of them.
+                </p>
+                <Link
+                  href="/products"
+                  className="px-6 py-3 bg-ry-burgundy text-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition"
+                >
+                  Explore Collection
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {wishlistItems.map((item) => {
+                  const img = Array.isArray(item.images)
+                    ? (typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url)
+                    : (item as any).image || '/images/media_1791069473262.jpg';
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-ry-white border border-ry-ash/70 overflow-hidden flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="relative aspect-[4/5] bg-ry-pearl overflow-hidden">
+                          <img
+                            src={img}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="p-4">
+                          <span className="text-[10px] uppercase tracking-wider text-ry-stone block mb-1">
+                            {item.category}
+                          </span>
+                          <Link href={`/products/${item.slug}`}>
+                            <h4 className="font-serif font-medium text-base text-ry-onyx line-clamp-1 hover:underline">
+                              {item.name}
+                            </h4>
+                          </Link>
+                          <p className="font-mono text-sm font-semibold text-ry-onyx mt-1">
+                            £{Number(item.price).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 pt-0 space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addItem(item, 1);
+                            openCart();
+                          }}
+                          className="w-full py-2.5 bg-ry-onyx text-white text-xs uppercase tracking-editorial font-medium hover:bg-neutral-800 transition"
+                        >
+                          Move to Bag
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeWishlistItem(item.id)}
+                          className="w-full py-1.5 text-xs text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Remove from Wishlist
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

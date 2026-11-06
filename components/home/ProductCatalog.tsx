@@ -1,400 +1,217 @@
+// components/home/ProductCatalog.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import Image from 'next/image';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  Search,
-  Filter,
-  ArrowUpDown,
-  ShoppingBag,
-  Star,
-  Check,
-  Eye,
-  SlidersHorizontal,
-  Sparkles,
-} from 'lucide-react';
-import { PRODUCTS } from '@/lib/data/mockData';
+import { Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
-import { ProductItem } from '@/lib/types/ecommerce';
-import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/services/catalogService';
+import { useWishlistStore } from '@/lib/store/useWishlistStore';
 
 interface ProductCatalogProps {
+  initialCategory?: string;
   selectedCategory?: string;
 }
 
-export default function ProductCatalog({ selectedCategory: initialCategory }: ProductCatalogProps) {
-  const [activeCategory, setActiveCategory] = useState<string>(initialCategory || 'ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
-  const [hoveredProductId, setHoveredProductId] = useState<string | null>(null);
-  const [justAddedId, setJustAddedId] = useState<string | null>(null);
-  const [allProducts, setAllProducts] = useState<ProductItem[]>(PRODUCTS);
+export default function ProductCatalog({ initialCategory = 'all', selectedCategory }: ProductCatalogProps) {
+  const startCat = (selectedCategory || initialCategory || 'all').toLowerCase();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>(startCat);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { addItem, openCart } = useCartStore();
+  const addItem = useCartStore((state) => state.addItem);
+  const { toggleItem, isInWishlist } = useWishlistStore();
 
-  // Load admin-managed catalog from localStorage and API (falls back to static PRODUCTS)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    let mounted = true;
+    async function loadProducts() {
+      setLoading(true);
       try {
-        const saved = localStorage.getItem('rycarix_catalog_products');
-        if (saved) {
-          const parsed: ProductItem[] = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setAllProducts(parsed);
-          }
+        const res = await fetch('/api/products', { cache: 'no-store' });
+        const data = await res.json();
+        if (mounted && Array.isArray(data.products)) {
+          setProducts(data.products);
         }
-      } catch (e) {
-        // Fall back to static data if localStorage fails
+      } catch (err) {
+        console.error('Failed to load catalog:', err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      fetch('/api/products')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (Array.isArray(data?.products) && data.products.length > 0) {
-            setAllProducts((prev) => {
-              return prev.length >= data.products.length ? prev : data.products;
-            });
-          }
-        })
-        .catch(() => {});
     }
+    loadProducts();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Visible products (exclude admin-hidden ones)
-  const visibleProducts = useMemo(() => allProducts.filter(p => !p.isHidden), [allProducts]);
+  const categories = ['all', 'perfume', 'hair', 'cosmetics', 'skincare'];
 
-  const categoryOptions = [
-    { label: 'All Products', value: 'ALL', count: visibleProducts.length },
-    { label: 'Hair', value: 'Hair', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Hair')).length },
-    { label: 'Parfum', value: 'Parfum', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Parfum')).length },
-    { label: 'Skincare', value: 'Skincare', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Skincare')).length },
-    { label: 'Body & Bath', value: 'Body & Bath', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Body & Bath')).length },
-    { label: 'Home & Candles', value: 'Home & Candles', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Home & Candles')).length },
-    { label: 'Accessories', value: 'Accessories', count: visibleProducts.filter(p => matchProductCategory(p.category, 'Accessories')).length },
-  ];
+  const getCategoryCount = (cat: string) => {
+    if (cat === 'all') return products.length;
+    return products.filter((p) => p.category?.toLowerCase() === cat).length;
+  };
 
-  const filteredProducts = useMemo(() => {
-    return visibleProducts.filter((product) => {
-      const matchesCategory =
-        activeCategory === 'ALL' ||
-        product.category === activeCategory ||
-        matchProductCategory(product.category, activeCategory);
-      const matchesSearch =
-        searchQuery === '' ||
-        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    }).sort((a, b) => {
-      if (sortBy === 'price-asc') return a.basePrice - b.basePrice;
-      if (sortBy === 'price-desc') return b.basePrice - a.basePrice;
-      if (sortBy === 'rating') return b.rating - a.rating;
-      return 0; // Default featured order
-    });
-  }, [visibleProducts, activeCategory, searchQuery, sortBy]);
+  const filteredProducts =
+    activeCategory === 'all'
+      ? products
+      : products.filter((p) => p.category?.toLowerCase() === activeCategory);
 
-  const handleQuickAdd = (product: ProductItem, e: React.MouseEvent) => {
+  const handleCardShare = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
-    const defaultVariant = product.variants[0];
-    const heroImage = product.images.find(img => img.isHero) || product.images[0];
-
-    addItem({
-      id: `${product.id}-${defaultVariant.id}`,
-      productId: product.id,
-      variantId: defaultVariant.id,
-      title: product.title,
-      variantTitle: defaultVariant.title,
-      sku: defaultVariant.sku,
-      price: defaultVariant.price,
-      quantity: 1,
-      image: heroImage ? heroImage.url : '',
-    });
-
-    setJustAddedId(product.id);
-    setTimeout(() => {
-      setJustAddedId(null);
-      openCart();
-    }, 450);
+    const url = `${window.location.origin}/products/${product.slug}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: `${product.name} - £${Number(product.price).toFixed(2)}`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopiedId(product.id);
+        setTimeout(() => setCopiedId(null), 2000);
+      }
+    } catch {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(product.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   return (
-    <section id="catalog" className="py-20 sm:py-28 bg-ry-pearl text-ry-onyx font-sans border-b border-ry-ash/60">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Header & Category Intro */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-          <div>
-            <span className="text-[11px] uppercase tracking-[0.3em] text-ry-stone block mb-2">
-              All Products
-            </span>
-            <h2 className="font-serif text-3xl sm:text-5xl font-normal text-ry-onyx leading-tight">
-              Everyday Essentials. <span className="italic">Exceptional Style.</span>
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-ry-stone max-w-md font-sans">
-            We believe the little details make a difference. That&apos;s why RYCARIX brings you a thoughtfully curated selection of hair, fragrances, skincare, home essentials and accessories to add a touch of beauty and elegance to your everyday life.
+    <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 font-sans">
+      {/* Header & Dynamic Count */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h2 className="text-3xl font-serif font-bold text-neutral-900 capitalize">
+            {activeCategory === 'all' ? 'Complete Collection' : `${activeCategory} Collection`}
+          </h2>
+          <p className="text-sm text-neutral-600 mt-1">
+            Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} available
           </p>
         </div>
 
-        {/* Filter & Search Toolbar */}
-        <div className="bg-ry-white p-4 sm:p-5 border border-ry-ash/70 shadow-sm mb-10 space-y-4">
-          {/* Top Row: Category Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categoryOptions.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
-                className={`px-4 py-2 text-xs uppercase tracking-editorial font-medium whitespace-nowrap transition-all border ${
-                  activeCategory === cat.value
-                    ? 'bg-ry-burgundy text-ry-white border-ry-burgundy shadow-sm'
-                    : 'bg-ry-pearl text-ry-charcoal border-ry-ash/60 hover:border-ry-burgundy'
-                }`}
-              >
-                {cat.label}{' '}
-                <span className={`text-[10px] ml-1 opacity-70`}>({cat.count})</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Bottom Row: Search & Sort Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-ry-ash/40">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-ry-stone absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search products by title, scent, or ingredient..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs bg-ry-pearl border border-ry-ash/60 text-ry-onyx placeholder-ry-stone focus:outline-none focus:border-ry-onyx transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ry-stone hover:text-ry-onyx"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Results count & Sort Selector */}
-            <div className="flex items-center justify-between sm:justify-end gap-4 text-xs text-ry-stone">
-              <span>
-                Showing <strong className="text-ry-onyx font-medium">{filteredProducts.length}</strong> items
-              </span>
-
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-ry-pearl border border-ry-ash/60 px-3 py-1.5 text-xs text-ry-onyx focus:outline-none focus:border-ry-onyx cursor-pointer"
-                >
-                  <option value="featured">Sort: Featured</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Empty Search State */}
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-24 bg-ry-white border border-ry-ash/60 p-8">
-            <p className="font-serif text-2xl text-ry-onyx mb-2">No creations matched your criteria</p>
-            <p className="text-xs text-ry-stone mb-6">
-              Try adjusting your search terms or browsing another category.
-            </p>
+        {/* Category Filter Pills with Real-Time Counts */}
+        <div className="flex flex-wrap gap-2">
+          {categories.map((cat) => (
             <button
-              onClick={() => {
-                setActiveCategory('ALL');
-                setSearchQuery('');
-              }}
-              className="px-6 py-2.5 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial"
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                activeCategory === cat
+                  ? 'bg-neutral-900 text-white'
+                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+              }`}
             >
-              Reset Filters
+              {cat} ({getCategoryCount(cat)})
             </button>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
 
-        {/* Product Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="h-96 rounded-xl bg-neutral-100 animate-pulse" />
+          ))}
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="text-center py-16 bg-neutral-50 rounded-xl border border-neutral-200">
+          <p className="text-base font-medium text-neutral-700">No products found in this category.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredProducts.map((product) => {
-            const heroImage = product.images.find((img) => img.isHero) || product.images[0];
-            const secondaryImage =
-              product.images.find((img) => img.isTexture || !img.isHero) || heroImage;
-            const isHovered = hoveredProductId === product.id;
-            const isJustAdded = justAddedId === product.id;
-            const klarnaInstallment = (product.basePrice / 3).toFixed(2);
-            const clearpayInstallment = (product.basePrice / 4).toFixed(2);
+            const wishlisted = isInWishlist(product.id);
+            const stockCount = Number(product.stock ?? 0);
 
             return (
               <div
                 key={product.id}
-                onMouseEnter={() => setHoveredProductId(product.id)}
-                onMouseLeave={() => setHoveredProductId(null)}
-                className="group flex flex-col justify-between bg-ry-white border border-ry-ash/70 hover:border-ry-onyx hover:shadow-luxury transition-all duration-300 relative"
+                className="group bg-white rounded-xl border border-neutral-200 overflow-hidden flex flex-col justify-between shadow-sm hover:shadow-md transition"
               >
-                {/* Product Card Top: Image Container with Hover Swap */}
-                <Link
-                  href={`/products/${product.slug}`}
-                  className="block relative aspect-[4/5] bg-ry-oatmeal overflow-hidden"
-                >
-                  <Image
-                    src={isHovered ? secondaryImage.url : heroImage.url}
-                    alt={product.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
+                <div>
+                  {/* Action Bar ABOVE the Product Image */}
+                  <div className="flex items-center justify-between px-3 py-2 bg-neutral-50 border-b border-neutral-100">
+                    <button
+                      type="button"
+                      onClick={(e) => handleCardShare(e, product)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-600 hover:text-neutral-900 cursor-pointer"
+                      title="Share Product"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      {copiedId === product.id ? 'Link Copied' : 'Share'}
+                    </button>
 
-                  {/* Badges */}
-                  <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
-                    {product.attributes.badge && (
-                      <span className="px-2 py-0.5 bg-ry-burgundy text-ry-white text-[9px] uppercase tracking-editorial font-medium">
-                        {product.attributes.badge}
-                      </span>
-                    )}
-                    {product.compareAtPrice && (
-                      <span className="px-2 py-0.5 bg-ry-white/95 text-ry-onyx text-[9px] uppercase tracking-editorial border border-ry-ash font-medium">
-                        Special Offer
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleItem(product);
+                      }}
+                      className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider cursor-pointer ${
+                        wishlisted ? 'text-rose-600' : 'text-neutral-600 hover:text-neutral-900'
+                      }`}
+                      title="Save to Wishlist"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill={wishlisted ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                      {wishlisted ? 'Saved' : 'Wishlist'}
+                    </button>
                   </div>
 
-                  {/* Category Pill Tag */}
-                  <span className="absolute top-3 right-3 px-2 py-0.5 bg-ry-white/90 backdrop-blur-sm text-ry-stone text-[9px] uppercase tracking-editorial border border-ry-ash/40 font-medium">
-                    {getCategoryDisplayLabel(product.category)}
-                  </span>
+                  {/* Product Image & Link */}
+                  <Link href={`/products/${product.slug}`} className="block relative aspect-[4/5] bg-neutral-100 overflow-hidden">
+                    <img
+                      src={product.images?.[0] || '/images/media_1791069473262.jpg'}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                    />
+                  </Link>
 
-                  {/* Sensory Hover Prompt */}
-                  {secondaryImage !== heroImage && (
-                    <div className="absolute bottom-3 left-3 right-3 py-1.5 px-2 bg-ry-white/90 backdrop-blur-sm text-[9px] uppercase tracking-editorial text-ry-onyx text-center opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      <span>Preview Details</span>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between text-xs text-neutral-500 mb-1">
+                      <span className="uppercase tracking-wider">{product.category}</span>
+                      <span>{stockCount > 0 ? `${stockCount} available` : 'Out of stock'}</span>
                     </div>
-                  )}
-                </Link>
-
-                {/* Product Card Body */}
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    {/* Rating & Reviews */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="flex items-center text-amber-500">
-                        <Star className="w-3 h-3 fill-current" />
-                      </div>
-                      <span className="text-[11px] font-medium text-ry-onyx">
-                        {product.rating.toFixed(1)}
-                      </span>
-                      <span className="text-[10px] text-ry-stone">
-                        ({product.reviewCount})
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <Link
-                      href={`/products/${product.slug}`}
-                      className="block group-hover:text-ry-charcoal"
-                    >
-                      <h3 className="font-serif text-base sm:text-lg text-ry-onyx leading-snug line-clamp-2">
-                        {product.title}
+                    <Link href={`/products/${product.slug}`}>
+                      <h3 className="font-serif font-semibold text-base text-neutral-900 line-clamp-1 hover:underline">
+                        {product.name}
                       </h3>
                     </Link>
-
-                    {/* Subtitle */}
-                    <p className="text-[11px] text-ry-stone mt-1 line-clamp-1">
-                      {product.subtitle}
+                    <p className="text-lg font-bold text-neutral-900 mt-1">
+                      £{Number(product.price).toFixed(2)}
                     </p>
                   </div>
+                </div>
 
-                  {/* Pricing & Klarna Breakdown */}
-                  <div className="mt-4 pt-3 border-t border-ry-ash/50 space-y-2">
-                    <div className="flex items-baseline justify-between">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-serif text-lg text-ry-onyx font-normal">
-                          £{product.basePrice.toFixed(2)}
-                        </span>
-                        {product.compareAtPrice && (
-                          <span className="text-xs line-through text-ry-stone">
-                            £{product.compareAtPrice.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
-
-                      <span className="text-[10px] text-ry-stone uppercase tracking-editorial">
-                        {product.variants.length > 1 ? `${product.variants.length} Sizes` : 'Standard'}
-                      </span>
-                    </div>
-
-                    {/* Klarna & Clearpay Micro-installment */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-ry-stone font-sans">
-                      <span className="bg-[#FFA8CD] text-black font-semibold text-[8px] px-1 py-0.2 rounded-sm">
-                        Klarna.
-                      </span>
-                      <span>3 x £{klarnaInstallment}</span>
-                      <span>•</span>
-                      <span className="bg-[#B2ECE1] text-black font-semibold text-[8px] px-1 py-0.2 rounded-sm">
-                        clearpay✦
-                      </span>
-                      <span>4 x £{clearpayInstallment}</span>
-                    </div>
-
-                    {/* Action Button: Quick Add or View Options */}
-                    <div className="pt-2">
-                      <button
-                        onClick={(e) => handleQuickAdd(product, e)}
-                        disabled={isJustAdded}
-                        className={`w-full py-2.5 px-3 text-[10px] uppercase tracking-editorial font-medium flex items-center justify-center gap-1.5 transition-all ${
-                          isJustAdded
-                            ? 'bg-emerald-700 text-white'
-                            : 'bg-ry-burgundy text-ry-white hover:bg-ry-burgundyLight active:scale-[0.99]'
-                        }`}
-                      >
-                        {isJustAdded ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Added to Cart</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Add to Cart</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
+                <div className="px-4 pb-4">
+                  <button
+                    type="button"
+                    disabled={stockCount <= 0}
+                    onClick={() => addItem(product, 1)}
+                    className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition disabled:opacity-40 cursor-pointer"
+                  >
+                    {stockCount > 0 ? 'Add to Bag' : 'Out of Stock'}
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
-
-        {/* Global Catalog Footer Notice */}
-        <div className="mt-16 p-6 bg-ry-white border border-ry-ash/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-ry-stone">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-4 h-4 text-ry-onyx shrink-0" />
-            <span>
-              All orders include luxury gift packaging and two discovery samples.
-            </span>
-          </div>
-          <Link
-            href="/dashboard/user"
-            className="text-[11px] uppercase tracking-editorial text-ry-onyx font-medium underline shrink-0"
-          >
-            Track Your Orders →
-          </Link>
-        </div>
-
-      </div>
+      )}
     </section>
   );
 }

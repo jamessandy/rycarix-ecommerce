@@ -8,7 +8,7 @@ interface CartState {
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
-  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
+  addItem: (item: any, quantity?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
@@ -30,17 +30,34 @@ export const useCartStore = create<CartState>()(
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
 
-      addItem: (item) => {
-        const qty = item.quantity || 1;
+      addItem: (item, maybeQuantity) => {
+        const qty = maybeQuantity || item.quantity || 1;
+        const isCartItem = Boolean(item.variantId && item.productId);
+        const resolvedItem: CartItem = isCartItem
+          ? { ...item, quantity: qty }
+          : {
+              id: item.id,
+              productId: item.id,
+              variantId: 'default',
+              title: item.name || item.title || 'Product',
+              variantTitle: item.variantTitle || 'Standard',
+              sku: item.sku || `RYC-${item.id?.slice(0, 6) || '01'}`,
+              price: Number(item.price ?? item.basePrice ?? 0),
+              quantity: qty,
+              image: Array.isArray(item.images)
+                ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0]?.url)
+                : item.image || '/images/media_1791069473262.jpg',
+            };
+
         set((state) => {
-          const existingIndex = state.items.findIndex((i) => i.id === item.id);
+          const existingIndex = state.items.findIndex((i) => i.id === resolvedItem.id);
           if (existingIndex > -1) {
             const nextItems = [...state.items];
             nextItems[existingIndex].quantity += qty;
             return { items: nextItems, isOpen: true };
           }
           return {
-            items: [...state.items, { ...item, quantity: qty }],
+            items: [...state.items, { ...resolvedItem, quantity: qty }],
             isOpen: true,
           };
         });
