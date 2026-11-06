@@ -13,7 +13,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <main className="min-h-screen bg-white pt-20">
-      <ProductCatalog initialCategory={categorySlug} />
+      <ProductCatalog initialCategory={categorySlug} selectedCategory={categorySlug} />
     </main>
   );
 }

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
+import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/services/catalogService';
 
 interface ProductCatalogProps {
   initialCategory?: string;
@@ -21,6 +22,15 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
   const addItem = useCartStore((state) => state.addItem);
   const { toggleItem, isInWishlist } = useWishlistStore();
+
+  // Sync active category when prop changes (e.g. from Hero or CategoryGrid clicks)
+  useEffect(() => {
+    if (selectedCategory) {
+      setActiveCategory(selectedCategory.toLowerCase());
+    } else if (initialCategory) {
+      setActiveCategory(initialCategory.toLowerCase());
+    }
+  }, [selectedCategory, initialCategory]);
 
   useEffect(() => {
     let mounted = true;
@@ -44,70 +54,93 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
     };
   }, []);
 
-  const categories = ['all', 'perfume', 'hair', 'cosmetics', 'skincare'];
+  const categoryPills = [
+    { label: 'All Products', value: 'all' },
+    { label: 'Parfum', value: 'parfum' },
+    { label: 'Hair', value: 'hair' },
+    { label: 'Skincare', value: 'skincare' },
+    { label: 'Body & Bath', value: 'body-bath' },
+    { label: 'Home & Candles', value: 'home-living' },
+    { label: 'Accessories', value: 'accessories' },
+  ];
 
-  const getCategoryCount = (cat: string) => {
-    if (cat === 'all') return products.length;
-    return products.filter((p) => p.category?.toLowerCase() === cat).length;
+  const getCategoryCount = (catValue: string) => {
+    if (catValue === 'all' || catValue === 'all products') return products.length;
+    return products.filter((p) => matchProductCategory(p.category, catValue)).length;
   };
 
   const filteredProducts =
-    activeCategory === 'all'
+    activeCategory === 'all' || activeCategory === 'all products'
       ? products
-      : products.filter((p) => p.category?.toLowerCase() === activeCategory);
+      : products.filter((p) => matchProductCategory(p.category, activeCategory));
 
   const handleCardShare = async (e: React.MouseEvent, product: Product) => {
     e.preventDefault();
     e.stopPropagation();
     const url = `${window.location.origin}/products/${product.slug}`;
     try {
-      if (navigator.share) {
+      if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({
           title: product.name,
           text: `${product.name} - £${Number(product.price).toFixed(2)}`,
           url,
         });
-      } else {
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(url);
         setCopiedId(product.id);
         setTimeout(() => setCopiedId(null), 2000);
       }
     } catch {
-      await navigator.clipboard.writeText(url);
-      setCopiedId(product.id);
-      setTimeout(() => setCopiedId(null), 2000);
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(url);
+          setCopiedId(product.id);
+          setTimeout(() => setCopiedId(null), 2000);
+        }
+      } catch {}
     }
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12 font-sans">
+    <section id="catalog" className="max-w-7xl mx-auto px-4 sm:px-8 py-12 font-sans">
       {/* Header & Dynamic Count */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
+          <span className="text-[10px] uppercase tracking-[0.3em] text-neutral-500 font-semibold block mb-1">
+            Curated Collection
+          </span>
           <h2 className="text-3xl font-serif font-bold text-neutral-900 capitalize">
-            {activeCategory === 'all' ? 'Complete Collection' : `${activeCategory} Collection`}
+            {activeCategory === 'all' ? 'Complete Collection' : `${getCategoryDisplayLabel(activeCategory)} Collection`}
           </h2>
           <p className="text-sm text-neutral-600 mt-1">
             Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} available
           </p>
         </div>
 
-        {/* Category Filter Pills with Real-Time Counts */}
+        {/* Category Filter Pills with Real-Time Dynamic Counts */}
         <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
-                activeCategory === cat
-                  ? 'bg-neutral-900 text-white'
-                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-              }`}
-            >
-              {cat} ({getCategoryCount(cat)})
-            </button>
-          ))}
+          {categoryPills.map((cat) => {
+            const count = getCategoryCount(cat.value);
+            const isActive =
+              activeCategory === cat.value ||
+              (cat.value === 'all' && (activeCategory === 'all' || activeCategory === 'all products')) ||
+              matchProductCategory(activeCategory, cat.value);
+
+            return (
+              <button
+                key={cat.value}
+                type="button"
+                onClick={() => setActiveCategory(cat.value)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
+                  isActive
+                    ? 'bg-neutral-900 text-white shadow-sm'
+                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                }`}
+              >
+                {cat.label} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -120,6 +153,12 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
       ) : filteredProducts.length === 0 ? (
         <div className="text-center py-16 bg-neutral-50 rounded-xl border border-neutral-200">
           <p className="text-base font-medium text-neutral-700">No products found in this category.</p>
+          <button
+            onClick={() => setActiveCategory('all')}
+            className="mt-4 px-4 py-2 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition cursor-pointer"
+          >
+            View All Products
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -183,7 +222,7 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
                   <div className="p-4">
                     <div className="flex items-center justify-between text-xs text-neutral-500 mb-1">
-                      <span className="uppercase tracking-wider">{product.category}</span>
+                      <span className="uppercase tracking-wider">{getCategoryDisplayLabel(product.category)}</span>
                       <span>{stockCount > 0 ? `${stockCount} available` : 'Out of stock'}</span>
                     </div>
                     <Link href={`/products/${product.slug}`}>

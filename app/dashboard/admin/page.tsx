@@ -8,13 +8,13 @@ import { Truck, Package, Check, Mail, ExternalLink, RefreshCw, Trash2, Plus, Ima
 import { lookupTracking } from '@/lib/services/shippingAggregator';
 
 const CATEGORIES = [
-  { label: 'Perfume & Fragrance', value: 'perfume' },
-  { label: 'Luxury Hair & Wigs', value: 'hair' },
-  { label: 'Skincare & Body', value: 'skincare' },
-  { label: 'Cosmetics & Beauty', value: 'cosmetics' },
+  { label: 'Parfum & Fragrance', value: 'parfum' },
+  { label: 'Hair & Elixirs', value: 'hair' },
+  { label: 'Skincare', value: 'skincare' },
   { label: 'Body & Bath', value: 'body-bath' },
-  { label: 'Home & Candles', value: 'candles' },
+  { label: 'Home & Candles', value: 'home-living' },
   { label: 'Accessories', value: 'accessories' },
+  { label: 'Cosmetics & Beauty', value: 'cosmetics' },
 ];
 
 export default function AdminDashboardPage() {
@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
   const [price, setPrice] = useState('');
   const [compareAtPrice, setCompareAtPrice] = useState('');
   const [stock, setStock] = useState('10');
-  const [category, setCategory] = useState('perfume');
+  const [category, setCategory] = useState('parfum');
   const [sku, setSku] = useState('');
   const [description, setDescription] = useState('');
   const [featured, setFeatured] = useState(true);
@@ -180,6 +180,7 @@ export default function AdminDashboardPage() {
       setStock('10');
       setSku('');
       setDescription('');
+      setCategory('parfum');
       setImages([]);
       setStatusMessage({
         type: 'success',
