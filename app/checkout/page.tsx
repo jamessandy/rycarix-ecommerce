@@ -13,7 +13,7 @@ export default function CheckoutPage() {
   const { items, getCartSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
 
-  const [selectedShippingId, setSelectedShippingId] = useState<string>('rm-tracked-48-small');
+  const [selectedShippingId, setSelectedShippingId] = useState<string>('rm-standard');
   const subtotal = getCartSubtotal();
   const selectedShipping =
     ROYAL_MAIL_UK_SERVICES.find((s) => s.id === selectedShippingId) || ROYAL_MAIL_UK_SERVICES[0];

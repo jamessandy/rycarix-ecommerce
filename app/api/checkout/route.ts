@@ -10,6 +10,105 @@ const stripe =
       })
     : null;
 
+/**
+ * Build Stripe shipping_options for the given currency.
+ * UK (GBP): Standard £3.50, Tracked 48 £4.50, Tracked 24 £5.00
+ * EUR:      Standard €3.50, Express €5.00
+ * Other:    Standard + Express in local currency
+ */
+function getShippingOptionsForCurrency(currency: string) {
+  if (currency === 'gbp') {
+    return [
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount' as const,
+          fixed_amount: { amount: 350, currency: 'gbp' },
+          display_name: 'Standard Delivery',
+          delivery_estimate: {
+            minimum: { unit: 'business_day' as const, value: 2 },
+            maximum: { unit: 'business_day' as const, value: 3 },
+          },
+        },
+      },
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount' as const,
+          fixed_amount: { amount: 450, currency: 'gbp' },
+          display_name: 'Tracked 48',
+          delivery_estimate: {
+            minimum: { unit: 'business_day' as const, value: 2 },
+            maximum: { unit: 'business_day' as const, value: 3 },
+          },
+        },
+      },
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount' as const,
+          fixed_amount: { amount: 500, currency: 'gbp' },
+          display_name: 'Tracked 24',
+          delivery_estimate: {
+            minimum: { unit: 'business_day' as const, value: 1 },
+            maximum: { unit: 'business_day' as const, value: 2 },
+          },
+        },
+      },
+    ];
+  }
+
+  if (currency === 'eur') {
+    return [
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount' as const,
+          fixed_amount: { amount: 350, currency: 'eur' },
+          display_name: 'Standard Delivery',
+          delivery_estimate: {
+            minimum: { unit: 'business_day' as const, value: 2 },
+            maximum: { unit: 'business_day' as const, value: 3 },
+          },
+        },
+      },
+      {
+        shipping_rate_data: {
+          type: 'fixed_amount' as const,
+          fixed_amount: { amount: 500, currency: 'eur' },
+          display_name: 'Express Delivery',
+          delivery_estimate: {
+            minimum: { unit: 'business_day' as const, value: 1 },
+            maximum: { unit: 'business_day' as const, value: 2 },
+          },
+        },
+      },
+    ];
+  }
+
+  // USD, CAD, AUD, etc. — international rates
+  return [
+    {
+      shipping_rate_data: {
+        type: 'fixed_amount' as const,
+        fixed_amount: { amount: 500, currency },
+        display_name: 'Standard International Delivery',
+        delivery_estimate: {
+          minimum: { unit: 'business_day' as const, value: 5 },
+          maximum: { unit: 'business_day' as const, value: 7 },
+        },
+      },
+    },
+    {
+      shipping_rate_data: {
+        type: 'fixed_amount' as const,
+        fixed_amount: { amount: 800, currency },
+        display_name: 'Express International Delivery',
+        delivery_estimate: {
+          minimum: { unit: 'business_day' as const, value: 3 },
+          maximum: { unit: 'business_day' as const, value: 5 },
+        },
+      },
+    },
+  ];
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -78,41 +177,7 @@ export async function POST(req: NextRequest) {
               ? ['US', 'CA', 'GB', 'FR', 'DE', 'AE', 'JP']
               : ['FR', 'DE', 'GB', 'US', 'CA', 'AE', 'JP']) as any,
           },
-          shipping_options: [
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: 350, currency: currency },
-                display_name: 'Standard Delivery (2–3 working days)',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 2 },
-                  maximum: { unit: 'business_day', value: 3 },
-                },
-              },
-            },
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: 450, currency: currency },
-                display_name: 'Tracked 48 (2–3 working days)',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 2 },
-                  maximum: { unit: 'business_day', value: 3 },
-                },
-              },
-            },
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: 500, currency: currency },
-                display_name: 'Tracked 24 (1–2 working days)',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 1 },
-                  maximum: { unit: 'business_day', value: 2 },
-                },
-              },
-            },
-          ],
+          shipping_options: getShippingOptionsForCurrency(currency),
           success_url: `${host}/dashboard/user?session_id={CHECKOUT_SESSION_ID}&status=success`,
           cancel_url: `${host}/?checkout_canceled=true`,
           metadata: {

@@ -152,6 +152,11 @@ export default function Footer() {
                   Track My Order
                 </Link>
               </li>
+              <li>
+                <Link href="/delivery" className="hover:text-ry-white transition-colors">
+                  Delivery Information
+                </Link>
+              </li>
             </ul>
           </div>
 
