@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
-import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/services/catalogService';
+import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/utils/categoryUtils';
 
 interface ProductCatalogProps {
   initialCategory?: string;
@@ -34,23 +34,77 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
   useEffect(() => {
     let mounted = true;
+
+    // 1. Instant hydration from localStorage on client mount (0ms latency on refresh)
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('rycarix_catalog_products');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read cached catalog:', e);
+      }
+    }
+
+    // 2. Fetch fresh live catalog from /api/products
     async function loadProducts() {
-      setLoading(true);
       try {
         const res = await fetch('/api/products', { cache: 'no-store' });
         const data = await res.json();
-        if (mounted && Array.isArray(data.products)) {
-          setProducts(data.products);
+        if (mounted && Array.isArray(data.products) && data.products.length > 0) {
+          setProducts((prev) => {
+            // Merge DB products with any local unsynced additions
+            const combined = [...data.products, ...prev];
+            const seen = new Set<string>();
+            const deduplicated = combined.filter((p) => {
+              const key = p.slug || p.id;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('rycarix_catalog_products', JSON.stringify(deduplicated));
+              } catch (e) {}
+            }
+            return deduplicated;
+          });
         }
       } catch (err) {
-        console.error('Failed to load catalog:', err);
+        console.error('Failed to load live catalog:', err);
       } finally {
         if (mounted) setLoading(false);
       }
     }
+
     loadProducts();
+
+    // 3. Listen to local broadcast events if admin adds/updates products
+    const handleCatalogUpdate = () => {
+      try {
+        const cached = localStorage.getItem('rycarix_catalog_products');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('rycarix-catalog-updated', handleCatalogUpdate);
+    window.addEventListener('storage', handleCatalogUpdate);
+
     return () => {
       mounted = false;
+      window.removeEventListener('rycarix-catalog-updated', handleCatalogUpdate);
+      window.removeEventListener('storage', handleCatalogUpdate);
     };
   }, []);
 

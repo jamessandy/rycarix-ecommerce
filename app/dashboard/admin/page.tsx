@@ -45,12 +45,42 @@ export default function AdminDashboardPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchCatalog = async () => {
-    setLoading(true);
+    // 1. Instant hydration from localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('rycarix_catalog_products');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Fetch fresh live catalog from /api/products
     try {
       const res = await fetch('/api/products', { cache: 'no-store' });
       const data = await res.json();
-      if (data.products && Array.isArray(data.products)) {
-        setProducts(data.products);
+      if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+        setProducts((prev) => {
+          const combined = [...data.products, ...prev];
+          const seen = new Set<string>();
+          const deduplicated = combined.filter((p) => {
+            const key = p.slug || p.id;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('rycarix_catalog_products', JSON.stringify(deduplicated));
+            } catch (e) {}
+          }
+          return deduplicated;
+        });
       }
     } catch (err) {
       console.error('Error loading admin catalog:', err);
@@ -172,8 +202,17 @@ export default function AdminDashboardPage() {
         throw new Error(data.error || 'Failed to add product');
       }
 
-      // Immediately prepend new product & re-sync catalog
-      setProducts((prev) => [data.product, ...prev]);
+      // Immediately prepend new product, persist to local storage & broadcast update
+      setProducts((prev) => {
+        const updatedList = [data.product, ...prev.filter((p) => p.id !== data.product.id && p.slug !== data.product.slug)];
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('rycarix_catalog_products', JSON.stringify(updatedList));
+            window.dispatchEvent(new Event('rycarix-catalog-updated'));
+          } catch (e) {}
+        }
+        return updatedList;
+      });
       setName('');
       setPrice('');
       setCompareAtPrice('');
@@ -200,7 +239,16 @@ export default function AdminDashboardPage() {
         method: 'DELETE',
       });
       if (res.ok) {
-        setProducts((prev) => prev.filter((p) => p.id !== id));
+        setProducts((prev) => {
+          const updatedList = prev.filter((p) => p.id !== id && p.slug !== id);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('rycarix_catalog_products', JSON.stringify(updatedList));
+              window.dispatchEvent(new Event('rycarix-catalog-updated'));
+            } catch (e) {}
+          }
+          return updatedList;
+        });
         setStatusMessage({ type: 'success', text: 'Product removed from catalog.' });
         setTimeout(() => setStatusMessage(null), 3000);
       }

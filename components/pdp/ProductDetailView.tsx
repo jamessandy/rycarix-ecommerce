@@ -19,7 +19,7 @@ import { ProductItem, Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
 import KlarnaWidget from '@/components/klarna/KlarnaWidget';
-import { getCategoryDisplayLabel } from '@/lib/services/catalogService';
+import { getCategoryDisplayLabel } from '@/lib/utils/categoryUtils';
 
 interface ProductDetailViewProps {
   product: ProductItem | Product | any;

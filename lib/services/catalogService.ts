@@ -2,8 +2,12 @@
 import { prisma } from '@/lib/prisma';
 import { mockProducts, PRODUCTS } from '@/lib/data/mockData';
 import { Product, ProductItem } from '@/lib/types/ecommerce';
+import { CATEGORY_DEFINITIONS, matchProductCategory, getCategoryDisplayLabel } from '@/lib/utils/categoryUtils';
 
-// In-memory / global runtime store fallback
+// Re-export category utilities for server-side callers
+export { CATEGORY_DEFINITIONS, matchProductCategory, getCategoryDisplayLabel };
+
+// In-memory / global runtime store merged with DB & initial seed
 declare global {
   var __rycarixProducts: Product[] | undefined;
   var __rycarixSeeded: boolean | undefined;
@@ -17,117 +21,6 @@ function getRuntimeProducts(): Product[] {
 }
 
 /**
- * Standard luxury department names and aliases for backwards-compatibility
- */
-export const CATEGORY_DEFINITIONS = [
-  {
-    key: 'Hair',
-    label: 'Hair',
-    slug: 'hair',
-    aliases: ['hair', 'haircare', 'hair care', 'scalp', 'shampoo', 'conditioner', 'hair elixir'],
-  },
-  {
-    key: 'Parfum',
-    label: 'Parfum',
-    slug: 'fragrance',
-    aliases: ['parfum', 'haute parfumerie', 'perfume', 'fragrance', 'extrait', 'flacon', 'cologne', 'scent'],
-  },
-  {
-    key: 'Skincare',
-    label: 'Skincare',
-    slug: 'skincare',
-    aliases: ['skincare', 'botanical skincare', 'skin', 'serum', 'balm', 'face', 'cellular'],
-  },
-  {
-    key: 'Body & Bath',
-    label: 'Body & Bath',
-    slug: 'body-bath',
-    aliases: ['body & bath', 'body', 'bath', 'polish', 'wash', 'body-bath'],
-  },
-  {
-    key: 'Home & Candles',
-    label: 'Home & Candles',
-    slug: 'home-living',
-    aliases: ['home & candles', 'home & living', 'candles', 'candle', 'bougie', 'home', 'living', 'room mist', 'home-living'],
-  },
-  {
-    key: 'Accessories',
-    label: 'Accessories',
-    slug: 'accessories',
-    aliases: ['accessories', 'accessories & fine goods', 'accessory', 'fine goods', 'leather', 'silk mask'],
-  },
-];
-
-export function matchProductCategory(productCategory: string | undefined, targetCategory: string): boolean {
-  if (!targetCategory || targetCategory === 'ALL' || targetCategory === 'all' || targetCategory === 'all products') return true;
-  if (!productCategory) return false;
-
-  const prodCatNorm = productCategory.toLowerCase().trim();
-  const targetNorm = targetCategory.toLowerCase().trim();
-
-  if (prodCatNorm === targetNorm) return true;
-
-  const def = CATEGORY_DEFINITIONS.find(
-    (d) =>
-      d.key.toLowerCase() === targetNorm ||
-      d.label.toLowerCase() === targetNorm ||
-      d.slug.toLowerCase() === targetNorm ||
-      d.aliases.some((a) => a === targetNorm)
-  );
-
-  if (def) {
-    if (def.aliases.some((alias) => prodCatNorm === alias || prodCatNorm.includes(alias) || alias.includes(prodCatNorm))) {
-      return true;
-    }
-  }
-
-  const prodDef = CATEGORY_DEFINITIONS.find(
-    (d) =>
-      d.key.toLowerCase() === prodCatNorm ||
-      d.label.toLowerCase() === prodCatNorm ||
-      d.slug.toLowerCase() === prodCatNorm ||
-      d.aliases.some((a) => a === prodCatNorm)
-  );
-
-  if (prodDef && def && prodDef.key === def.key) {
-    return true;
-  }
-
-  return prodCatNorm.includes(targetNorm) || targetNorm.includes(prodCatNorm);
-}
-
-export function getCategoryDisplayLabel(category: string): string {
-  if (!category) return 'Product';
-  const norm = category.toLowerCase().trim();
-
-  const def = CATEGORY_DEFINITIONS.find(
-    (d) =>
-      d.key.toLowerCase() === norm ||
-      d.label.toLowerCase() === norm ||
-      d.slug.toLowerCase() === norm ||
-      d.aliases.some((a) => norm === a || norm.includes(a))
-  );
-
-  return def ? def.label : category;
-}
-
-export function loadClientCatalog(): ProductItem[] {
-  if (typeof window === 'undefined') return PRODUCTS;
-  try {
-    const raw = localStorage.getItem('rycarix_catalog_products');
-    if (raw) {
-      const parsed: ProductItem[] = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Could not read rycarix_catalog_products from localStorage', e);
-  }
-  return PRODUCTS;
-}
-
-/**
  * Automatically seed initial catalog to Neon Postgres if database is empty
  */
 async function autoSeedDatabaseIfEmpty() {
@@ -138,8 +31,24 @@ async function autoSeedDatabaseIfEmpty() {
     const count = await prisma.product.count();
     if (count === 0 && mockProducts.length > 0) {
       for (const p of mockProducts) {
-        await prisma.product.create({
-          data: {
+        await prisma.product.upsert({
+          where: { slug: p.slug },
+          update: {
+            title: p.name,
+            description: p.description,
+            basePrice: p.price,
+            compareAtPrice: p.compareAtPrice,
+            isFeatured: p.featured ?? true,
+            attributes: {
+              category: p.category,
+              images: p.images,
+              stock: p.stock,
+              sku: p.sku,
+              rating: p.rating,
+              reviewsCount: p.reviewsCount,
+            },
+          },
+          create: {
             id: p.id,
             title: p.name,
             slug: p.slug,
@@ -147,6 +56,7 @@ async function autoSeedDatabaseIfEmpty() {
             basePrice: p.price,
             compareAtPrice: p.compareAtPrice,
             isFeatured: p.featured ?? true,
+            status: 'ACTIVE',
             attributes: {
               category: p.category,
               images: p.images,
@@ -203,7 +113,7 @@ export const catalogService = {
           };
         });
 
-        // Merge with any in-memory additions
+        // Merge with runtime memory store
         const runtime = getRuntimeProducts();
         const combined = [...mappedDb, ...runtime];
         const seen = new Set<string>();
@@ -217,6 +127,7 @@ export const catalogService = {
         products = getRuntimeProducts();
       }
     } catch (err) {
+      console.warn('Database fetch fallback to runtime store:', err);
       products = getRuntimeProducts();
     }
 
@@ -268,14 +179,32 @@ export const catalogService = {
       createdAt: new Date().toISOString(),
     };
 
-    // Save to runtime store so it immediately reflects in current process
+    // Save to runtime store immediately
     const current = getRuntimeProducts();
-    global.__rycarixProducts = [newProduct, ...current];
+    const updated = [newProduct, ...current.filter((p) => p.id !== newProduct.id && p.slug !== newProduct.slug)];
+    global.__rycarixProducts = updated;
 
     // Persist permanently to Neon Postgres database
     try {
-      const saved = await prisma.product.create({
-        data: {
+      const saved = await prisma.product.upsert({
+        where: { slug: newProduct.slug },
+        update: {
+          title: newProduct.name,
+          description: newProduct.description,
+          basePrice: newProduct.price,
+          compareAtPrice: newProduct.compareAtPrice,
+          isFeatured: newProduct.featured,
+          status: 'ACTIVE',
+          attributes: {
+            category: newProduct.category,
+            images: newProduct.images,
+            stock: newProduct.stock,
+            sku: newProduct.sku,
+            rating: 5.0,
+            reviewsCount: 0,
+          },
+        },
+        create: {
           id: newProduct.id,
           title: newProduct.name,
           slug: newProduct.slug,
@@ -283,6 +212,7 @@ export const catalogService = {
           basePrice: newProduct.price,
           compareAtPrice: newProduct.compareAtPrice,
           isFeatured: newProduct.featured,
+          status: 'ACTIVE',
           attributes: {
             category: newProduct.category,
             images: newProduct.images,
@@ -305,7 +235,9 @@ export const catalogService = {
 
   async deleteProduct(id: string): Promise<boolean> {
     const current = getRuntimeProducts();
-    global.__rycarixProducts = current.filter((p) => p.id !== id && p.slug !== id);
+    const updated = current.filter((p) => p.id !== id && p.slug !== id);
+    global.__rycarixProducts = updated;
+
     try {
       await prisma.product.delete({ where: { id } });
     } catch {
