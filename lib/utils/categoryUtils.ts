@@ -8,7 +8,7 @@ export const CATEGORY_DEFINITIONS = [
     key: 'Hair',
     label: 'Hair',
     slug: 'hair',
-    aliases: ['hair', 'haircare', 'hair care', 'scalp', 'shampoo', 'conditioner', 'hair elixir'],
+    aliases: ['hair', 'haircare', 'hair care', 'scalp', 'shampoo', 'conditioner', 'hair oil', 'oil'],
   },
   {
     key: 'Parfum',
@@ -94,3 +94,4 @@ export function getCategoryDisplayLabel(category: string): string {
 
   return def ? def.label : category;
 }
+

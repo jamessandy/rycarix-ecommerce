@@ -440,7 +440,7 @@ function UserDashboardContent() {
                 <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
                   {user?.role === 'ADMIN' && adminOrdersView === 'personal'
                     ? 'You have not placed any personal orders as Store Administrator. Switch to "All Store Orders" above to inspect incoming orders.'
-                    : 'You have not placed any orders yet. Discover our restorative botanical hair elixirs, luxury parfums, and candles.'}
+                    : 'You have not placed any orders yet. Discover our restorative botanical hair care, luxury parfums, and candles.'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <Link
@@ -605,7 +605,7 @@ function UserDashboardContent() {
                 <Heart className="w-10 h-10 mx-auto text-ry-stone/40 mb-3" />
                 <h4 className="font-serif text-lg mb-1">Your wishlist is currently empty</h4>
                 <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
-                  Save your favourite fragrances, hair elixirs, and skincare essentials to keep track of them.
+                  Save your favourite fragrances, hair care, and skincare essentials to keep track of them.
                 </p>
                 <Link
                   href="/products"

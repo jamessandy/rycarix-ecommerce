@@ -28,7 +28,7 @@ export default function ShopAllProductsPage() {
             The Rycarix Collection
           </h1>
           <p className="text-xs sm:text-sm text-ry-ash/90 max-w-xl mx-auto leading-relaxed font-light">
-            Explore restorative botanical hair elixirs, luxury parfum, clean skincare, and hand-poured artisanal candles.
+            Explore restorative botanical hair care, luxury parfum, clean skincare, and hand-poured artisanal candles.
           </p>
 
           {/* Quick Department Link Pills */}

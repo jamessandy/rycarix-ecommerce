@@ -9,7 +9,7 @@ import { lookupTracking } from '@/lib/services/shippingAggregator';
 
 const CATEGORIES = [
   { label: 'Parfum & Fragrance', value: 'parfum' },
-  { label: 'Hair & Elixirs', value: 'hair' },
+  { label: 'Hair Care', value: 'hair' },
   { label: 'Skincare', value: 'skincare' },
   { label: 'Body & Bath', value: 'body-bath' },
   { label: 'Home & Candles', value: 'home-living' },

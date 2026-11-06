@@ -163,7 +163,7 @@ model Product {
   // Dynamic EAV / Extensible JSON Specification
   // Allows hair products (porosity, hair type, scent note),
   // perfumes (olfactory family, top/heart/base notes, flacon type),
-  // and future items (candles, skincare elixirs, silk accessories) without schema alters
+  // and future items (candles, skincare essentials, silk accessories) without schema alters
   attributes     Json?
 
   categories     ProductCategory[]
