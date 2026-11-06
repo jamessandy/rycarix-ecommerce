@@ -119,28 +119,29 @@ export default function ProductDetailContainer({ slug, initialProduct }: Product
     );
   }
 
-  const normalizedProduct: Product = {
+  const mergedProduct = {
+    ...product,
     id: product.id,
     name: (product as any).name || (product as any).title || 'Product',
-    title: (product as any).title || (product as any).name,
+    title: (product as any).title || (product as any).name || 'Product',
     slug: product.slug,
     description: (product as any).description || (product as any).summary || '',
     price: Number((product as any).price ?? (product as any).basePrice ?? 0),
+    basePrice: Number((product as any).price ?? (product as any).basePrice ?? 0),
     compareAtPrice: (product as any).compareAtPrice ? Number((product as any).compareAtPrice) : undefined,
     stock: Number((product as any).stock ?? (product as any).variants?.[0]?.inventory ?? 15),
-    category: (product as any).category || 'perfume',
-    images: Array.isArray(product.images)
-      ? product.images.map((img: any) => (typeof img === 'string' ? img : img.url)).filter(Boolean)
-      : ['/images/media_1791069473262.jpg'],
-    featured: Boolean((product as any).featured ?? true),
-    rating: Number((product as any).rating ?? 5.0),
-    reviewsCount: Number((product as any).reviewsCount ?? (product as any).reviewCount ?? 0),
-    sku: (product as any).sku || (product as any).variants?.[0]?.sku || `RYC-${product.id.slice(0, 6)}`,
+    category: (product as any).category || 'Parfum',
+    images: (product as any).images || [],
+    variants: (product as any).variants || [],
+    attributes: (product as any).attributes || {},
+    ingredients: (product as any).ingredients || '',
+    howToUse: (product as any).howToUse || '',
+    sourcingEthics: (product as any).sourcingEthics || '',
   };
 
   return (
     <div className="pt-24 bg-white min-h-screen">
-      <ProductDetailView product={normalizedProduct} />
+      <ProductDetailView product={mergedProduct} />
     </div>
   );
 }
