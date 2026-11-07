@@ -10,6 +10,7 @@ export interface Product {
   category: string;
   images: string[];
   featured?: boolean;
+  isLive?: boolean;
   rating?: number;
   reviewsCount?: number;
   sku?: string;

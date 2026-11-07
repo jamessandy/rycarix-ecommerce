@@ -1,97 +1,51 @@
 // lib/utils/categoryUtils.ts
 
-/**
- * Standard luxury department names and aliases for backwards-compatibility
- */
-export const CATEGORY_DEFINITIONS = [
-  {
-    key: 'Hair',
-    label: 'Hair',
-    slug: 'hair',
-    aliases: ['hair', 'haircare', 'hair care', 'scalp', 'shampoo', 'conditioner', 'hair oil', 'oil'],
-  },
-  {
-    key: 'Parfum',
-    label: 'Parfum',
-    slug: 'fragrance',
-    aliases: ['parfum', 'haute parfumerie', 'perfume', 'fragrance', 'extrait', 'flacon', 'cologne', 'scent'],
-  },
-  {
-    key: 'Skincare',
-    label: 'Skincare',
-    slug: 'skincare',
-    aliases: ['skincare', 'botanical skincare', 'skin', 'serum', 'balm', 'face', 'cellular'],
-  },
-  {
-    key: 'Body & Bath',
-    label: 'Body & Bath',
-    slug: 'body-bath',
-    aliases: ['body & bath', 'body', 'bath', 'polish', 'wash', 'body-bath'],
-  },
-  {
-    key: 'Home & Candles',
-    label: 'Home & Candles',
-    slug: 'home-living',
-    aliases: ['home & candles', 'home & living', 'candles', 'candle', 'bougie', 'home', 'living', 'room mist', 'home-living'],
-  },
-  {
-    key: 'Accessories',
-    label: 'Accessories',
-    slug: 'accessories',
-    aliases: ['accessories', 'accessories & fine goods', 'accessory', 'fine goods', 'leather', 'silk mask'],
-  },
-];
+export const CANONICAL_CATEGORIES = [
+  { slug: 'perfume', label: 'Perfume & Fragrance', aliases: ['perfume', 'perfumes', 'fragrance', 'fragrances', 'scent', 'parfum'] },
+  { slug: 'hair', label: 'Hair Care', aliases: ['hair', 'hairs', 'wigs', 'extensions', 'bundles', 'luxury-hair', 'hair-extensions', 'haircare'] },
+  { slug: 'skincare', label: 'Skincare & Body', aliases: ['skincare', 'skin-care', 'skin', 'body', 'lotion', 'body-bath'] },
+  { slug: 'home-living', label: 'Home & Candles', aliases: ['home-living', 'candles', 'candle', 'home', 'living', 'room-mist'] },
+  { slug: 'accessories', label: 'Accessories', aliases: ['accessories', 'fine-goods', 'accessory', 'case'] },
+  { slug: 'cosmetics', label: 'Cosmetics & Beauty', aliases: ['cosmetics', 'cosmetic', 'beauty', 'makeup', 'lip-gloss', 'lips'] },
+] as const;
+
+export type CanonicalCategorySlug = (typeof CANONICAL_CATEGORIES)[number]['slug'];
+
+export function normalizeCategorySlug(raw?: string | null): string {
+  if (!raw) return 'perfume';
+  const cleaned = raw.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  if (cleaned === 'all' || cleaned === 'all-products') return 'all';
+
+  for (const cat of CANONICAL_CATEGORIES) {
+    if (cat.slug === cleaned || (cat.aliases as readonly string[]).includes(cleaned)) {
+      return cat.slug;
+    }
+    if (cleaned.includes(cat.slug)) {
+      return cat.slug;
+    }
+  }
+  return cleaned;
+}
+
+export function getCategoryLabel(slug?: string | null): string {
+  const normalized = normalizeCategorySlug(slug);
+  const found = CANONICAL_CATEGORIES.find((c) => c.slug === normalized);
+  return found ? found.label : normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+export const getCategoryDisplayLabel = getCategoryLabel;
 
 export function matchProductCategory(productCategory: string | undefined, targetCategory: string): boolean {
   if (!targetCategory || targetCategory === 'ALL' || targetCategory === 'all' || targetCategory === 'all products') return true;
   if (!productCategory) return false;
-
-  const prodCatNorm = productCategory.toLowerCase().trim();
-  const targetNorm = targetCategory.toLowerCase().trim();
-
-  if (prodCatNorm === targetNorm) return true;
-
-  const def = CATEGORY_DEFINITIONS.find(
-    (d) =>
-      d.key.toLowerCase() === targetNorm ||
-      d.label.toLowerCase() === targetNorm ||
-      d.slug.toLowerCase() === targetNorm ||
-      d.aliases.some((a) => a === targetNorm)
-  );
-
-  if (def) {
-    if (def.aliases.some((alias) => prodCatNorm === alias || prodCatNorm.includes(alias) || alias.includes(prodCatNorm))) {
-      return true;
-    }
-  }
-
-  const prodDef = CATEGORY_DEFINITIONS.find(
-    (d) =>
-      d.key.toLowerCase() === prodCatNorm ||
-      d.label.toLowerCase() === prodCatNorm ||
-      d.slug.toLowerCase() === prodCatNorm ||
-      d.aliases.some((a) => a === prodCatNorm)
-  );
-
-  if (prodDef && def && prodDef.key === def.key) {
-    return true;
-  }
-
-  return prodCatNorm.includes(targetNorm) || targetNorm.includes(prodCatNorm);
+  const pNorm = normalizeCategorySlug(productCategory);
+  const tNorm = normalizeCategorySlug(targetCategory);
+  return pNorm === tNorm;
 }
 
-export function getCategoryDisplayLabel(category: string): string {
-  if (!category) return 'Product';
-  const norm = category.toLowerCase().trim();
-
-  const def = CATEGORY_DEFINITIONS.find(
-    (d) =>
-      d.key.toLowerCase() === norm ||
-      d.label.toLowerCase() === norm ||
-      d.slug.toLowerCase() === norm ||
-      d.aliases.some((a) => norm === a || norm.includes(a))
-  );
-
-  return def ? def.label : category;
-}
-
+export const CATEGORY_DEFINITIONS = CANONICAL_CATEGORIES.map((c) => ({
+  key: c.label,
+  label: c.label,
+  slug: c.slug,
+  aliases: Array.from(c.aliases),
+}));

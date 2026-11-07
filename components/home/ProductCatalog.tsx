@@ -7,7 +7,12 @@ import { Search, X } from 'lucide-react';
 import { Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
-import { matchProductCategory, getCategoryDisplayLabel } from '@/lib/utils/categoryUtils';
+import {
+  CANONICAL_CATEGORIES,
+  getCategoryLabel,
+  normalizeCategorySlug,
+  getCategoryDisplayLabel,
+} from '@/lib/utils/categoryUtils';
 
 interface ProductCatalogProps {
   initialCategory?: string;
@@ -121,26 +126,24 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
     };
   }, []);
 
+  const normalizedActive = normalizeCategorySlug(activeCategory);
+
   const categoryPills = [
     { label: 'All Products', value: 'all' },
-    { label: 'Parfum', value: 'parfum' },
-    { label: 'Hair', value: 'hair' },
-    { label: 'Skincare', value: 'skincare' },
-    { label: 'Body & Bath', value: 'body-bath' },
-    { label: 'Home & Candles', value: 'home-living' },
-    { label: 'Accessories', value: 'accessories' },
+    ...CANONICAL_CATEGORIES.map((c) => ({ label: c.label, value: c.slug })),
   ];
 
-  const getCategoryCount = (catValue: string) => {
-    if (catValue === 'all' || catValue === 'all products') return products.length;
-    return products.filter((p) => matchProductCategory(p.category, catValue)).length;
+  const getCategoryCount = (catSlug: string) => {
+    if (catSlug === 'all') return products.length;
+    const target = normalizeCategorySlug(catSlug);
+    return products.filter((p) => normalizeCategorySlug(p.category) === target).length;
   };
 
   const filteredProducts = products.filter((p) => {
     const matchesCategory =
-      activeCategory === 'all' || activeCategory === 'all products'
+      normalizedActive === 'all'
         ? true
-        : matchProductCategory(p.category, activeCategory);
+        : normalizeCategorySlug(p.category) === normalizedActive;
 
     if (!matchesCategory) return false;
 
@@ -230,9 +233,8 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
           {categoryPills.map((cat) => {
             const count = getCategoryCount(cat.value);
             const isActive =
-              activeCategory === cat.value ||
-              (cat.value === 'all' && (activeCategory === 'all' || activeCategory === 'all products')) ||
-              matchProductCategory(activeCategory, cat.value);
+              normalizedActive === cat.value ||
+              (cat.value === 'all' && normalizedActive === 'all');
 
             return (
               <button

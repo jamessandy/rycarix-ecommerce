@@ -142,33 +142,36 @@ model Category {
 
 model Product {
   id             String            @id @default(cuid())
-  title          String
+  name           String            @default("")
+  title          String?           // Backwards compatibility
   slug           String            @unique
   subtitle       String?           // e.g., "Extrait de Parfum • 30% Essence Concentration"
   summary        String?           // Brief editorial overview
-  description    String            // Full description / sensory narrative
+  description    String            @default("")
   
   // Editorial & Transparency Accordion Content
   ingredients    String?           // Detailed INCI formulation list
   howToUse       String?           // Application rituals and techniques
   sourcingEthics String?           // Sourcing terroir, sustainability & ethical certs
   
-  status         ProductStatus     @default(DRAFT)
-  isFeatured     Boolean           @default(false)
-  
-  // Base display price cached from default variant
-  basePrice      Decimal           @db.Decimal(10, 2)
-  compareAtPrice Decimal?          @db.Decimal(10, 2)
+  price          Float             @default(0)
+  compareAtPrice Float?
+  stock          Int               @default(10)
+  category       String            @default("perfume")
+  images         String[]          @default([])
+  sku            String            @default("")
+  featured       Boolean           @default(true)
+  isLive         Boolean           @default(true)
+  status         ProductStatus     @default(ACTIVE)
+  rating         Float             @default(5.0)
+  reviewsCount   Int               @default(0)
 
   // Dynamic EAV / Extensible JSON Specification
-  // Allows hair products (porosity, hair type, scent note),
-  // perfumes (olfactory family, top/heart/base notes, flacon type),
-  // and future items (candles, skincare essentials, silk accessories) without schema alters
   attributes     Json?
 
   categories     ProductCategory[]
   variants       ProductVariant[]
-  images         ProductImage[]
+  productImages  ProductImage[]
   reviews        Review[]
   orderItems     OrderItem[]
   wishlistItems  WishlistItem[]
@@ -176,9 +179,9 @@ model Product {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
+  @@index([category])
+  @@index([isLive])
   @@index([slug])
-  @@index([status])
-  @@index([isFeatured])
 }
 
 model ProductCategory {
