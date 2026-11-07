@@ -77,13 +77,30 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (error: any) {
-    console.error('Database GET /api/products error:', error);
+    console.warn('Database GET /api/products note:', error?.message);
+    const fallbackProducts = await catalogService.getAllProducts();
+    const categoryCounts = fallbackProducts.reduce((acc: Record<string, number>, p) => {
+      const cat = normalizeCategorySlug(p.category);
+      acc[cat] = (acc[cat] || 0) + 1;
+      return acc;
+    }, {});
+
     return NextResponse.json(
       {
-        error: 'Database connection error while loading catalog. Verify DATABASE_URL is configured.',
-        details: error?.message,
+        products: fallbackProducts,
+        totalCount: fallbackProducts.length,
+        filteredCount: fallbackProducts.length,
+        categoryCounts,
+        warning: 'Fallback catalog active.',
       },
-      { status: 500 }
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
     );
   }
 }
