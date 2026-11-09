@@ -1,16 +1,61 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import { CATEGORIES } from '@/lib/data/mockData';
+import { normalizeCategorySlug } from '@/lib/utils/categoryUtils';
 
 interface CategoryGridProps {
   onSelectCategory?: (categoryName: string) => void;
 }
 
 export default function CategoryGrid({ onSelectCategory }: CategoryGridProps) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    // 1. Sync from localStorage if available
+    try {
+      const cached = localStorage.getItem('rycarix_catalog_products');
+      if (cached) {
+        const prods = JSON.parse(cached);
+        if (Array.isArray(prods)) {
+          const map: Record<string, number> = {};
+          prods.forEach((p: any) => {
+            const cat = normalizeCategorySlug(p.category);
+            map[cat] = (map[cat] || 0) + 1;
+          });
+          setCounts(map);
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fetch live counts from /api/products
+    fetch('/api/products?includeDrafts=false', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.categoryCounts) {
+          setCounts(data.categoryCounts);
+        } else if (data?.products && Array.isArray(data.products)) {
+          const map: Record<string, number> = {};
+          data.products.forEach((p: any) => {
+            const cat = normalizeCategorySlug(p.category);
+            map[cat] = (map[cat] || 0) + 1;
+          });
+          setCounts(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const getDynamicCount = (catSlug: string, fallback: number) => {
+    const norm = normalizeCategorySlug(catSlug);
+    if (counts[norm] !== undefined && counts[norm] > 0) {
+      return counts[norm];
+    }
+    return fallback;
+  };
   return (
     <section id="categories" className="py-20 sm:py-28 bg-ry-pearl text-ry-onyx font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -67,8 +112,8 @@ export default function CategoryGrid({ onSelectCategory }: CategoryGridProps) {
                     <h3 className="font-serif text-xl sm:text-2xl text-ry-onyx group-hover:underline">
                       {category.name}
                     </h3>
-                    <span className="text-[10px] text-ry-stone uppercase tracking-editorial">
-                      {category.productCount} {category.productCount === 1 ? 'Product' : 'Products'}
+                    <span className="text-[10px] text-ry-stone uppercase tracking-editorial font-medium">
+                      {getDynamicCount(category.slug, category.productCount)} {getDynamicCount(category.slug, category.productCount) === 1 ? 'Product' : 'Products'}
                     </span>
                   </div>
                   <p className="text-xs text-ry-stone leading-relaxed font-sans line-clamp-2">

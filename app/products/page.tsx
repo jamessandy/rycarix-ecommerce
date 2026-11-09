@@ -30,22 +30,6 @@ export default function ShopAllProductsPage() {
           <p className="text-xs sm:text-sm text-ry-ash/90 max-w-xl mx-auto leading-relaxed font-light">
             Explore restorative botanical hair care, luxury parfum, clean skincare, and hand-poured artisanal candles.
           </p>
-
-          {/* Quick Department Link Pills */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2 pt-6 border-t border-ry-white/15">
-            <span className="text-[10px] uppercase tracking-editorial text-ry-ash/60 mr-1 hidden sm:inline">
-              Departments:
-            </span>
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/category/${cat.slug}`}
-                className="px-3 py-1 bg-ry-white/10 hover:bg-ry-white/20 border border-ry-white/20 text-[10px] uppercase tracking-editorial text-ry-white transition-colors"
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 
