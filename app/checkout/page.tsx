@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
-import { ShieldCheck, CreditCard, Lock, ArrowRight, Loader2, Info, CheckCircle2, Truck } from 'lucide-react';
+import { ShieldCheck, CreditCard, Lock, ArrowRight, Loader2, Info, CheckCircle2, Truck, Store } from 'lucide-react';
 import Image from 'next/image';
 import { ROYAL_MAIL_UK_SERVICES } from '@/lib/services/shippingAggregator';
 
@@ -13,8 +13,16 @@ export default function CheckoutPage() {
   const { items, getCartSubtotal, clearCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
 
-  const [selectedShippingId, setSelectedShippingId] = useState<string>('rm-standard');
+  const [selectedShippingId, setSelectedShippingId] = useState<string>('standard-uk');
   const subtotal = getCartSubtotal();
+
+  // Auto-switch to free delivery if order is over £100 and standard was selected
+  useEffect(() => {
+    if (subtotal >= 100 && selectedShippingId === 'standard-uk') {
+      setSelectedShippingId('free-uk');
+    }
+  }, [subtotal, selectedShippingId]);
+
   const selectedShipping =
     ROYAL_MAIL_UK_SERVICES.find((s) => s.id === selectedShippingId) || ROYAL_MAIL_UK_SERVICES[0];
   const shipping = selectedShipping.price;
@@ -363,72 +371,77 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Royal Mail UK Delivery Options */}
+            {/* Delivery Method (Matching Official Checkout Spec) */}
             <div className="bg-ry-white p-6 border border-ry-ash/70 shadow-sm space-y-4">
-              <div className="border-b border-ry-ash/50 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h3 className="font-serif text-xl flex items-center gap-2 text-ry-onyx">
-                  <Truck className="w-5 h-5 text-ry-onyx" />
-                  Delivery Options (Royal Mail UK)
+              <div className="border-b border-ry-ash/50 pb-3 flex items-center justify-between">
+                <h3 className="font-sans font-semibold text-base text-neutral-900">
+                  Delivery method
                 </h3>
-                <span className="text-[10px] uppercase tracking-editorial px-2.5 py-1 bg-red-50 text-red-900 border border-red-200 font-semibold self-start sm:self-auto flex items-center gap-1">
-                  <span>Royal Mail Tracked</span>
+                <span className="text-[10px] text-neutral-500 uppercase tracking-editorial">
+                  United Kingdom
                 </span>
               </div>
 
               <div className="space-y-3">
                 {ROYAL_MAIL_UK_SERVICES.map((option) => {
                   const isSelected = selectedShippingId === option.id;
-                  const displayPrice = `£${option.price.toFixed(2)}`;
+                  const isFreeOption = option.id === 'free-uk';
+                  const isPickup = option.id === 'collection-pickup';
+                  const isFreeEligible = subtotal >= 100;
+                  const isClickable = !isFreeOption || isFreeEligible;
 
                   return (
                     <label
                       key={option.id}
-                      className={`block border p-4 cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-ry-onyx bg-ry-pearl/50 ring-1 ring-ry-onyx shadow-xs'
-                          : 'border-ry-ash/80 hover:border-ry-stone bg-ry-white'
+                      onClick={() => {
+                        if (isClickable) setSelectedShippingId(option.id);
+                      }}
+                      className={`block border rounded-lg p-4 transition-all ${
+                        !isClickable
+                          ? 'opacity-60 bg-neutral-50 border-neutral-200 cursor-not-allowed'
+                          : isSelected
+                          ? 'border-neutral-900 bg-neutral-50/60 ring-1 ring-neutral-900 shadow-xs cursor-pointer'
+                          : 'border-neutral-200 hover:border-neutral-400 bg-white cursor-pointer'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="radio"
-                            name="shipping_service"
-                            value={option.id}
-                            checked={isSelected}
-                            onChange={() => setSelectedShippingId(option.id)}
-                            className="mt-1 text-ry-onyx focus:ring-ry-onyx accent-ry-onyx"
-                          />
+                        <div className="flex items-start gap-3.5">
+                          <div className="mt-0.5 shrink-0 text-neutral-700">
+                            {isFreeOption ? (
+                              <CheckCircle2 className={`w-4 h-4 ${isFreeEligible ? 'text-emerald-600' : 'text-neutral-400'}`} />
+                            ) : isPickup ? (
+                              <Store className="w-4 h-4 text-neutral-700" />
+                            ) : (
+                              <Truck className="w-4 h-4 text-neutral-700" />
+                            )}
+                          </div>
                           <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm text-ry-onyx">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm text-neutral-900">
                                 {option.service}
                               </span>
-                              <span
-                                className={`text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm ${
-                                  option.id === 'rm-tracked-48-small'
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : option.id === 'rm-tracked-24-small'
-                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                    : 'bg-stone-100 text-stone-800 border border-stone-300'
-                                }`}
-                              >
-                                {option.recommendation}
-                              </span>
                             </div>
-                            <p className="text-xs text-ry-stone mt-1">
+                            <p className="text-xs text-neutral-500 mt-1">
                               {option.deliveryTime}
+                              {isFreeOption && !isFreeEligible && (
+                                <span className="text-amber-700 font-medium ml-1">
+                                  (add £{(100 - subtotal).toFixed(2)} more)
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="font-serif font-medium text-base text-ry-onyx">
-                            {displayPrice}
-                          </span>
-                          <span className="block text-[10px] text-ry-stone uppercase tracking-subtle">
-                            Online price
-                          </span>
+                          {option.price === 0 ? (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase rounded">
+                              FREE
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-sm text-neutral-900 font-mono">
+                              £{option.price.toFixed(2)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </label>
@@ -436,10 +449,10 @@ export default function CheckoutPage() {
                 })}
               </div>
 
-              <div className="pt-2 text-[11px] text-ry-stone flex items-center gap-1.5 border-t border-ry-ash/40">
-                <Info className="w-3.5 h-3.5 shrink-0 text-ry-onyx" />
+              <div className="pt-2 text-[11px] text-neutral-500 flex items-center gap-1.5 border-t border-neutral-100">
+                <Info className="w-3.5 h-3.5 shrink-0 text-neutral-700" />
                 <span>
-                  All shipments are handled by Royal Mail UK with door-to-door tracking and UN 1266 Limited Quantity (LQ) parfum compliance.
+                  All UK shipments are handled with Royal Mail tracking and UN 1266 Limited Quantity (LQ) compliance.
                 </span>
               </div>
 

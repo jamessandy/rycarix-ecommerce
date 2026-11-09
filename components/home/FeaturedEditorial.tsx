@@ -3,170 +3,129 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { PRODUCTS } from '@/lib/data/mockData';
-import { useCartStore } from '@/lib/store/useCartStore';
+import { ArrowRight, Sparkles, Heart, Compass } from 'lucide-react';
 
 export default function FeaturedEditorial() {
-  const { addItem, openCart } = useCartStore();
-
-  const handleAddBundle = () => {
-    // Add the 3 featured ritual items: Candle, Night Balm, and Silk Mask
-    const ritualSlugs = [
-      'flamme-noire-scented-candle',
-      'regenerative-barrier-night-balm',
-      'pure-mulberry-silk-sleep-mask',
-    ];
-
-    ritualSlugs.forEach((slug) => {
-      const prod = PRODUCTS.find((p) => p.slug === slug);
-      if (prod) {
-        const variant = prod.variants[0];
-        addItem({
-          id: `${prod.id}-${variant.id}`,
-          productId: prod.id,
-          variantId: variant.id,
-          title: prod.title,
-          variantTitle: variant.title,
-          sku: variant.sku,
-          price: variant.price,
-          quantity: 1,
-          image: prod.images[0]?.url || '',
-        });
-      }
-    });
-
-    openCart();
-  };
-
   return (
-    <section className="py-24 sm:py-32 bg-ry-wine text-ry-white font-sans overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="about" className="py-20 sm:py-28 bg-ry-pearl text-ry-onyx font-sans overflow-hidden border-b border-ry-ash/50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-24 sm:space-y-32">
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Left: Atmospheric Visual Collage */}
-          <div className="lg:col-span-7 grid grid-cols-2 gap-4 sm:gap-6 relative">
-            <div className="space-y-4 sm:space-y-6">
-              <div className="relative aspect-[3/4] bg-ry-burgundyDeep overflow-hidden shadow-luxury">
-                <Image
-                  src="https://images.unsplash.com/photo-1603006905003-be475563bc59?q=80&w=1200&auto=format&fit=crop"
-                  alt="Flamme Noire scented candle in moody evening atmosphere"
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 35vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="relative aspect-[4/3] bg-ry-burgundyDeep overflow-hidden shadow-luxury">
-                <Image
-                  src="https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1200&auto=format&fit=crop"
-                  alt="Silky balm texture and night skincare"
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 35vw"
-                  className="object-cover"
-                />
-              </div>
+        {/* =========================================================================
+            SECTION 1: Beauty, Style & Elegance. All in One Place. (IMG_1981)
+            ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          {/* Left: Image (IMG_1981) */}
+          <div className="lg:col-span-6 relative group">
+            <div className="relative aspect-[4/3] sm:aspect-[16/11] rounded-2xl overflow-hidden shadow-2xl border border-ry-ash/60 bg-ry-white">
+              <Image
+                src="/images/about/IMG_1981.jpg"
+                alt="Beauty, Style & Elegance - Rycarix Collection with Luxury Hair, Signature Fragrances and Home Essentials"
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-60" />
             </div>
-
-            <div className="space-y-4 sm:space-y-6 pt-8 sm:pt-12">
-              <div className="relative aspect-[4/3] bg-ry-burgundyDeep overflow-hidden shadow-luxury">
-                <Image
-                  src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1200&auto=format&fit=crop"
-                  alt="Pure Mulberry Silk sleep mask"
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 35vw"
-                  className="object-cover"
-                />
-              </div>
-              <div className="relative aspect-[3/4] bg-ry-burgundyDeep overflow-hidden shadow-luxury">
-                <Image
-                  src="https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1200&auto=format&fit=crop"
-                  alt="Handcrafted Italian leather accessories"
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 35vw"
-                  className="object-cover"
-                />
-              </div>
+            {/* Subtle decorative floating badge */}
+            <div className="absolute -bottom-4 -right-2 sm:bottom-4 sm:right-4 bg-ry-white/95 backdrop-blur-md border border-ry-ash/80 px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span className="text-[10px] uppercase tracking-editorial font-medium text-ry-onyx">
+                Signature Atelier
+              </span>
             </div>
           </div>
 
-          {/* Right: Curated Edit Narrative & Shop Set */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-ry-white/10 text-ry-ash text-[10px] uppercase tracking-editorial">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Featured Bundle</span>
+          {/* Right: Narrative Content */}
+          <div className="lg:col-span-6 space-y-6 lg:pl-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200/80 rounded-full text-amber-900 text-[10px] uppercase tracking-editorial font-semibold">
+              <Sparkles className="w-3 h-3 text-amber-600" />
+              <span>Section 01 • The Atelier</span>
             </div>
 
-            <h2 className="font-serif text-3xl sm:text-5xl text-ry-white leading-[1.15] font-normal">
-              The Evening Set: <br />
-              <span className="italic font-light text-ry-oatmeal">Candle, Balm & Silk Mask</span>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl text-ry-onyx leading-tight font-normal">
+              Beauty, Style & Elegance. <br />
+              <span className="italic text-ry-charcoal">All in One Place.</span>
             </h2>
 
-            <p className="text-xs sm:text-sm text-ry-ash leading-relaxed font-light">
-              Save 10% on our complete evening relaxation routine. Includes a hand-poured ceramic candle, barrier-restoring night balm, and pure 22-momme mulberry silk sleep mask.
+            <p className="text-sm sm:text-base text-ry-charcoal/90 leading-relaxed font-light">
+              Discover a collection of carefully selected beauty and lifestyle essentials designed to complement your individuality. From beautiful hair and signature fragrances to skincare and stylish accessories, RYCARIX brings together the little things that make you feel confident, beautiful and effortlessly elegant.
             </p>
 
-            {/* Set Items List */}
-            <div className="space-y-3 pt-2 pb-4 border-y border-ry-burgundy/80 text-xs text-ry-ash">
-              <div className="flex justify-between items-center">
-                <span>01 • Flamme Noire Scented Candle</span>
-                <span className="text-ry-white font-mono">£95</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>02 • Regenerative Barrier Night Balm (60ml)</span>
-                <span className="text-ry-white font-mono">£125</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>03 • Pure Mulberry Silk Sleep Mask</span>
-                <span className="text-ry-white font-mono">£68</span>
-              </div>
+            <div className="pt-2 flex flex-wrap gap-4 items-center">
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-neutral-800 transition-all rounded-md shadow-md active:scale-95"
+              >
+                <span>Explore The Collection</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/category/fragrance"
+                className="inline-flex items-center gap-2 px-6 py-3.5 border border-ry-ash bg-white text-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-all rounded-md active:scale-95"
+              >
+                <span>Discover Parfum</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* =========================================================================
+            SECTION 2: Everyday Essentials. Exceptional Style. (IMG_1983)
+            ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          {/* Left: Narrative Content (Alternating layout on desktop) */}
+          <div className="lg:col-span-6 space-y-6 lg:order-1 order-2 lg:pr-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200/80 rounded-full text-emerald-900 text-[10px] uppercase tracking-editorial font-semibold">
+              <Heart className="w-3 h-3 text-emerald-600" />
+              <span>Section 02 • Everyday Luxury</span>
             </div>
 
-            {/* Price & Buy Bundle */}
-            <div className="space-y-4">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <span className="text-xs uppercase tracking-editorial text-ry-stone block">
-                    Bundle Price
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-serif text-ry-white font-normal">£288.00</span>
-                    <span className="text-xs text-ry-stone line-through font-mono">£320.00</span>
-                    <span className="text-[10px] text-emerald-400 font-sans uppercase tracking-editorial">
-                      Save 10%
-                    </span>
-                  </div>
-                </div>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl text-ry-onyx leading-tight font-normal">
+              Everyday Essentials. <br />
+              <span className="italic text-ry-charcoal">Exceptional Style.</span>
+            </h2>
 
-                <div className="text-right text-[10px] text-ry-stone">
-                  <span>Pay in 3 x £96 with</span>
-                  <div className="font-semibold text-black bg-[#FFA8CD] px-1 py-0.2 rounded inline-block mx-1">
-                    Klarna.
-                  </div>
-                  <span>or 4 x £72 with</span>
-                  <div className="font-semibold text-black bg-[#B2ECE1] px-1 py-0.2 rounded inline-block ml-1">
-                    clearpay✦
-                  </div>
-                </div>
-              </div>
+            <p className="text-sm sm:text-base text-ry-charcoal/90 leading-relaxed font-light">
+              We believe the little details make a difference. That&apos;s why RYCARIX brings you a thoughtfully curated selection of hair, fragrances, skincare, home essentials and accessories to add a touch of beauty and elegance to your everyday life.
+            </p>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={handleAddBundle}
-                  className="flex-1 py-3.5 px-6 bg-ry-white text-ry-burgundy text-xs uppercase tracking-editorial font-medium hover:bg-ry-oatmeal transition-all flex items-center justify-center gap-2 shadow-luxury active:scale-[0.99]"
-                >
-                  <span>Add Bundle to Cart</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-
-                <Link
-                  href="#catalog"
-                  className="py-3.5 px-6 bg-transparent border border-ry-ash/40 text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-white/10 transition-all text-center"
-                >
-                  View All Products
-                </Link>
-              </div>
+            <div className="pt-2 flex flex-wrap gap-4 items-center">
+              <Link
+                href="/#categories"
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-ry-burgundy text-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-all rounded-md shadow-md active:scale-95"
+              >
+                <span>Shop By Department</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/category/hair"
+                className="inline-flex items-center gap-2 px-6 py-3.5 border border-ry-ash bg-white text-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-all rounded-md active:scale-95"
+              >
+                <span>Luxury Hair & Wigs</span>
+              </Link>
             </div>
+          </div>
 
+          {/* Right: Image (IMG_1983) */}
+          <div className="lg:col-span-6 lg:order-2 order-1 relative group">
+            <div className="relative aspect-[4/3] sm:aspect-[16/11] rounded-2xl overflow-hidden shadow-2xl border border-ry-ash/60 bg-ry-white">
+              <Image
+                src="/images/about/IMG_1983.jpg"
+                alt="Everyday Essentials, Exceptional Style - Curated Hair, Fragrances, Skincare, Home Essentials & Accessories"
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-60" />
+            </div>
+            {/* Subtle decorative floating badge */}
+            <div className="absolute -bottom-4 -left-2 sm:bottom-4 sm:left-4 bg-ry-white/95 backdrop-blur-md border border-ry-ash/80 px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+              <Compass className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-[10px] uppercase tracking-editorial font-medium text-ry-onyx">
+                Thoughtfully Curated
+              </span>
+            </div>
           </div>
         </div>
 

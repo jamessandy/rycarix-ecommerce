@@ -688,11 +688,17 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
               {openAccordion === 'shipping' && (
                 <div className="mt-3 text-xs leading-relaxed text-ry-stone font-sans animate-fade-in space-y-2">
                   <p>
-                    Tracked delivery via Royal Mail and Evri. Standard UK delivery (2–3 working days) for £3.50, Tracked 48 for £4.50, and Tracked 24 for £5.00.
+                    <strong className="text-ry-onyx">Standard UK Delivery:</strong> £3.50 (estimated 2–3 working days).
+                  </p>
+                  <p>
+                    <strong className="text-emerald-700">Free UK Delivery:</strong> Automatically applied on all orders over £100.
+                  </p>
+                  <p>
+                    <strong className="text-ry-onyx">Collection / Pickup:</strong> Free (arrange collection after ordering).
                   </p>
                   <p className="pt-1">
                     <Link href="/delivery" className="underline text-ry-onyx hover:text-ry-burgundy">
-                      View full delivery details & international shipping &rarr;
+                      View full UK delivery methods &amp; international shipping &rarr;
                     </Link>
                   </p>
                 </div>
