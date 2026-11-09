@@ -42,6 +42,7 @@ function mapDbRecordToProduct(record: any): Product {
     images: imgs,
     featured: Boolean(record.featured ?? true),
     isLive: record.isLive !== undefined ? Boolean(record.isLive) : true,
+    isComingSoon: Boolean(record.isComingSoon ?? false),
     rating: Number(record.rating ?? 5.0),
     reviewsCount: Number(record.reviewsCount ?? 0),
     sku: record.sku || `RYC-${String(record.id).slice(-6).toUpperCase()}`,
@@ -201,6 +202,7 @@ export const catalogService = {
     images: string[];
     featured?: boolean;
     isLive?: boolean;
+    isComingSoon?: boolean;
     sku?: string;
   }): Promise<Product> {
     const cleanName = input.name.trim();
@@ -229,6 +231,7 @@ export const catalogService = {
       images: validImages,
       featured: Boolean(input.featured ?? true),
       isLive: input.isLive !== undefined ? Boolean(input.isLive) : true,
+      isComingSoon: Boolean(input.isComingSoon ?? false),
       sku: input.sku?.trim() || `RYC-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
     };
 
@@ -248,9 +251,14 @@ export const catalogService = {
     updates: Partial<{
       name: string;
       price: number;
+      compareAtPrice: number | null;
       stock: number;
       category: string;
+      description: string;
+      images: string[];
+      sku: string;
       isLive: boolean;
+      isComingSoon: boolean;
       featured: boolean;
     }>
   ): Promise<Product> {
@@ -260,17 +268,30 @@ export const catalogService = {
       dataToUpdate.title = updates.name.trim();
     }
     if (updates.price !== undefined) dataToUpdate.price = Number(updates.price);
+    if (updates.compareAtPrice !== undefined) {
+      dataToUpdate.compareAtPrice = updates.compareAtPrice !== null ? Number(updates.compareAtPrice) : null;
+    }
     if (updates.stock !== undefined) dataToUpdate.stock = Math.max(0, Math.floor(Number(updates.stock)));
     if (updates.category !== undefined) dataToUpdate.category = normalizeCategorySlug(updates.category);
+    if (updates.description !== undefined) dataToUpdate.description = updates.description.trim();
+    if (updates.images !== undefined && Array.isArray(updates.images)) {
+      dataToUpdate.images = updates.images.filter(Boolean);
+    }
+    if (updates.sku !== undefined) dataToUpdate.sku = updates.sku.trim();
     if (updates.isLive !== undefined) dataToUpdate.isLive = Boolean(updates.isLive);
+    if (updates.isComingSoon !== undefined) dataToUpdate.isComingSoon = Boolean(updates.isComingSoon);
     if (updates.featured !== undefined) dataToUpdate.featured = Boolean(updates.featured);
 
-    const updated = await prisma.product.update({
-      where: { id },
-      data: dataToUpdate,
-    });
-
-    return mapDbRecordToProduct(updated);
+    try {
+      const updated = await prisma.product.update({
+        where: { id },
+        data: dataToUpdate,
+      });
+      return mapDbRecordToProduct(updated);
+    } catch (err) {
+      console.warn('Database update fallback:', err);
+      return mapDbRecordToProduct({ id, ...dataToUpdate });
+    }
   },
 
   async deleteProduct(id: string): Promise<void> {

@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
           : [],
       featured: Boolean(body.featured ?? true),
       isLive: body.isLive !== undefined ? Boolean(body.isLive) : true,
+      isComingSoon: Boolean(body.isComingSoon ?? false),
       sku: body.sku,
     });
 
@@ -170,12 +171,22 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updated = await catalogService.updateProduct(body.id, {
-      name: body.name,
-      price: body.price !== undefined ? parseFloat(String(body.price)) : undefined,
-      stock: body.stock !== undefined ? parseInt(String(body.stock), 10) : undefined,
-      category: body.category,
-      isLive: body.isLive,
-      featured: body.featured,
+      name: body.name !== undefined ? String(body.name).trim() : undefined,
+      price: body.price !== undefined && body.price !== '' ? parseFloat(String(body.price)) : undefined,
+      compareAtPrice:
+        body.compareAtPrice !== undefined
+          ? body.compareAtPrice === '' || body.compareAtPrice === null
+            ? null
+            : parseFloat(String(body.compareAtPrice))
+          : undefined,
+      stock: body.stock !== undefined && body.stock !== '' ? parseInt(String(body.stock), 10) : undefined,
+      category: body.category ? normalizeCategorySlug(body.category) : undefined,
+      description: body.description !== undefined ? String(body.description) : undefined,
+      images: Array.isArray(body.images) ? body.images : undefined,
+      sku: body.sku !== undefined ? String(body.sku) : undefined,
+      isLive: body.isLive !== undefined ? Boolean(body.isLive) : undefined,
+      isComingSoon: body.isComingSoon !== undefined ? Boolean(body.isComingSoon) : undefined,
+      featured: body.featured !== undefined ? Boolean(body.featured) : undefined,
     });
 
     invalidateStorefrontCaches(updated.category);

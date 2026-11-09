@@ -11,6 +11,7 @@ export interface Product {
   images: string[];
   featured?: boolean;
   isLive?: boolean;
+  isComingSoon?: boolean;
   rating?: number;
   reviewsCount?: number;
   sku?: string;
@@ -70,6 +71,7 @@ export interface ProductItem {
   rating: number;
   reviewCount: number;
   isHidden?: boolean; // Admin can hide a product from the storefront
+  isComingSoon?: boolean; // Product is marked Coming Soon
   
   // Accordion details
   ingredients: string;

@@ -352,6 +352,11 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                     />
+                    {product.isComingSoon && (
+                      <div className="absolute top-3 left-3 bg-neutral-900/90 text-amber-300 backdrop-blur-xs text-[10px] font-semibold uppercase tracking-[0.2em] px-2.5 py-1 rounded-sm shadow-sm border border-amber-400/30">
+                        Coming Soon
+                      </div>
+                    )}
                   </Link>
 
                   <div className="p-4">
@@ -371,14 +376,23 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
                 </div>
 
                 <div className="px-4 pb-4">
-                  <button
-                    type="button"
-                    disabled={stockCount <= 0}
-                    onClick={() => addItem(product, 1)}
-                    className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition disabled:opacity-40 cursor-pointer"
-                  >
-                    {stockCount > 0 ? 'Add to Bag' : 'Out of Stock'}
-                  </button>
+                  {product.isComingSoon ? (
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="w-full block text-center py-2.5 bg-amber-950/90 hover:bg-amber-900 text-amber-100 text-xs font-semibold uppercase tracking-wider rounded-md transition cursor-pointer shadow-xs"
+                    >
+                      Coming Soon • Preview
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={stockCount <= 0}
+                      onClick={() => addItem(product, 1)}
+                      className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition disabled:opacity-40 cursor-pointer"
+                    >
+                      {stockCount > 0 ? 'Add to Bag' : 'Out of Stock'}
+                    </button>
+                  )}
                 </div>
               </div>
             );

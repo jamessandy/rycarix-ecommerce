@@ -35,6 +35,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
   const howToUse = product.howToUse || 'Apply 2 to 3 drops to pulse points or smooth through hair as desired.';
   const sourcingEthics = product.sourcingEthics || 'Responsibly sourced botanicals and cruelty-free essences.';
   const attributes = product.attributes || {};
+  const isComingSoon = Boolean(product.isComingSoon);
 
   const variants =
     Array.isArray(product.variants) && product.variants.length > 0
@@ -323,7 +324,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
 
               {/* Formulation Hallmark Badge */}
               <div className="absolute top-4 left-4 bg-ry-pearl/80 backdrop-blur-sm px-2.5 py-1 text-[9px] uppercase tracking-editorial text-ry-stone border border-ry-ash/40">
-                {attributes.badge || getCategoryDisplayLabel(category)}
+                {isComingSoon ? 'Coming Soon • Preview' : attributes.badge || getCategoryDisplayLabel(category)}
               </div>
             </div>
           </div>
@@ -377,8 +378,12 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                   £{selectedVariant.compareAtPrice.toFixed(2)}
                 </span>
               )}
-              <span className="text-[10px] tracking-editorial uppercase px-2 py-0.5 bg-ry-oatmeal text-ry-charcoal font-sans ml-auto">
-                {selectedVariant.inventory > 0
+              <span className={`text-[10px] tracking-editorial uppercase px-2 py-0.5 font-sans ml-auto ${
+                isComingSoon ? 'bg-amber-100 text-amber-900 font-semibold' : 'bg-ry-oatmeal text-ry-charcoal'
+              }`}>
+                {isComingSoon
+                  ? 'Releasing Soon'
+                  : selectedVariant.inventory > 0
                   ? `In Stock (${selectedVariant.inventory} Remaining)`
                   : 'Out of Stock'}
               </span>
@@ -535,27 +540,38 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
               </div>
 
               {/* Add to Cart Button */}
-              <button
-                onClick={handleAddToCart}
-                disabled={isAdded || selectedVariant.inventory <= 0}
-                className="flex-1 py-3.5 px-6 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-luxury group cursor-pointer disabled:opacity-50"
-              >
-                {isAdded ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span>Added to Cart</span>
-                  </>
-                ) : (
-                  <>
-                    <Droplet className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    <span>
-                      {selectedVariant.inventory > 0
-                        ? `Add to Cart • £${(selectedVariant.price * quantity).toFixed(2)}`
-                        : 'Sold Out'}
-                    </span>
-                  </>
-                )}
-              </button>
+              {isComingSoon ? (
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 py-3.5 px-6 bg-amber-950/80 text-amber-200 text-xs uppercase tracking-editorial font-medium flex items-center justify-center gap-2 cursor-not-allowed opacity-90 border border-amber-800/40 shadow-xs"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>Coming Soon • In Formulation</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isAdded || selectedVariant.inventory <= 0}
+                  className="flex-1 py-3.5 px-6 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-luxury group cursor-pointer disabled:opacity-50"
+                >
+                  {isAdded ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-400" />
+                      <span>Added to Cart</span>
+                    </>
+                  ) : (
+                    <>
+                      <Droplet className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                      <span>
+                        {selectedVariant.inventory > 0
+                          ? `Add to Cart • £${(selectedVariant.price * quantity).toFixed(2)}`
+                          : 'Sold Out'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Secondary Actions (Directly under Add to Cart button, fully clickable with real-time feedback!) */}

@@ -21,6 +21,7 @@ import {
   Truck,
   Plus,
   X,
+  Phone,
 } from 'lucide-react';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore, UserAddress } from '@/lib/store/useAuthStore';
@@ -54,6 +55,16 @@ function UserDashboardContent() {
     email: user?.email || '',
     phone: user?.phone || '',
   });
+
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
 
   // Add Address Modal / State
   const [isAddingAddress, setIsAddingAddress] = useState(false);
@@ -315,7 +326,32 @@ function UserDashboardContent() {
                 </span>
               </div>
               <p className="text-xs text-ry-stone mt-0.5">{user.email}</p>
-              {user.phone && <p className="text-xs text-ry-stone">{user.phone}</p>}
+              <div className="flex items-center gap-2 mt-1.5">
+                {user.phone ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ry-onyx font-mono flex items-center gap-1.5 bg-ry-pearl px-2 py-0.5 border border-ry-ash/70 rounded-xs">
+                      <Phone className="w-3 h-3 text-ry-burgundy" />
+                      {user.phone}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('profile')}
+                      className="text-[11px] text-ry-burgundy hover:underline font-medium cursor-pointer"
+                    >
+                      Edit Phone
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('profile')}
+                    className="inline-flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-xs font-medium cursor-pointer transition shadow-2xs"
+                  >
+                    <Plus className="w-3 h-3 text-amber-700" />
+                    <span>+ Add Phone Number</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -900,23 +936,34 @@ function UserDashboardContent() {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1">
-                  Phone (for Evri & Royal Mail SMS delivery alerts)
-                </label>
-                <input
-                  type="tel"
-                  value={profileForm.phone}
-                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  placeholder="+44 7700 900077"
-                  className="w-full bg-ry-pearl border border-ry-ash p-3 focus:outline-none focus:border-ry-onyx"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone">
+                    Phone Number (for Courier Tracking & SMS Alerts)
+                  </label>
+                  <span className="text-[10px] text-ry-stone">
+                    {profileForm.phone ? 'Configured' : 'Not yet set'}
+                  </span>
+                </div>
+                <div className="relative">
+                  <Phone className="w-3.5 h-3.5 text-ry-stone absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    placeholder="+44 7700 900077"
+                    className="w-full bg-ry-pearl border border-ry-ash pl-9 pr-3 py-3 focus:outline-none focus:border-ry-onyx font-mono text-xs"
+                  />
+                </div>
+                <p className="text-[11px] text-ry-stone mt-1">
+                  Used by Royal Mail and Evri for real-time dispatch updates and delivery notifications.
+                </p>
               </div>
 
               <button
                 type="submit"
-                className="px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors"
+                className="px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors cursor-pointer"
               >
-                Save Profile
+                Save Profile & Phone Number
               </button>
             </form>
           </div>

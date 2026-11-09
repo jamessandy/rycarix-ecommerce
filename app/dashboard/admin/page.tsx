@@ -22,6 +22,9 @@ import {
   Search,
   Eye,
   EyeOff,
+  Pencil,
+  Clock,
+  X,
 } from 'lucide-react';
 
 /**
@@ -70,6 +73,9 @@ export default function AdminDashboardPage() {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [productSearch, setProductSearch] = useState('');
 
+  // Editing state
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   // Form states
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -80,6 +86,7 @@ export default function AdminDashboardPage() {
   const [description, setDescription] = useState('');
   const [featured, setFeatured] = useState(true);
   const [isLive, setIsLive] = useState(true);
+  const [isComingSoon, setIsComingSoon] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [urlInput, setUrlInput] = useState('');
@@ -185,7 +192,42 @@ export default function AdminDashboardPage() {
     setUrlInput('');
   };
 
-  const handleCreateProduct = async (e: React.FormEvent) => {
+  const handleStartEdit = (prod: any) => {
+    setEditingProduct(prod);
+    setName(prod.name || prod.title || '');
+    setPrice(prod.price !== undefined ? String(prod.price) : '');
+    setCompareAtPrice(prod.compareAtPrice ? String(prod.compareAtPrice) : '');
+    setStock(prod.stock !== undefined ? String(prod.stock) : '15');
+    setCategory(normalizeCategorySlug(prod.category));
+    setSku(prod.sku || '');
+    setDescription(prod.description || '');
+    setFeatured(Boolean(prod.featured ?? true));
+    setIsLive(prod.isLive !== false);
+    setIsComingSoon(Boolean(prod.isComingSoon));
+    setImages(Array.isArray(prod.images) ? prod.images : []);
+    setStatusMessage(null);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 320, behavior: 'smooth' });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setName('');
+    setPrice('');
+    setCompareAtPrice('');
+    setStock('15');
+    setCategory('perfume');
+    setSku('');
+    setDescription('');
+    setFeatured(true);
+    setIsLive(true);
+    setIsComingSoon(false);
+    setImages([]);
+    setStatusMessage(null);
+  };
+
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
 
@@ -201,44 +243,50 @@ export default function AdminDashboardPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          price: parseFloat(price),
-          compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : undefined,
-          stock: parseInt(stock, 10) || 0,
-          category: normalizeCategorySlug(category),
-          sku: sku.trim() || undefined,
-          description: description.trim(),
-          images: validImages,
-          featured,
-          isLive,
-        }),
-      });
+      const payload: any = {
+        name: name.trim(),
+        price: parseFloat(price),
+        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
+        stock: parseInt(stock, 10) || 0,
+        category: normalizeCategorySlug(category),
+        sku: sku.trim() || undefined,
+        description: description.trim(),
+        images: validImages,
+        featured,
+        isLive,
+        isComingSoon,
+      };
+
+      let res: Response;
+      if (editingProduct) {
+        payload.id = editingProduct.id;
+        res = await fetch('/api/products', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Database rejected product upload.');
+        throw new Error(data.error || 'Database rejected product save.');
       }
 
       await fetchSharedDatabaseCatalog();
 
-      setName('');
-      setPrice('');
-      setCompareAtPrice('');
-      setStock('15');
-      setSku('');
-      setDescription('');
-      setImages([]);
-      setIsLive(true);
+      handleCancelEdit();
 
       setStatusMessage({
         type: 'success',
-        text: `"${data.product.name}" is now saved to the shared PostgreSQL database under "${getCategoryLabel(
-          data.product.category
-        )}" and is live across all phones, laptops, and customers.`,
+        text: editingProduct
+          ? `Product "${data.product?.name || name}" updated successfully in the shared catalog.`
+          : `"${data.product?.name || name}" is now saved to the shared PostgreSQL database and is live across all devices.`,
       });
     } catch (err: any) {
       setStatusMessage({ type: 'error', text: err.message });
@@ -260,6 +308,22 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error('Failed to toggle product live status:', err);
+    }
+  };
+
+  const handleToggleComingSoon = async (product: Product & { isComingSoon?: boolean }) => {
+    const nextState = !Boolean(product.isComingSoon);
+    try {
+      const res = await fetch('/api/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: product.id, isComingSoon: nextState }),
+      });
+      if (res.ok) {
+        await fetchSharedDatabaseCatalog();
+      }
+    } catch (err) {
+      console.error('Failed to toggle coming soon status:', err);
     }
   };
 
@@ -370,7 +434,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {dbError && (
+      {dbError && products.length === 0 && (
         <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-300 text-red-900 text-sm">
           <strong>Database Connection Alert:</strong> {dbError}. Verify <code>DATABASE_URL</code> is configured in your production environment variables.
         </div>
@@ -431,7 +495,21 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Product Upload Form */}
           <div className="lg:col-span-5 bg-white p-6 rounded-xl border border-neutral-200 shadow-xs h-fit">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Publish Product to Shared Catalog</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-neutral-900">
+                {editingProduct ? 'Edit Product' : 'Publish Product to Shared Catalog'}
+              </h2>
+              {editingProduct && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-xs text-neutral-500 hover:text-neutral-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Cancel Edit</span>
+                </button>
+              )}
+            </div>
 
             {statusMessage && (
               <div
@@ -445,7 +523,7 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            <form onSubmit={handleCreateProduct} className="space-y-4">
+            <form onSubmit={handleSaveProduct} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase text-neutral-700 mb-1">
                   Product Title *
@@ -605,35 +683,73 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 text-sm text-neutral-800 font-medium cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isLive}
-                    onChange={(e) => setIsLive(e.target.checked)}
-                    className="h-4 w-4 rounded border-neutral-300 text-neutral-900"
-                  />
-                  Make Live Immediately for Everyone
-                </label>
+              <div className="space-y-2.5 pt-2 border-t border-neutral-100">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-neutral-800 font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isLive}
+                      onChange={(e) => setIsLive(e.target.checked)}
+                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900"
+                    />
+                    Make Live for Customers
+                  </label>
 
-                <label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={featured}
-                    onChange={(e) => setFeatured(e.target.checked)}
-                    className="h-4 w-4 rounded border-neutral-300 text-neutral-900"
-                  />
-                  Featured
-                </label>
+                  <label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={featured}
+                      onChange={(e) => setFeatured(e.target.checked)}
+                      className="h-4 w-4 rounded border-neutral-300 text-neutral-900"
+                    />
+                    Featured
+                  </label>
+                </div>
+
+                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-lg">
+                  <label className="flex items-center gap-2 text-xs text-amber-950 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isComingSoon}
+                      onChange={(e) => setIsComingSoon(e.target.checked)}
+                      className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Mark as "Coming Soon" Edition</span>
+                  </label>
+                  <p className="text-[11px] text-amber-800 mt-1 pl-5">
+                    Displays luxury "Coming Soon" badge across catalog cards & disables direct cart checkout with an early access preview.
+                  </p>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={submitting || uploadingImage}
-                className="w-full py-3 px-4 bg-neutral-900 text-white font-semibold text-sm rounded-md hover:bg-neutral-800 transition disabled:opacity-50 cursor-pointer"
-              >
-                {submitting ? 'Saving to PostgreSQL Database...' : 'Publish Product Live'}
-              </button>
+              <div className="flex gap-2 pt-1">
+                {editingProduct && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="py-3 px-4 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold text-sm rounded-md transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={submitting || uploadingImage}
+                  className="flex-1 py-3 px-4 bg-neutral-900 text-white font-semibold text-sm rounded-md hover:bg-neutral-800 transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    'Saving to PostgreSQL Database...'
+                  ) : editingProduct ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Update Product</span>
+                    </>
+                  ) : (
+                    'Publish Product Live'
+                  )}
+                </button>
+              </div>
             </form>
           </div>
 
@@ -705,26 +821,53 @@ export default function AdminDashboardPage() {
                         <td className="py-3 px-2 font-semibold">£{Number(product.price).toFixed(2)}</td>
                         <td className="py-3 px-2">{Number(product.stock ?? 0)}</td>
                         <td className="py-3 px-2">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLive(product)}
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer ${
-                              product.isLive !== false
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-neutral-200 text-neutral-600'
-                            }`}
-                          >
-                            {product.isLive !== false ? 'LIVE' : 'HIDDEN'}
-                          </button>
+                          <div className="flex flex-col gap-1.5 items-start">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLive(product)}
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wider cursor-pointer ${
+                                product.isLive !== false
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-neutral-200 text-neutral-600'
+                              }`}
+                              title="Click to toggle Live/Hidden on storefront"
+                            >
+                              {product.isLive !== false ? 'LIVE' : 'HIDDEN'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleComingSoon(product)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium tracking-wide cursor-pointer transition ${
+                                product.isComingSoon
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300 font-semibold'
+                                  : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+                              }`}
+                              title="Toggle Coming Soon status"
+                            >
+                              {product.isComingSoon ? '⏳ Coming Soon' : '+ Coming Soon'}
+                            </button>
+                          </div>
                         </td>
                         <td className="py-3 px-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="text-xs text-red-600 hover:text-red-800 font-medium cursor-pointer"
-                          >
-                            Delete
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(product)}
+                              className="px-2.5 py-1 text-xs text-neutral-700 bg-neutral-100 hover:bg-neutral-200 hover:text-neutral-900 rounded font-medium cursor-pointer transition flex items-center gap-1"
+                              title="Edit product details"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteProduct(product.id)}
+                              className="px-2.5 py-1 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 rounded font-medium cursor-pointer transition"
+                              title="Delete product"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
