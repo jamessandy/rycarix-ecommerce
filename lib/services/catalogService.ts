@@ -147,7 +147,29 @@ export const catalogService = {
       });
 
       if (dbRecords && dbRecords.length > 0) {
-        mapped = dbRecords.map(mapDbRecordToProduct);
+        const dbProducts = dbRecords.map(mapDbRecordToProduct);
+        const fallback = getFallbackMockProducts();
+
+        const seen = new Set<string>();
+        mapped = [];
+
+        // Prioritize live DB records
+        for (const p of dbProducts) {
+          const key = p.slug || p.id;
+          if (!seen.has(key)) {
+            seen.add(key);
+            mapped.push(p);
+          }
+        }
+
+        // Include baseline catalog products so categories like Hair, Skincare, and Candles always have their actual items
+        for (const p of fallback) {
+          const key = p.slug || p.id;
+          if (!seen.has(key)) {
+            seen.add(key);
+            mapped.push(p);
+          }
+        }
       } else {
         mapped = getFallbackMockProducts();
       }

@@ -9,15 +9,6 @@ interface HeroProps {
 }
 
 export default function Hero({ onSelectCategory }: HeroProps) {
-  const quickCategories = [
-    { label: 'All Products', href: '/products' },
-    { label: 'Hair', href: '/category/hair' },
-    { label: 'Parfum', href: '/category/fragrance' },
-    { label: 'Skincare', href: '/category/skincare' },
-    { label: 'Home & Candles', href: '/category/candles' },
-    { label: 'Accessories', href: '/category/accessories' },
-  ];
-
   const handleCategoryClick = (val: string) => {
     if (onSelectCategory) {
       onSelectCategory(val);
@@ -80,22 +71,6 @@ export default function Hero({ onSelectCategory }: HeroProps) {
           >
             Shop By Category
           </a>
-        </div>
-
-        {/* Category Quick Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto mb-8">
-          <span className="text-[10px] uppercase tracking-editorial text-ry-ash/60 mr-1 hidden sm:inline">
-            Quick Categories:
-          </span>
-          {quickCategories.map((cat) => (
-            <Link
-              key={cat.label}
-              href={cat.href}
-              className="px-3 py-1 bg-ry-white/10 hover:bg-ry-white/20 border border-ry-white/20 text-[10px] uppercase tracking-editorial text-ry-white transition-colors"
-            >
-              {cat.label}
-            </Link>
-          ))}
         </div>
       </div>
 

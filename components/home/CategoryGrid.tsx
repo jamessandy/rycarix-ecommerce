@@ -81,6 +81,16 @@ export default function CategoryGrid({ onSelectCategory }: CategoryGridProps) {
             <Link
               key={category.id}
               href={`/category/${category.slug}`}
+              onClick={(e) => {
+                if (onSelectCategory && typeof window !== 'undefined' && window.location.pathname === '/') {
+                  e.preventDefault();
+                  onSelectCategory(category.slug);
+                  const catalogElem = document.getElementById('catalog');
+                  if (catalogElem) {
+                    catalogElem.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }
+              }}
               className="group cursor-pointer relative overflow-hidden bg-ry-oatmeal border border-ry-ash/60 transition-all duration-500 hover:shadow-luxury hover:border-ry-onyx/40 flex flex-col justify-between"
             >
               {/* Category Image with Zoom Effect */}

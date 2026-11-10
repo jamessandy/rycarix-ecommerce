@@ -13,17 +13,17 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-ry-pearl text-ry-onyx font-sans">
-      {/* Editorial Page Header */}
-      <section className="bg-neutral-950 text-white pt-32 pb-20 px-4 sm:px-6 lg:px-8 border-b border-neutral-900 text-center">
+      {/* Editorial Page Header (Maintaining Signature Wine Palette) */}
+      <section className="bg-ry-wine text-ry-white pt-32 pb-20 px-4 sm:px-6 lg:px-8 border-b border-ry-burgundy text-center">
         <div className="max-w-4xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-neutral-900 border border-amber-500/30 text-[10px] uppercase tracking-editorial text-amber-300">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>The Rycarix Story & Philosophy</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-ry-white/10 border border-ry-white/20 text-[10px] uppercase tracking-editorial text-ry-ash">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>The Rycarix Story &amp; Philosophy</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-6xl font-normal tracking-tight text-white">
+          <h1 className="font-serif text-4xl sm:text-6xl font-normal tracking-tight text-ry-white">
             Beauty, Style &amp; Elegance
           </h1>
-          <p className="text-sm sm:text-base text-neutral-400 max-w-xl mx-auto font-light leading-relaxed">
+          <p className="text-sm sm:text-base text-ry-ash/90 max-w-xl mx-auto font-light leading-relaxed">
             Curated essentials designed to elevate your everyday ritual with confidence and effortless poise.
           </p>
         </div>
@@ -168,3 +168,4 @@ export default function AboutPage() {
     </div>
   );
 }
+
