@@ -124,7 +124,7 @@ export default function Header() {
     { name: 'Skincare', href: '/category/skincare', hasChevron: false },
     { name: 'Accessories', href: '/category/accessories', hasChevron: false },
     { name: 'About us', href: '/about', hasChevron: false },
-    { name: 'Contact us', href: '/delivery', hasChevron: false },
+    { name: 'Delivery', href: '/delivery', hasChevron: false },
   ];
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
