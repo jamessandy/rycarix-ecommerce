@@ -17,6 +17,13 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 
+type FieldErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+};
+
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,6 +36,7 @@ function LoginFormContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   // Form Fields
   const [name, setName] = useState('');
@@ -39,16 +47,40 @@ function LoginFormContent() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [postalCode, setPostalCode] = useState('');
-  const [country, setCountry] = useState('United Kingdom');
+  const [country] = useState('United Kingdom');
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
+
+  const clearFieldError = (field: keyof FieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateEmailField = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Email address is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'Enter a valid email address.';
+    return '';
+  };
+
+  const validatePasswordField = (val: string) => {
+    if (!val) return 'Password is required.';
+    if (val.length < 6) return 'Password must be at least 6 characters.';
+    return '';
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!email || !password) {
-      setErrorMessage('Please provide both your email and password.');
+    const emailErr = validateEmailField(email);
+    const passErr = password ? '' : 'Password is required.';
+    if (emailErr || passErr) {
+      setFieldErrors({ email: emailErr || undefined, password: passErr || undefined });
       return;
     }
 
@@ -65,7 +97,7 @@ function LoginFormContent() {
           } else {
             router.push('/dashboard/user');
           }
-        }, 350);
+        }, 300);
       } else {
         setErrorMessage(res.error || 'Invalid credentials.');
       }
@@ -81,32 +113,38 @@ function LoginFormContent() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!name || !email || !password) {
-      setErrorMessage('Please fill in your name, email, and password.');
-      return;
-    }
+    const nameErr = !name.trim() ? 'Full name is required.' : '';
+    const emailErr = validateEmailField(email);
+    const passErr = validatePasswordField(password);
 
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters.');
+    if (nameErr || emailErr || passErr) {
+      setFieldErrors({
+        name: nameErr || undefined,
+        email: emailErr || undefined,
+        password: passErr || undefined,
+      });
       return;
     }
 
     setIsLoading(true);
     try {
-      const deliveryAddress = street || postalCode ? {
-        street: street.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        postalCode: postalCode.trim(),
-        country,
-      } : undefined;
+      const deliveryAddress =
+        street.trim() || city.trim() || postalCode.trim()
+          ? {
+              street: street.trim(),
+              city: city.trim(),
+              state: state.trim(),
+              postalCode: postalCode.trim(),
+              country,
+            }
+          : undefined;
 
       const res = await signup(name, email, password, deliveryAddress, phone);
       if (res.success) {
         setSuccessMessage('Your account and delivery profile have been registered!');
         setTimeout(() => {
           router.push(redirectUrl || '/dashboard/user');
-        }, 450);
+        }, 350);
       } else {
         setErrorMessage(res.error || 'Failed to create account.');
       }
@@ -131,7 +169,7 @@ function LoginFormContent() {
               Sign In to Your Account
             </h2>
             <p className="text-xs text-ry-stone mt-4 leading-relaxed">
-              Track packages in real time, view your private order archive, manage delivery addresses, and review Klarna payment schedules.
+              Track packages in real time, view your private order archive, manage delivery addresses &amp; contact number, and review payment receipts.
             </p>
 
             <div className="mt-8 space-y-4 text-xs font-sans border-t border-ry-burgundy pt-6">
@@ -139,7 +177,7 @@ function LoginFormContent() {
                 <Crown className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
                 <div>
                   <strong className="text-ry-white font-medium block">Tracked Dispatch</strong>
-                  <span className="text-ry-stone text-[11px]">Live shipment milestones via Evri and Royal Mail.</span>
+                  <span className="text-ry-stone text-[11px]">Live shipment updates via Royal Mail &amp; international couriers.</span>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -153,13 +191,12 @@ function LoginFormContent() {
                 <Sparkles className="w-4 h-4 text-amber-200 mt-0.5 shrink-0" />
                 <div>
                   <strong className="text-ry-white font-medium block">Personalized Wishlist</strong>
-                  <span className="text-ry-stone text-[11px]">Curate private collections and download official invoices.</span>
+                  <span className="text-ry-stone text-[11px]">Save favourite pieces and manage your delivery profile.</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Security & Concierge Direct Link */}
           <div className="relative z-10 mt-10 pt-6 border-t border-ry-burgundy">
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -168,7 +205,7 @@ function LoginFormContent() {
               </span>
             </div>
             <p className="text-[11px] text-ry-stone leading-relaxed">
-              Protected with bank-grade 256-bit SSL encryption. For boutique order inquiries or direct concierge assistance, contact{' '}
+              Protected with SSL encryption. For order inquiries, contact{' '}
               <a href="mailto:concierge@rycarix.com" className="text-ry-white underline hover:text-amber-200 transition-colors">
                 concierge@rycarix.com
               </a>.
@@ -179,7 +216,6 @@ function LoginFormContent() {
         {/* Right Side: Authentication Forms */}
         <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center">
           
-          {/* Status Message if already logged in */}
           {isAuthenticated && user && (
             <div className="mb-6 p-3.5 bg-ry-pearl border border-ry-ash flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
@@ -197,7 +233,6 @@ function LoginFormContent() {
             </div>
           )}
 
-          {/* Toggle Header Tabs */}
           <div className="flex border-b border-ry-ash mb-8 text-xs uppercase tracking-editorial font-medium">
             <button
               type="button"
@@ -205,6 +240,7 @@ function LoginFormContent() {
                 setMode('signin');
                 setErrorMessage('');
                 setSuccessMessage('');
+                setFieldErrors({});
               }}
               className={`pb-3.5 pr-6 font-medium transition-all relative ${
                 mode === 'signin'
@@ -220,6 +256,7 @@ function LoginFormContent() {
                 setMode('signup');
                 setErrorMessage('');
                 setSuccessMessage('');
+                setFieldErrors({});
               }}
               className={`pb-3.5 px-6 font-medium transition-all relative ${
                 mode === 'signup'
@@ -231,7 +268,6 @@ function LoginFormContent() {
             </button>
           </div>
 
-          {/* Feedback Alerts */}
           {errorMessage && (
             <div className="mb-6 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 animate-fade-in">
               <span>{errorMessage}</span>
@@ -247,39 +283,78 @@ function LoginFormContent() {
 
           {/* Form 1: Sign In */}
           {mode === 'signin' && (
-            <form onSubmit={handleSignIn} className="space-y-5 animate-fade-in">
+            <form onSubmit={handleSignIn} noValidate className="space-y-5 animate-fade-in">
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                <label
+                  htmlFor="signin-email"
+                  className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium"
+                >
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-ry-stone absolute left-3.5 top-3.5" />
                   <input
+                    id="signin-email"
+                    name="email"
                     type="email"
+                    autoComplete="username"
+                    spellCheck={false}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearFieldError('email');
+                    }}
+                    onBlur={() => {
+                      const err = validateEmailField(email);
+                      if (err) setFieldErrors((p) => ({ ...p, email: err }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? 'signin-email-error' : undefined}
                     placeholder="name@example.com"
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    className={`w-full pl-10 pr-4 py-3 bg-ry-pearl border text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors ${
+                      fieldErrors.email ? 'border-red-500' : 'border-ry-ash'
+                    }`}
                   />
                 </div>
+                {fieldErrors.email && (
+                  <p id="signin-email-error" className="mt-1 text-[11px] text-red-600">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone font-medium">
+                  <label
+                    htmlFor="signin-password"
+                    className="block text-[10px] uppercase tracking-editorial text-ry-stone font-medium"
+                  >
                     Password
                   </label>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-ry-stone absolute left-3.5 top-3.5" />
                   <input
+                    id="signin-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      clearFieldError('password');
+                    }}
+                    onBlur={() => {
+                      if (!password) setFieldErrors((p) => ({ ...p, password: 'Password is required.' }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.password)}
+                    aria-describedby={fieldErrors.password ? 'signin-password-error' : undefined}
                     placeholder="Enter your password"
                     required
-                    className="w-full pl-10 pr-10 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    className={`w-full pl-10 pr-10 py-3 bg-ry-pearl border text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors ${
+                      fieldErrors.password ? 'border-red-500' : 'border-ry-ash'
+                    }`}
                   />
                   <button
                     type="button"
@@ -290,11 +365,18 @@ function LoginFormContent() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p id="signin-password-error" className="mt-1 text-[11px] text-red-600">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between text-xs text-ry-stone">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
+                <label htmlFor="signin-remember" className="flex items-center gap-2 cursor-pointer select-none">
                   <input
+                    id="signin-remember"
+                    name="remember"
                     type="checkbox"
                     defaultChecked
                     className="w-3.5 h-3.5 rounded-none border-ry-ash text-ry-onyx accent-ry-onyx focus:ring-0"
@@ -339,54 +421,108 @@ function LoginFormContent() {
 
           {/* Form 2: Sign Up */}
           {mode === 'signup' && (
-            <form onSubmit={handleSignUp} className="space-y-5 animate-fade-in">
+            <form onSubmit={handleSignUp} noValidate className="space-y-5 animate-fade-in">
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                <label
+                  htmlFor="signup-name"
+                  className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium"
+                >
                   Full Name
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-ry-stone absolute left-3.5 top-3.5" />
                   <input
+                    id="signup-name"
+                    name="name"
                     type="text"
+                    autoComplete="name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      clearFieldError('name');
+                    }}
+                    onBlur={() => {
+                      if (!name.trim()) setFieldErrors((p) => ({ ...p, name: 'Full name is required.' }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.name)}
                     placeholder="e.g. Sarah Jenkins"
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    className={`w-full pl-10 pr-4 py-3 bg-ry-pearl border text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors ${
+                      fieldErrors.name ? 'border-red-500' : 'border-ry-ash'
+                    }`}
                   />
                 </div>
+                {fieldErrors.name && (
+                  <p className="mt-1 text-[11px] text-red-600">{fieldErrors.name}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                <label
+                  htmlFor="signup-email"
+                  className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium"
+                >
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-ry-stone absolute left-3.5 top-3.5" />
                   <input
+                    id="signup-email"
+                    name="email"
                     type="email"
+                    autoComplete="username"
+                    spellCheck={false}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearFieldError('email');
+                    }}
+                    onBlur={() => {
+                      const err = validateEmailField(email);
+                      if (err) setFieldErrors((p) => ({ ...p, email: err }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.email)}
                     placeholder="name@example.com"
                     required
-                    className="w-full pl-10 pr-4 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    className={`w-full pl-10 pr-4 py-3 bg-ry-pearl border text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors ${
+                      fieldErrors.email ? 'border-red-500' : 'border-ry-ash'
+                    }`}
                   />
                 </div>
+                {fieldErrors.email && (
+                  <p className="mt-1 text-[11px] text-red-600">{fieldErrors.email}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                <label
+                  htmlFor="signup-password"
+                  className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium"
+                >
                   Password
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-ry-stone absolute left-3.5 top-3.5" />
                   <input
+                    id="signup-password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      clearFieldError('password');
+                    }}
+                    onBlur={() => {
+                      const err = validatePasswordField(password);
+                      if (err) setFieldErrors((p) => ({ ...p, password: err }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.password)}
                     placeholder="At least 6 characters"
                     required
-                    className="w-full pl-10 pr-10 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    className={`w-full pl-10 pr-10 py-3 bg-ry-pearl border text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors ${
+                      fieldErrors.password ? 'border-red-500' : 'border-ry-ash'
+                    }`}
                   />
                   <button
                     type="button"
@@ -397,62 +533,109 @@ function LoginFormContent() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {fieldErrors.password && (
+                  <p className="mt-1 text-[11px] text-red-600">{fieldErrors.password}</p>
+                )}
               </div>
+
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
+                <label
+                  htmlFor="signup-phone"
+                  className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium"
+                >
                   Delivery Phone Number
                 </label>
                 <input
+                  id="signup-phone"
+                  name="phone"
                   type="tel"
+                  autoComplete="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+44 7700 900077 (for courier SMS updates)"
+                  placeholder="+44 7700 900077 (for courier updates)"
                   className="w-full px-4 py-3 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
                 />
               </div>
 
-              {/* Delivery Address Section */}
               <div className="pt-2 border-t border-ry-ash/40">
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium">
-                  Delivery Address (Street & Flat/Unit)
+                <label
+                  htmlFor="signup-street"
+                  className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 font-medium"
+                >
+                  Delivery Address (Street &amp; Flat/Unit)
                 </label>
                 <input
+                  id="signup-street"
+                  name="street-address"
                   type="text"
+                  autoComplete="street-address"
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
                   placeholder="Flat 4B, 18 Grosvenor Gardens"
                   className="w-full px-4 py-2.5 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors mb-2"
                 />
 
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="City / Town (e.g. London)"
-                    className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
-                  />
-                  <input
-                    type="text"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="Postcode (e.g. SW1W 0DH)"
-                    className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
-                  />
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label htmlFor="signup-city" className="sr-only">
+                      City / Town
+                    </label>
+                    <input
+                      id="signup-city"
+                      name="city"
+                      type="text"
+                      autoComplete="address-level2"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="City (e.g. London)"
+                      className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="signup-state" className="sr-only">
+                      County / Region
+                    </label>
+                    <input
+                      id="signup-state"
+                      name="state"
+                      type="text"
+                      autoComplete="address-level1"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      placeholder="County"
+                      className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="signup-postal" className="sr-only">
+                      Postcode (Optional)
+                    </label>
+                    <input
+                      id="signup-postal"
+                      name="postalCode"
+                      type="text"
+                      autoComplete="postal-code"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="Postcode (Optional)"
+                      className="w-full px-3 py-2 bg-ry-pearl border border-ry-ash text-xs text-ry-onyx placeholder-ry-stone/70 focus:outline-none focus:border-ry-onyx transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Newsletter Perk Checkbox */}
               <div className="p-3.5 bg-ry-pearl border border-ry-ash/70 space-y-2">
-                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <label htmlFor="signup-newsletter" className="flex items-start gap-2.5 cursor-pointer select-none">
                   <input
+                    id="signup-newsletter"
+                    name="newsletter"
                     type="checkbox"
                     checked={newsletterOptIn}
                     onChange={(e) => setNewsletterOptIn(e.target.checked)}
                     className="mt-0.5 w-3.5 h-3.5 rounded-none border-ry-ash text-ry-onyx accent-ry-onyx focus:ring-0"
                   />
                   <span className="text-[11px] text-ry-charcoal leading-relaxed">
-                    Sign up for the newsletter to receive <strong>10% off</strong> your first order (code: <strong>RYCARIX10</strong>) and private seasonal invitations.
+                    Sign up for the newsletter to receive private seasonal invitations and 10% welcome discount (code: <strong>RYCARIX10</strong>).
                   </span>
                 </label>
               </div>

@@ -8,17 +8,18 @@ import {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const recipientEmail = body.recipientEmail || body.customerEmail || body.email;
     const data: DispatchNotificationEmailData = {
       orderNumber: body.orderNumber || `RY-${Date.now().toString().slice(-5)}`,
       customerName: body.customerName || 'Valued Client',
-      customerEmail: body.customerEmail || body.email,
+      customerEmail: recipientEmail,
       carrier: body.carrier || 'Royal Mail Tracked',
-      trackingNumber: body.trackingNumber || `RY-RM-${Date.now().toString().slice(-6)}GB`,
-      serviceLevel: body.serviceLevel || `${body.carrier || 'Royal Mail'} Priority Tracked`,
-      estimatedDelivery: body.estimatedDelivery || 'In 1–2 Business Days',
+      trackingNumber: body.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`,
+      serviceLevel: body.serviceLevel || `${body.carrier || 'Royal Mail'} Tracked`,
+      estimatedDelivery: body.estimatedDelivery || body.estimatedDeliveryDays || '2–3 working days',
       trackingUrl: body.trackingUrl,
       items: body.items,
-      address: body.address,
+      address: body.address || body.shippingAddress,
     };
 
     if (!data.customerEmail) {
@@ -53,4 +54,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Dispatch email failed' }, { status: 500 });
   }
 }
-

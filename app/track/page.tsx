@@ -23,12 +23,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import {
-  lookupTracking,
   buildShipmentFromOrder,
-  SHIPMENT_DATABASE,
   ShippingLabelData,
 } from '@/lib/services/shippingAggregator';
-import { PRODUCTS } from '@/lib/data/mockData';
+import { getCategoryDisplayLabel } from '@/lib/utils/categoryUtils';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 
@@ -40,10 +38,10 @@ function TrackingPortalContent() {
   const [searchQuery, setSearchQuery] = useState(initialRef);
   const [activeShipment, setActiveShipment] = useState<ShippingLabelData | null>(null);
   const [copied, setCopied] = useState(false);
-  const [smsAlertsEnabled, setSmsAlertsEnabled] = useState(false);
   const [smsPhone, setSmsPhone] = useState('');
   const [smsSubmitted, setSmsSubmitted] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
+  const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [searchNotFound, setSearchNotFound] = useState(false);
 
@@ -60,65 +58,74 @@ function TrackingPortalContent() {
   const { addItem, openCart } = useCartStore();
 
   useEffect(() => {
-    let localList: any[] = [];
-    try {
-      const raw = localStorage.getItem('rycarix_orders');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) localList = parsed;
-      }
-    } catch (e) {}
+    let active = true;
+    fetch('/api/products?includeDrafts=false', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && Array.isArray(data?.products)) {
+          const liveInStock = data.products
+            .filter((p: any) => p.isLive !== false && !p.isComingSoon && Number(p.stock ?? 0) > 0)
+            .slice(0, 3);
+          setRecommendedProducts(liveInStock);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
 
     const loadOrdersAndResolve = async () => {
       setIsLoadingOrders(true);
-      let allOrders = [...localList];
+      let allOrders: any[] = [];
 
       try {
-        const query = user?.role === 'ADMIN' ? '' : user?.email ? `?email=${encodeURIComponent(user.email)}` : '';
-        const res = await fetch(`/api/orders${query}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.orders && Array.isArray(data.orders)) {
-            const combined = [...data.orders];
-            for (let i = 0; i < combined.length; i++) {
-              const c = combined[i];
-              const match = localList.find(
-                (l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId)
-              );
-              if (match) {
-                if (!c.phone && match.phone) {
-                  c.phone = match.phone;
-                  if (c.address) c.address.phone = match.phone;
-                }
-                if (
-                  match.fulfillment &&
-                  match.fulfillment.toLowerCase().includes('dispatched') &&
-                  (!c.fulfillment || !c.fulfillment.toLowerCase().includes('dispatched'))
-                ) {
-                  c.fulfillment = match.fulfillment;
-                  c.carrier = match.carrier || c.carrier;
-                  c.trackingNumber = match.trackingNumber || c.trackingNumber;
-                  c.currentStatus = match.currentStatus || 'IN_TRANSIT';
-                  c.estimatedDelivery = match.estimatedDelivery || c.estimatedDelivery;
-                }
+        if (user?.role === 'ADMIN') {
+          const res = await fetch('/api/orders', { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.orders)) allOrders = data.orders;
+          }
+        } else if (user?.email) {
+          const res = await fetch(`/api/orders?email=${encodeURIComponent(user.email)}`, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.orders)) allOrders = data.orders;
+          }
+        }
+
+        if (initialRef) {
+          const cleanRef = initialRef.trim();
+          const alreadyHas = allOrders.find(
+            (o: any) =>
+              o.id?.toUpperCase() === cleanRef.toUpperCase() ||
+              o.orderNumber?.toUpperCase() === cleanRef.toUpperCase() ||
+              o.trackingNumber?.toUpperCase() === cleanRef.toUpperCase()
+          );
+          if (!alreadyHas) {
+            const lookupRes = await fetch(`/api/orders?orderId=${encodeURIComponent(cleanRef)}`, {
+              cache: 'no-store',
+            });
+            if (lookupRes.ok) {
+              const lookupData = await lookupRes.json();
+              if (Array.isArray(lookupData.orders) && lookupData.orders.length > 0) {
+                allOrders = [...lookupData.orders, ...allOrders];
               }
             }
-            for (const l of localList) {
-              if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
-                combined.push(l);
-              }
-            }
-            allOrders = combined;
           }
         }
       } catch (e) {
         console.warn('Could not fetch orders in tracking portal', e);
       }
 
+      if (!active) return;
+
       setAvailableOrders(allOrders);
       setIsLoadingOrders(false);
 
-      // If initialRef exists in URL, attempt to resolve it
       if (initialRef) {
         const target = initialRef.trim().toUpperCase();
         const matched = allOrders.find(
@@ -134,14 +141,7 @@ function TrackingPortalContent() {
           setSearchNotFound(false);
           return;
         }
-
-        const local = lookupTracking(target);
-        if (local) {
-          setActiveShipment(local);
-          setSearchNotFound(false);
-          return;
-        }
-
+        setActiveShipment(null);
         setSearchNotFound(true);
       } else {
         setActiveShipment(null);
@@ -150,18 +150,22 @@ function TrackingPortalContent() {
     };
 
     loadOrdersAndResolve();
+
+    return () => {
+      active = false;
+    };
   }, [initialRef, user?.email, user?.role]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const query = searchQuery.trim().toUpperCase();
+    const rawQuery = searchQuery.trim();
+    const query = rawQuery.toUpperCase();
     if (!query) {
       setActiveShipment(null);
       setSearchNotFound(false);
       return;
     }
 
-    // 1. Check in loaded orders
     const matched = availableOrders.find(
       (o: any) =>
         o.id?.toUpperCase() === query ||
@@ -176,33 +180,20 @@ function TrackingPortalContent() {
       return;
     }
 
-    // 2. Check local lookup
-    const local = lookupTracking(query);
-    if (local) {
-      setActiveShipment(local);
-      setSearchNotFound(false);
-      return;
-    }
-
-    // 3. Fallback direct API check
     try {
-      const res = await fetch('/api/orders');
+      const res = await fetch(`/api/orders?orderId=${encodeURIComponent(rawQuery)}`, {
+        cache: 'no-store',
+      });
       if (res.ok) {
         const data = await res.json();
-        if (data.orders && Array.isArray(data.orders)) {
-          const apiMatch = data.orders.find(
-            (o: any) =>
-              o.id?.toUpperCase() === query ||
-              o.orderNumber?.toUpperCase() === query ||
-              o.trackingNumber?.toUpperCase() === query ||
-              (o.trackingNumber &&
-                o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === query.replace(/[^a-zA-Z0-9]/g, ''))
+        if (Array.isArray(data.orders) && data.orders.length > 0) {
+          const apiMatch = data.orders[0];
+          setActiveShipment(buildShipmentFromOrder(apiMatch));
+          setAvailableOrders((prev) =>
+            prev.some((p) => p.id === apiMatch.id) ? prev : [apiMatch, ...prev]
           );
-          if (apiMatch) {
-            setActiveShipment(buildShipmentFromOrder(apiMatch));
-            setSearchNotFound(false);
-            return;
-          }
+          setSearchNotFound(false);
+          return;
         }
       }
     } catch (e) {}
@@ -217,7 +208,11 @@ function TrackingPortalContent() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const recommendedItems = PRODUCTS.slice(0, 3);
+  const isShipmentDispatched = Boolean(
+    activeShipment &&
+      activeShipment.currentStatus !== 'DISPATCH_PENDING' &&
+      activeShipment.currentStatus !== 'ORDER_PLACED'
+  );
 
   return (
     <div className="min-h-screen bg-ry-pearl text-ry-onyx pt-28 pb-24 font-sans">
@@ -233,7 +228,7 @@ function TrackingPortalContent() {
             Track Your Delivery
           </h1>
           <p className="text-xs text-ry-stone mt-3 leading-relaxed">
-            Real-time milestone tracking for your Rycarix order. Complete transparency from our Paris packaging facility to your door.
+            Real-time milestone tracking for your Rycarix order. Complete transparency from our London fulfillment center to your door.
           </p>
 
           {/* Quick Search Form */}
@@ -275,9 +270,15 @@ function TrackingPortalContent() {
                 <span>← View All Orders & Deliveries</span>
               </button>
 
-              <span className="text-[11px] font-mono text-ry-stone">
-                Tracking Waybill: <strong className="text-ry-onyx">{activeShipment.trackingNumber || activeShipment.orderNumber}</strong>
-              </span>
+              {isShipmentDispatched && activeShipment.trackingNumber ? (
+                <span className="text-[11px] font-mono text-ry-stone">
+                  Tracking Waybill: <strong className="text-ry-onyx">{activeShipment.trackingNumber}</strong>
+                </span>
+              ) : (
+                <span className="text-[11px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1">
+                  Order Reference: <strong className="text-ry-onyx">{activeShipment.orderNumber}</strong> • Awaiting Dispatch
+                </span>
+              )}
             </div>
             
             {/* Primary Status Card */}
@@ -290,12 +291,13 @@ function TrackingPortalContent() {
                   <div className="flex items-center gap-3">
                     <h2 className="font-serif text-2xl sm:text-3xl text-ry-onyx">
                       {activeShipment.currentStatus === 'OUT_FOR_DELIVERY' && 'Out for Delivery'}
-                      {activeShipment.currentStatus === 'IN_TRANSIT' && 'In Transit'}
+                      {activeShipment.currentStatus === 'IN_TRANSIT' && 'Dispatched & In Transit'}
                       {activeShipment.currentStatus === 'DELIVERED' && 'Delivered to Recipient'}
-                      {activeShipment.currentStatus === 'DISPATCH_PENDING' && 'Preparing Shipment'}
+                      {(activeShipment.currentStatus === 'DISPATCH_PENDING' || activeShipment.currentStatus === 'ORDER_PLACED') &&
+                        'Order Confirmed — Awaiting Dispatch'}
                     </h2>
                     <span className="px-2.5 py-0.5 bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial font-medium">
-                      {activeShipment.serviceLevel || `${activeShipment.carrier} Priority`}
+                      {activeShipment.serviceLevel || 'Standard UK Delivery'}
                     </span>
                   </div>
                 </div>
@@ -305,7 +307,7 @@ function TrackingPortalContent() {
                     Estimated Delivery
                   </span>
                   <div className="font-serif text-xl sm:text-2xl text-ry-onyx">
-                    {activeShipment.estimatedDelivery}
+                    {isShipmentDispatched ? activeShipment.estimatedDelivery : 'Awaiting Admin Dispatch'}
                   </div>
                 </div>
               </div>
@@ -319,17 +321,27 @@ function TrackingPortalContent() {
                       <Check className="w-4 h-4" />
                     </div>
                     <span className="font-medium text-ry-onyx text-[11px]">Order Placed</span>
-                    <span className="text-[10px] text-ry-stone">Klarna Approved</span>
+                    <span className="text-[10px] text-ry-stone">Payment Confirmed</span>
                   </div>
 
-                  {/* Step 2: Packaging & Hazmat Check */}
+                  {/* Step 2: Dispatched */}
                   <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-ry-onyx text-ry-white flex items-center justify-center mb-2 z-10">
-                      <Check className="w-4 h-4" />
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 z-10 ${
+                        isShipmentDispatched
+                          ? 'bg-ry-onyx text-ry-white'
+                          : 'bg-ry-pearl text-ry-stone border border-ry-ash'
+                      }`}
+                    >
+                      {isShipmentDispatched ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                     </div>
-                    <span className="font-medium text-ry-onyx text-[11px]">Packed & Labeled</span>
+                    <span className="font-medium text-ry-onyx text-[11px]">Packed &amp; Dispatched</span>
                     <span className="text-[10px] text-ry-stone">
-                      {activeShipment.isHazardous ? 'LQ Diamond Applied' : 'Ready for Dispatch'}
+                      {isShipmentDispatched
+                        ? activeShipment.isHazardous
+                          ? 'LQ Diamond Applied'
+                          : `${activeShipment.carrier} Dispatched`
+                        : 'Pending Admin Dispatch'}
                     </span>
                   </div>
 
@@ -347,12 +359,16 @@ function TrackingPortalContent() {
                       {activeShipment.currentStatus === 'DELIVERED' ||
                       activeShipment.currentStatus === 'OUT_FOR_DELIVERY' ? (
                         <Check className="w-4 h-4" />
-                      ) : (
+                      ) : activeShipment.currentStatus === 'IN_TRANSIT' ? (
                         <Truck className="w-4 h-4 animate-pulse" />
+                      ) : (
+                        <Truck className="w-4 h-4" />
                       )}
                     </div>
                     <span className="font-medium text-ry-onyx text-[11px]">In Transit</span>
-                    <span className="text-[10px] text-ry-stone">Export Cleared</span>
+                    <span className="text-[10px] text-ry-stone">
+                      {isShipmentDispatched ? `${activeShipment.carrier} Network` : 'Pending Courier'}
+                    </span>
                   </div>
 
                   {/* Step 4: Out for Delivery / Delivered */}
@@ -375,7 +391,9 @@ function TrackingPortalContent() {
                     <span className="font-medium text-ry-onyx text-[11px]">
                       {activeShipment.currentStatus === 'DELIVERED' ? 'Delivered' : 'Out for Delivery'}
                     </span>
-                    <span className="text-[10px] text-ry-stone">Final Destination</span>
+                    <span className="text-[10px] text-ry-stone">
+                      {isShipmentDispatched ? 'Final Destination' : 'Pending Dispatch'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -400,32 +418,46 @@ function TrackingPortalContent() {
                         </span>
                       </div>
                       <p className="text-[11px] text-ry-stone leading-relaxed">
-                        Contains parfum with flammable solvent solution. Packed under certified Limited Quantity (LQ) protocols with temperature-regulated air courier routing.
+                        Contains parfum packed under certified UN 1266 Limited Quantity (LQ) UK &amp; international courier protocols.
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-xs font-mono text-ry-charcoal shrink-0">
-                    Carrier Protocol: <strong>{activeShipment.carrier} Hazmat Verified</strong>
-                  </div>
+                  {isShipmentDispatched && (
+                    <div className="text-xs font-mono text-ry-charcoal shrink-0">
+                      Carrier Protocol: <strong>{activeShipment.carrier} LQ Verified</strong>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Details strip */}
               <div className="mt-6 pt-4 border-t border-ry-ash/40 flex flex-wrap items-center justify-between gap-4 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
-                    Tracking Number:
-                  </span>
-                  <span className="font-mono font-medium text-ry-onyx">{activeShipment.trackingNumber}</span>
-                  <button
-                    onClick={() => handleCopyTracking(activeShipment.trackingNumber)}
-                    className="p-1 text-ry-stone hover:text-ry-onyx transition-colors"
-                    title="Copy tracking number"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
+                {isShipmentDispatched && activeShipment.trackingNumber ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
+                      Tracking Number:
+                    </span>
+                    <span className="font-mono font-medium text-ry-onyx">{activeShipment.trackingNumber}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTracking(activeShipment.trackingNumber)}
+                      className="p-1 text-ry-stone hover:text-ry-onyx transition-colors"
+                      title="Copy tracking number"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
+                      Tracking Status:
+                    </span>
+                    <span className="font-mono font-medium text-amber-800">
+                      Awaiting Dispatch Confirmation
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] uppercase tracking-editorial text-ry-stone">
@@ -449,9 +481,9 @@ function TrackingPortalContent() {
               {/* Left Column: Live Milestone Timeline */}
               <div className="lg:col-span-7 bg-ry-white border border-ry-ash/70 p-6 sm:p-8">
                 <h3 className="font-serif text-lg text-ry-onyx mb-6 flex items-center justify-between">
-                  <span>Shipment History</span>
+                  <span>{isShipmentDispatched ? 'Shipment History' : 'Order Timeline'}</span>
                   <span className="text-xs font-sans font-normal text-ry-stone">
-                    Live updates via {activeShipment.carrier}
+                    {isShipmentDispatched ? `Live updates via ${activeShipment.carrier}` : 'Awaiting courier handoff'}
                   </span>
                 </h3>
 
@@ -531,13 +563,20 @@ function TrackingPortalContent() {
                     {activeShipment.items.map((item, idx) => (
                       <div key={idx} className="py-3 first:pt-0 last:pb-0 flex items-center gap-3">
                         <div className="relative w-12 h-14 bg-ry-oatmeal overflow-hidden border border-ry-ash shrink-0">
-                          <Image src={item.image} alt={item.title} fill className="object-cover" />
+                          <Image
+                            src={item.image || '/images/perfumes/princess-reef.jpg'}
+                            alt={item.title}
+                            fill
+                            sizes="48px"
+                            unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
+                            className="object-cover"
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h5 className="font-serif text-xs text-ry-onyx truncate">{item.title}</h5>
                           <span className="text-[10px] text-ry-stone block">{item.variant}</span>
                           <span className="text-[10px] font-mono text-ry-charcoal">
-                            Qty: {item.quantity} • ${item.price.toFixed(2)}
+                            Qty: {item.quantity} &bull; £{Number(item.price || 0).toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -591,77 +630,97 @@ function TrackingPortalContent() {
             </div>
 
             {/* "While You Wait" - Branded Post-Purchase Product Discovery */}
-            <div className="mt-16 pt-12 border-t border-ry-ash/60">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
-                <div>
-                  <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block mb-1">
-                    While You Wait For Your Delivery
-                  </span>
-                  <h3 className="font-serif text-2xl text-ry-onyx">
-                    Complete Your Fragrance & Care Routine
-                  </h3>
-                </div>
-                <Link
-                  href="/#catalog"
-                  className="text-xs uppercase tracking-editorial font-medium underline hover:text-ry-stone"
-                >
-                  View Full Catalog &rarr;
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {recommendedItems.map((prod) => (
-                  <div
-                    key={prod.id}
-                    className="bg-ry-white border border-ry-ash/70 p-4 flex flex-col justify-between group hover:shadow-md transition-shadow"
-                  >
-                    <div>
-                      <div className="relative aspect-[4/5] bg-ry-oatmeal overflow-hidden mb-3">
-                        <Image
-                          src={prod.images[0]?.url || ''}
-                          alt={prod.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      </div>
-                      <span className="text-[9px] uppercase tracking-editorial text-ry-stone block">
-                        {prod.category}
-                      </span>
-                      <h4 className="font-serif text-sm text-ry-onyx mt-1 group-hover:underline">
-                        {prod.title}
-                      </h4>
-                      <p className="text-xs text-ry-stone mt-1 line-clamp-1">{prod.subtitle}</p>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-ry-ash/40 flex items-center justify-between">
-                      <span className="font-serif text-sm font-medium text-ry-onyx">
-                        ${prod.basePrice.toFixed(2)}
-                      </span>
-                      <button
-                        onClick={() => {
-                          const v = prod.variants[0];
-                          addItem({
-                            id: `${prod.id}-${v.id}`,
-                            productId: prod.id,
-                            variantId: v.id,
-                            title: prod.title,
-                            variantTitle: v.title,
-                            sku: v.sku,
-                            price: v.price,
-                            quantity: 1,
-                            image: prod.images[0]?.url || '',
-                          });
-                          openCart();
-                        }}
-                        className="px-3 py-1.5 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial hover:bg-ry-charcoal transition-colors"
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
+            {recommendedProducts.length > 0 && (
+              <div className="mt-16 pt-12 border-t border-ry-ash/60">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-ry-stone block mb-1">
+                      While You Wait For Your Delivery
+                    </span>
+                    <h3 className="font-serif text-2xl text-ry-onyx">
+                      Complete Your Fragrance &amp; Care Routine
+                    </h3>
                   </div>
-                ))}
+                  <Link
+                    href="/products"
+                    className="text-xs uppercase tracking-editorial font-medium underline hover:text-ry-stone"
+                  >
+                    View Full Catalog &rarr;
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {recommendedProducts.map((prod) => {
+                    const imgSrc =
+                      Array.isArray(prod.images) && prod.images[0]
+                        ? typeof prod.images[0] === 'string'
+                          ? prod.images[0]
+                          : prod.images[0]?.url
+                        : '/images/perfumes/princess-reef.jpg';
+                    const prodPrice = Number(prod.price ?? prod.basePrice ?? 0);
+                    const prodStock = Number(prod.stock ?? 0);
+
+                    return (
+                      <div
+                        key={prod.id}
+                        className="bg-ry-white border border-ry-ash/70 p-4 flex flex-col justify-between group hover:shadow-md transition-shadow"
+                      >
+                        <Link href={`/products/${prod.slug}`}>
+                          <div className="relative aspect-[4/5] bg-ry-oatmeal overflow-hidden mb-3">
+                            <Image
+                              src={imgSrc}
+                              alt={prod.name || prod.title || 'Product'}
+                              fill
+                              sizes="(max-width: 640px) 100vw, 33vw"
+                              unoptimized={typeof imgSrc === 'string' && imgSrc.startsWith('data:')}
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          </div>
+                          <span className="text-[9px] uppercase tracking-editorial text-ry-stone block">
+                            {getCategoryDisplayLabel(prod.category)}
+                          </span>
+                          <h4 className="font-serif text-sm text-ry-onyx mt-1 group-hover:underline">
+                            {prod.name || prod.title}
+                          </h4>
+                          <p className="text-xs text-ry-stone mt-1 line-clamp-1">
+                            {prod.subtitle || prod.description}
+                          </p>
+                        </Link>
+
+                        <div className="mt-4 pt-3 border-t border-ry-ash/40 flex items-center justify-between">
+                          <span className="font-serif text-sm font-medium text-ry-onyx">
+                            £{prodPrice.toFixed(2)}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={prodStock <= 0}
+                            onClick={() => {
+                              if (prodStock <= 0) return;
+                              addItem({
+                                id: `${prod.id}-default`,
+                                productId: prod.id,
+                                variantId: 'default',
+                                title: prod.name || prod.title || 'Product',
+                                variantTitle: 'Standard Edition',
+                                sku: prod.sku || `RYC-${String(prod.id).slice(-6)}`,
+                                price: prodPrice,
+                                quantity: 1,
+                                maxStock: prodStock,
+                                image: imgSrc,
+                              });
+                              openCart();
+                            }}
+                            className="px-3 py-1.5 bg-ry-onyx text-ry-white text-[10px] uppercase tracking-editorial hover:bg-ry-charcoal transition-colors disabled:opacity-40 cursor-pointer"
+                          >
+                            {prodStock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         ) : (
@@ -679,9 +738,9 @@ function TrackingPortalContent() {
             {/* Orders List Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ry-ash/70 pb-4">
               <div>
-                <h2 className="font-serif text-xl sm:text-2xl text-ry-onyx">Your Orders & Deliveries</h2>
+                <h2 className="font-serif text-xl sm:text-2xl text-ry-onyx">Your Orders &amp; Deliveries</h2>
                 <p className="text-xs text-ry-stone mt-0.5">
-                  Select any order below to view real-time courier checkpoints, GPS transit milestones, and estimated delivery.
+                  Select any order below to view dispatch status, verified checkpoints, and confirmed courier tracking details.
                 </p>
               </div>
 
@@ -699,8 +758,12 @@ function TrackingPortalContent() {
             ) : availableOrders.length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
                 {availableOrders.map((ord: any) => {
-                  const isDispatched = (ord.fulfillment || '').toLowerCase().includes('dispatched');
-                  const trackingNum = ord.trackingNumber || (isDispatched ? 'Waybill Assigned' : '');
+                  const isDispatched = Boolean(
+                    ['SHIPPED', 'DELIVERED'].includes(String(ord.status || '').toUpperCase()) ||
+                      (ord.fulfillment || '').toLowerCase().includes('dispatched') ||
+                      (ord.trackingNumber && String(ord.trackingNumber).trim().length > 0)
+                  );
+                  const trackingNum = isDispatched && ord.trackingNumber ? String(ord.trackingNumber).trim() : '';
                   const orderAddress = ord.address
                     ? `${ord.address.street ? `${ord.address.street}, ` : ''}${ord.address.city || ''}, ${ord.address.country || ''}`
                     : 'Delivery address on file';
@@ -712,10 +775,10 @@ function TrackingPortalContent() {
                     >
                       <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2.5">
-                          <span className="font-mono font-bold text-sm text-ry-onyx">{ord.id}</span>
-                          <span className="text-ry-stone text-xs">•</span>
+                          <span className="font-mono font-bold text-sm text-ry-onyx">{ord.orderNumber || ord.id}</span>
+                          <span className="text-ry-stone text-xs">&bull;</span>
                           <span className="text-xs text-ry-stone">{ord.date || 'Recent order'}</span>
-                          <span className="text-ry-stone text-xs">•</span>
+                          <span className="text-ry-stone text-xs">&bull;</span>
                           <span className="font-serif font-medium text-xs text-ry-onyx">£{Number(ord.total || 0).toFixed(2)}</span>
                           <span
                             className={`px-2 py-0.5 text-[9px] uppercase tracking-editorial font-bold ${
@@ -724,7 +787,7 @@ function TrackingPortalContent() {
                                 : 'bg-amber-100 text-amber-900 border border-amber-300'
                             }`}
                           >
-                            {ord.fulfillment || 'Order Confirmed'}
+                            {isDispatched ? ord.fulfillment || 'Dispatched' : 'Awaiting Dispatch'}
                           </span>
                         </div>
 
@@ -738,8 +801,13 @@ function TrackingPortalContent() {
                           </div>
                           <div>Destination: {orderAddress}</div>
                           <div>
-                            Courier: <strong className="text-ry-onyx font-normal">{ord.carrier || 'Priority Courier'}</strong>
+                            Service: <strong className="text-ry-onyx font-normal">{ord.shippingService || 'Standard UK Delivery'}</strong>
                           </div>
+                          {isDispatched && ord.carrier && (
+                            <div>
+                              Courier: <strong className="text-ry-onyx font-normal">{ord.carrier}</strong>
+                            </div>
+                          )}
                           {trackingNum && (
                             <div className="font-mono text-ry-onyx">
                               Tracking #: {trackingNum}
@@ -754,7 +822,7 @@ function TrackingPortalContent() {
                           onClick={() => {
                             const shipment = buildShipmentFromOrder(ord);
                             setActiveShipment(shipment);
-                            setSearchQuery(ord.trackingNumber || ord.id);
+                            setSearchQuery(trackingNum || ord.orderNumber || ord.id);
                             setSearchNotFound(false);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}

@@ -3,8 +3,9 @@
 export const CANONICAL_CATEGORIES = [
   { slug: 'perfume', label: 'Perfume & Fragrance', aliases: ['perfume', 'perfumes', 'fragrance', 'fragrances', 'scent', 'parfum'] },
   { slug: 'hair', label: 'Hair Care', aliases: ['hair', 'hairs', 'wigs', 'extensions', 'bundles', 'luxury-hair', 'hair-extensions', 'haircare'] },
-  { slug: 'skincare', label: 'Skincare & Body', aliases: ['skincare', 'skin-care', 'skin', 'body', 'lotion', 'body-bath'] },
-  { slug: 'home-living', label: 'Home & Candles', aliases: ['home-living', 'candles', 'candle', 'home', 'living', 'room-mist'] },
+  { slug: 'skincare', label: 'Skincare', aliases: ['skincare', 'skin-care', 'skin', 'botanical-skincare', 'serum', 'balm'] },
+  { slug: 'body-bath', label: 'Body & Bath', aliases: ['body-bath', 'body', 'bath', 'wash', 'polish', 'body-wash', 'body-polish'] },
+  { slug: 'home-living', label: 'Home & Candles', aliases: ['home-living', 'candles', 'candle', 'home', 'living', 'room-mist', 'home-candles'] },
   { slug: 'accessories', label: 'Accessories', aliases: ['accessories', 'fine-goods', 'accessory', 'case'] },
   { slug: 'cosmetics', label: 'Cosmetics & Beauty', aliases: ['cosmetics', 'cosmetic', 'beauty', 'makeup', 'lip-gloss', 'lips'] },
 ] as const;
@@ -15,15 +16,22 @@ export function normalizeCategorySlug(raw?: string | null): string {
   if (!raw) return 'perfume';
   const cleaned = raw.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   if (cleaned === 'all' || cleaned === 'all-products') return 'all';
+  if (cleaned === 'sale' || cleaned === 'sales' || cleaned === 'offers') return 'sale';
 
+  // Pass 1: exact canonical slug or explicit alias match across all categories
   for (const cat of CANONICAL_CATEGORIES) {
     if (cat.slug === cleaned || (cat.aliases as readonly string[]).includes(cleaned)) {
       return cat.slug;
     }
+  }
+
+  // Pass 2: fallback substring match (after exact aliases prevent collisions like body-bath -> skincare)
+  for (const cat of CANONICAL_CATEGORIES) {
     if (cleaned.includes(cat.slug)) {
       return cat.slug;
     }
   }
+
   return cleaned;
 }
 

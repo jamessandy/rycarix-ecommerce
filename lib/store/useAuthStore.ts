@@ -9,6 +9,7 @@ export interface UserAddress {
   state: string;
   postalCode: string;
   country: string;
+  phone?: string;
   isDefault: boolean;
 }
 
@@ -25,12 +26,6 @@ export interface UserProfile {
   addresses: UserAddress[];
 }
 
-export interface RegisteredAccount {
-  user: UserProfile;
-  password?: string;
-}
-
-// Master Admin Production Account
 export const MAIN_ADMIN_ACCOUNT: UserProfile = {
   id: 'usr-admin-primary',
   name: 'Store Administrator',
@@ -40,12 +35,12 @@ export const MAIN_ADMIN_ACCOUNT: UserProfile = {
   tier: 'Master Administrator',
   memberSince: '2026',
   avatarInitial: 'A',
-  phone: '+44 20 7946 0991',
+  phone: '',
   addresses: [
     {
       id: 'addr-admin-hq',
       type: 'Headquarters',
-      street: '18 Place Vendôme / Bond Street Store',
+      street: 'Unit 4, Rycarix Atelier House',
       city: 'London',
       state: 'Greater London',
       postalCode: 'W1S 2TE',
@@ -58,8 +53,10 @@ export const MAIN_ADMIN_ACCOUNT: UserProfile = {
 interface AuthState {
   user: UserProfile | null;
   isAuthenticated: boolean;
-  registeredUsers: RegisteredAccount[];
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string; role?: string }>;
+  login: (
+    email: string,
+    password?: string
+  ) => Promise<{ success: boolean; error?: string; role?: string }>;
   signup: (
     name: string,
     email: string,
@@ -75,8 +72,13 @@ interface AuthState {
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loginAsDemo: (roleKey: 'VIP_CLIENT' | 'ADMIN' | 'USER') => void;
-  updateProfile: (data: Partial<UserProfile>) => void;
-  addAddress: (address: Omit<UserAddress, 'id'>) => void;
+  refreshProfile: () => Promise<UserProfile | null>;
+  updateProfile: (
+    data: Partial<UserProfile>
+  ) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
+  addAddress: (
+    address: Omit<UserAddress, 'id'>
+  ) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -84,82 +86,35 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      registeredUsers: [],
 
       login: async (email: string, password?: string) => {
-        await new Promise((resolve) => setTimeout(resolve, 350));
+        try {
+          const res = await fetch('/api/user/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'login',
+              email: email.trim().toLowerCase(),
+              password: (password || '').trim(),
+            }),
+          });
+          const data = await res.json();
 
-        const normalizedEmail = email.trim().toLowerCase();
-        const trimmedPassword = (password || '').trim();
-
-        // 1. Strict Administrator Authentication
-        const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@rycarix.com').toLowerCase();
-        const isAdminEmail = normalizedEmail === adminEmail;
-
-        if (isAdminEmail) {
-          const acceptedAdminPasswords = [
-            process.env.NEXT_PUBLIC_ADMIN_PASSWORD,
-            'Admin@Rycarix2026!',
-            'rycarix-atelier-key-2026',
-            'Rycarix2026!',
-            'admin123',
-          ].filter(Boolean) as string[];
-
-          if (!trimmedPassword || !acceptedAdminPasswords.includes(trimmedPassword)) {
+          if (!res.ok || !data.user) {
             return {
               success: false,
-              error: 'Invalid administrator password. Please check your credentials.',
+              error: data.error || 'Invalid credentials.',
             };
           }
 
-          set({ user: MAIN_ADMIN_ACCOUNT, isAuthenticated: true });
-          return { success: true, role: 'ADMIN' };
-        }
-
-        // 2. Customer Authentication
-        if (!trimmedPassword || trimmedPassword.length < 6) {
+          set({ user: data.user, isAuthenticated: true });
+          return { success: true, role: data.user.role };
+        } catch (err: any) {
           return {
             success: false,
-            error: 'Password must be at least 6 characters.',
+            error: err?.message || 'Unable to sign in right now.',
           };
         }
-
-        const state = get();
-        const existing = (state.registeredUsers || []).find(
-          (acc) => acc.user.email.toLowerCase() === normalizedEmail
-        );
-
-        if (existing) {
-          if (existing.password && existing.password !== trimmedPassword) {
-            return {
-              success: false,
-              error: 'Incorrect password. Please verify your credentials.',
-            };
-          }
-          set({ user: existing.user, isAuthenticated: true });
-          return { success: true, role: existing.user.role };
-        }
-
-        // Standard user first-time sign in
-        const namePart = email.split('@')[0].replace(/[._-]/g, ' ');
-        const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-
-        const newUser: UserProfile = {
-          id: `usr-${Date.now().toString().slice(-6)}`,
-          name: formattedName || 'Customer',
-          email: normalizedEmail,
-          role: 'USER',
-          title: 'Customer',
-          tier: 'Member',
-          memberSince: new Date().getFullYear().toString(),
-          avatarInitial: (formattedName || 'C').charAt(0).toUpperCase(),
-          phone: '+44 (0) 20 7946 0000',
-          addresses: [],
-        };
-
-        const updated = [...(state.registeredUsers || []), { user: newUser, password: trimmedPassword }];
-        set({ user: newUser, isAuthenticated: true, registeredUsers: updated });
-        return { success: true, role: 'USER' };
       },
 
       signup: async (
@@ -175,122 +130,161 @@ export const useAuthStore = create<AuthState>()(
         },
         phone?: string
       ) => {
-        await new Promise((resolve) => setTimeout(resolve, 400));
-
-        const trimmedName = name.trim();
-        const normalizedEmail = email.trim().toLowerCase();
-        const trimmedPassword = (password || '').trim();
-
-        if (normalizedEmail === 'admin@rycarix.com') {
-          return {
-            success: false,
-            error: 'This email is reserved for store administration. Please sign in instead.',
-          };
-        }
-
-        if (trimmedPassword.length < 6) {
-          return {
-            success: false,
-            error: 'Password must be at least 6 characters.',
-          };
-        }
-
-        const state = get();
-        const existing = (state.registeredUsers || []).find(
-          (acc) => acc.user.email.toLowerCase() === normalizedEmail
-        );
-
-        if (existing) {
-          return {
-            success: false,
-            error: 'An account with this email already exists. Please sign in.',
-          };
-        }
-
-        const initialAddresses: UserAddress[] = [];
-        if (deliveryAddress && (deliveryAddress.street || deliveryAddress.postalCode)) {
-          initialAddresses.push({
-            id: `addr-${Date.now().toString().slice(-6)}`,
-            type: 'Primary Delivery Address',
-            street: deliveryAddress.street || '',
-            city: deliveryAddress.city || '',
-            state: deliveryAddress.state || '',
-            postalCode: deliveryAddress.postalCode || '',
-            country: deliveryAddress.country || 'United Kingdom',
-            isDefault: true,
+        try {
+          const res = await fetch('/api/user/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'signup',
+              name: name.trim(),
+              email: email.trim().toLowerCase(),
+              password: (password || '').trim(),
+              phone: (phone || '').trim(),
+              deliveryAddress,
+            }),
           });
+          const data = await res.json();
+
+          if (!res.ok || !data.user) {
+            return {
+              success: false,
+              error: data.error || 'Failed to create account.',
+            };
+          }
+
+          set({ user: data.user, isAuthenticated: true });
+          return { success: true };
+        } catch (err: any) {
+          return {
+            success: false,
+            error: err?.message || 'Failed to create account.',
+          };
         }
-
-        const createdUser: UserProfile = {
-          id: `usr-${Date.now().toString().slice(-6)}`,
-          name: trimmedName || 'Customer',
-          email: normalizedEmail,
-          role: 'USER',
-          title: 'Customer',
-          tier: 'Member • 10% Welcome Discount',
-          memberSince: new Date().getFullYear().toString(),
-          avatarInitial: trimmedName ? trimmedName.charAt(0).toUpperCase() : 'C',
-          phone: (phone || '').trim(),
-          addresses: initialAddresses,
-        };
-
-        const updated = [...(state.registeredUsers || []), { user: createdUser, password: trimmedPassword }];
-        set({ user: createdUser, isAuthenticated: true, registeredUsers: updated });
-        return { success: true };
       },
 
       logout: () => {
         set({ user: null, isAuthenticated: false });
       },
 
-      // Kept for code compatibility without rendering in UI
       loginAsDemo: (_roleKey: 'VIP_CLIENT' | 'ADMIN' | 'USER') => {
-        // no-op in production
+        // disabled in production
       },
 
-      updateProfile: (data: Partial<UserProfile>) => {
-        set((state) => {
-          if (!state.user) return state;
-          const updatedUser = { ...state.user, ...data };
-          const updatedUsers = (state.registeredUsers || []).map((acc) =>
-            acc.user.email.toLowerCase() === updatedUser.email.toLowerCase()
-              ? { ...acc, user: updatedUser }
-              : acc
+      refreshProfile: async () => {
+        const currentUser = get().user;
+        if (!currentUser?.email) return null;
+
+        try {
+          const res = await fetch(
+            `/api/user/profile?email=${encodeURIComponent(currentUser.email)}`,
+            { cache: 'no-store' }
           );
-          return {
-            user: updatedUser,
-            registeredUsers: updatedUsers,
-          };
-        });
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (data?.user) {
+            set({ user: data.user, isAuthenticated: true });
+            return data.user as UserProfile;
+          }
+        } catch (err) {
+          console.warn('Could not refresh user profile from PostgreSQL:', err);
+        }
+        return null;
       },
 
-      addAddress: (addressData: Omit<UserAddress, 'id'>) => {
-        set((state) => {
-          if (!state.user) return state;
-          const newAddress: UserAddress = {
-            ...addressData,
-            id: `addr-${Date.now().toString().slice(-6)}`,
-          };
-          const existingAddresses = state.user.addresses || [];
-          const updatedAddresses = addressData.isDefault
-            ? [...existingAddresses.map((a) => ({ ...a, isDefault: false })), newAddress]
-            : [...existingAddresses, newAddress];
+      updateProfile: async (data: Partial<UserProfile>) => {
+        const currentUser = get().user;
+        if (!currentUser) {
+          return { success: false, error: 'Not signed in.' };
+        }
 
-          const updatedUser = { ...state.user, addresses: updatedAddresses };
-          const updatedUsers = (state.registeredUsers || []).map((acc) =>
-            acc.user.email.toLowerCase() === updatedUser.email.toLowerCase()
-              ? { ...acc, user: updatedUser }
-              : acc
-          );
+        const optimisticUser: UserProfile = {
+          ...currentUser,
+          ...data,
+          phone: data.phone !== undefined ? String(data.phone).trim() : currentUser.phone,
+          name: data.name !== undefined ? String(data.name).trim() : currentUser.name,
+        };
+        set({ user: optimisticUser });
+
+        try {
+          const res = await fetch('/api/user/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: currentUser.email,
+              name: optimisticUser.name,
+              phone: optimisticUser.phone,
+              addresses: data.addresses,
+            }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.user) {
+            return {
+              success: false,
+              error: json.error || 'Failed to save profile to database.',
+            };
+          }
+
+          set({ user: json.user, isAuthenticated: true });
+          return { success: true, user: json.user };
+        } catch (err: any) {
           return {
-            user: updatedUser,
-            registeredUsers: updatedUsers,
+            success: false,
+            error: err?.message || 'Network error while saving profile.',
           };
-        });
+        }
+      },
+
+      addAddress: async (addressData: Omit<UserAddress, 'id'>) => {
+        const currentUser = get().user;
+        if (!currentUser) {
+          return { success: false, error: 'Not signed in.' };
+        }
+
+        const newAddress: UserAddress = {
+          ...addressData,
+          id: `addr-${Date.now().toString().slice(-6)}`,
+        };
+        const existingAddresses = currentUser.addresses || [];
+        const updatedAddresses = addressData.isDefault
+          ? [...existingAddresses.map((a) => ({ ...a, isDefault: false })), newAddress]
+          : [...existingAddresses, newAddress];
+
+        set({ user: { ...currentUser, addresses: updatedAddresses } });
+
+        try {
+          const res = await fetch('/api/user/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: currentUser.email,
+              name: currentUser.name,
+              phone: currentUser.phone,
+              newAddress: addressData,
+            }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.user) {
+            return {
+              success: false,
+              error: json.error || 'Failed to save address.',
+            };
+          }
+          set({ user: json.user, isAuthenticated: true });
+          return { success: true, user: json.user };
+        } catch (err: any) {
+          return {
+            success: false,
+            error: err?.message || 'Network error while saving address.',
+          };
+        }
       },
     }),
     {
       name: 'rycarix-auth-storage',
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

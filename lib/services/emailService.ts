@@ -101,9 +101,13 @@ export function saveEmailLog(entry: EmailLogEntry) {
  */
 export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData): string {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.rycarix.com').replace(/\/$/, '');
-  const trackingLink = data.trackingUrl || `${appUrl}/track?ref=${encodeURIComponent(data.orderNumber)}`;
-  const subtotal = data.subtotal || data.total - (data.shippingCost || 0);
-  const shippingDisplay = data.shippingCost && data.shippingCost > 0 ? `£${data.shippingCost.toFixed(2)}` : 'Included';
+  const orderStatusLink =
+    data.trackingUrl || `${appUrl}/dashboard/user?orderId=${encodeURIComponent(data.orderNumber)}`;
+  const subtotal = data.subtotal !== undefined ? data.subtotal : Math.max(0, data.total - (data.shippingCost || 0));
+  const shippingDisplay =
+    data.shippingCost !== undefined && data.shippingCost > 0
+      ? `£${data.shippingCost.toFixed(2)}`
+      : 'FREE';
 
   const itemsHtml = data.items
     .map(
@@ -160,11 +164,11 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
                 Thank you for your purchase, ${data.customerName || 'Valued Client'}.
               </h1>
               <p style="font-size: 14px; line-height: 1.6; color: #5C5850; margin: 0 0 20px 0;">
-                Your order <strong style="color: #1A1A1A; font-family: monospace;">${data.orderNumber}</strong> has been registered at our Paris packaging facility. Each product is prepared according to strict purity protocols and inspected prior to courier dispatch.
+                Your order <strong style="color: #1A1A1A; font-family: monospace;">${data.orderNumber}</strong> has been registered at our London fulfillment center. Each product is carefully inspected and prepared prior to courier dispatch.
               </p>
               
               <div style="background-color: #FBF9F5; border-left: 3px solid #3D1220; padding: 12px 16px; font-size: 12px; color: #666; margin-bottom: 24px;">
-                <strong>Order Date:</strong> ${data.date} &nbsp;•&nbsp; <strong>Payment:</strong> ${data.paymentMethod || 'Authorized via Klarna / Stripe'}
+                <strong>Order Date:</strong> ${data.date} &nbsp;•&nbsp; <strong>Payment:</strong> ${data.paymentMethod || 'Stripe / Klarna'}
               </div>
             </td>
           </tr>
@@ -195,7 +199,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
                   <td style="padding: 6px 0; text-align: right; font-family: monospace; color: #1A1A1A;">£${subtotal.toFixed(2)}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 6px 0; color: #736E65;">Delivery (${data.shippingMethod || 'Royal Mail Tracked'})</td>
+                  <td style="padding: 6px 0; color: #736E65;">Delivery (${data.shippingMethod || 'Standard UK Delivery'})</td>
                   <td style="padding: 6px 0; text-align: right; font-family: monospace; color: #1A1A1A;">${shippingDisplay}</td>
                 </tr>
                 <tr>
@@ -228,14 +232,14 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
             </td>
           </tr>
 
-          <!-- Call to Action Track Button -->
+          <!-- Call to Action Order Status Button -->
           <tr>
             <td style="padding: 0 32px 36px 32px; text-align: center;">
-              <a href="${trackingLink}" style="display: inline-block; background-color: #3D1220; color: #FFFFFF; text-decoration: none; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; padding: 16px 36px; border-radius: 0; box-shadow: 0 2px 8px rgba(61,18,32,0.25);">
-                Track Your Order Live &rarr;
+              <a href="${orderStatusLink}" style="display: inline-block; background-color: #3D1220; color: #FFFFFF; text-decoration: none; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; padding: 16px 36px; border-radius: 0; box-shadow: 0 2px 8px rgba(61,18,32,0.25);">
+                View Order Status &rarr;
               </a>
               <div style="font-size: 11px; color: #8A847A; margin-top: 10px;">
-                Real-time milestones from packaging facility to residential doorstep
+                You will receive a separate dispatch email with tracking details once your parcel ships.
               </div>
             </td>
           </tr>
@@ -243,7 +247,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
           <!-- Footer -->
           <tr>
             <td style="background-color: #F2ECE3; padding: 24px 32px; border-top: 1px solid #E5DFD3; text-align: center; font-size: 11px; color: #736E65; line-height: 1.6;">
-              <div>RYCARIX • 18 Place Vendôme, 75001 Paris &amp; London UK</div>
+              <div>RYCARIX • Rycarix Atelier House, London, United Kingdom</div>
               <div style="margin-top: 6px;">Questions? Inquire with our private concierge at <a href="mailto:concierge@rycarix.com" style="color: #3D1220; text-decoration: underline;">concierge@rycarix.com</a></div>
               <div style="margin-top: 10px; color: #9E988E; font-size: 10px;">© ${new Date().getFullYear()} RYCARIX. All rights reserved.</div>
             </td>
@@ -344,7 +348,7 @@ export function buildDispatchNotificationEmailHtml(data: DispatchNotificationEma
                   </tr>
                   <tr>
                     <td style="padding: 6px 0; color: #736E65;">Estimated Delivery:</td>
-                    <td style="padding: 6px 0; font-weight: 600; color: #1B6E32;">${data.estimatedDelivery || 'In 1–2 Business Days'}</td>
+                    <td style="padding: 6px 0; font-weight: 600; color: #1B6E32;">${data.estimatedDelivery || '2–3 working days'}</td>
                   </tr>
                   <tr>
                     <td style="padding: 6px 0; color: #736E65;">Order Reference:</td>
@@ -383,7 +387,7 @@ export function buildDispatchNotificationEmailHtml(data: DispatchNotificationEma
           <!-- Footer -->
           <tr>
             <td style="background-color: #F2ECE3; padding: 24px 32px; border-top: 1px solid #E5DFD3; text-align: center; font-size: 11px; color: #736E65; line-height: 1.6;">
-              <div>RYCARIX • 18 Place Vendôme, 75001 Paris &amp; London UK</div>
+              <div>RYCARIX • Rycarix Atelier House, London, United Kingdom</div>
               <div style="margin-top: 6px;">Questions about your parcel? Reach out at <a href="mailto:concierge@rycarix.com" style="color: #3D1220; text-decoration: underline;">concierge@rycarix.com</a></div>
               <div style="margin-top: 10px; color: #9E988E; font-size: 10px;">© ${new Date().getFullYear()} RYCARIX. All rights reserved.</div>
             </td>

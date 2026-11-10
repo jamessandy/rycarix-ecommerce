@@ -1,7 +1,6 @@
 // app/products/[slug]/page.tsx
 import React from 'react';
 import { Metadata } from 'next';
-import { PRODUCTS } from '@/lib/data/mockData';
 import { catalogService } from '@/lib/services/catalogService';
 import ProductDetailContainer from '@/components/pdp/ProductDetailContainer';
 
@@ -14,20 +13,16 @@ interface ProductPageProps {
   };
 }
 
-async function getProductFromAllSources(slug: string): Promise<any | null> {
+async function getProductFromCatalog(slug: string): Promise<any | null> {
   try {
-    const fromCatalog = await catalogService.getProductBySlug(slug);
-    if (fromCatalog) return fromCatalog;
-  } catch (e) {}
-
-  const found = PRODUCTS.find((p) => p.slug === slug || p.id === slug);
-  if (found) return found;
-
-  return null;
+    return await catalogService.getProductBySlug(slug, { includeDrafts: false });
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const product = await getProductFromAllSources(params.slug);
+  const product = await getProductFromCatalog(params.slug);
   if (!product) return { title: 'Product Detail | Rycarix Parfum & Care' };
 
   const name = product.name || product.title;
@@ -44,13 +39,13 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     openGraph: {
       title: name,
       description: desc,
-      images: imgUrl ? [{ url: imgUrl }] : [],
+      images: imgUrl && imgUrl.startsWith('http') ? [{ url: imgUrl }] : [],
     },
   };
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const product = await getProductFromAllSources(params.slug);
+  const product = await getProductFromCatalog(params.slug);
 
   return <ProductDetailContainer slug={params.slug} initialProduct={product} />;
 }

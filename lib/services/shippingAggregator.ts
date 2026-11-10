@@ -20,6 +20,8 @@ export interface RoyalMailServiceOption {
   recommendation: string;
   weightLimit: string;
   deliveryTime: string;
+  minDays: number;
+  maxDays: number;
   badge?: string;
 }
 
@@ -32,6 +34,8 @@ export const ROYAL_MAIL_UK_SERVICES: RoyalMailServiceOption[] = [
     recommendation: '2–3 working days',
     weightLimit: 'Standard parcel',
     deliveryTime: 'Estimated delivery: 2–3 working days',
+    minDays: 2,
+    maxDays: 3,
     badge: 'Standard',
   },
   {
@@ -42,6 +46,8 @@ export const ROYAL_MAIL_UK_SERVICES: RoyalMailServiceOption[] = [
     recommendation: 'Orders over £100',
     weightLimit: 'Standard parcel',
     deliveryTime: 'Automatically available on orders over £100',
+    minDays: 2,
+    maxDays: 3,
     badge: 'FREE',
   },
   {
@@ -52,29 +58,152 @@ export const ROYAL_MAIL_UK_SERVICES: RoyalMailServiceOption[] = [
     recommendation: 'Arrange after ordering',
     weightLimit: 'Pick up in person',
     deliveryTime: 'Arrange collection after ordering',
+    minDays: 1,
+    maxDays: 3,
     badge: 'FREE',
   },
+];
+
+export const INTERNATIONAL_DELIVERY_OPTIONS: RoyalMailServiceOption[] = [
   {
-    id: 'rm-tracked-48-small',
-    service: 'Tracked 48',
-    carrierName: 'Royal Mail Tracked 48',
-    price: 4.50,
-    recommendation: 'Tracked with full visibility',
-    weightLimit: 'Small parcel up to 2kg',
-    deliveryTime: '2–3 working days with end-to-end tracking & SMS alerts',
-    badge: 'Tracked',
+    id: 'intl-europe',
+    service: 'Europe International Delivery',
+    carrierName: 'Royal Mail International Europe',
+    price: 9.95,
+    recommendation: '3–5 working days',
+    weightLimit: 'Tracked international parcel',
+    deliveryTime: 'Estimated delivery: 3–5 working days',
+    minDays: 3,
+    maxDays: 5,
+    badge: 'Europe',
   },
   {
-    id: 'rm-tracked-24-small',
-    service: 'Tracked 24',
-    carrierName: 'Royal Mail Tracked 24',
-    price: 5.00,
-    recommendation: 'Fastest tracked option',
-    weightLimit: 'Small parcel up to 2kg',
-    deliveryTime: '1–2 working days priority delivery with SMS tracking alerts',
-    badge: 'Faster Delivery',
+    id: 'intl-us-ca',
+    service: 'USA & Canada Delivery',
+    carrierName: 'Royal Mail International Tracked',
+    price: 14.95,
+    recommendation: '5–7 working days',
+    weightLimit: 'Tracked international parcel',
+    deliveryTime: 'Estimated delivery: 5–7 working days',
+    minDays: 5,
+    maxDays: 7,
+    badge: 'North America',
+  },
+  {
+    id: 'intl-row',
+    service: 'Rest of the World Delivery',
+    carrierName: 'Royal Mail International Priority',
+    price: 18.95,
+    recommendation: '5–7 working days or longer',
+    weightLimit: 'Tracked international parcel',
+    deliveryTime: 'Estimated delivery: 5–7 working days or longer',
+    minDays: 5,
+    maxDays: 10,
+    badge: 'Worldwide',
   },
 ];
+
+export const ALL_DELIVERY_OPTIONS: RoyalMailServiceOption[] = [
+  ...ROYAL_MAIL_UK_SERVICES,
+  ...INTERNATIONAL_DELIVERY_OPTIONS,
+];
+
+const UK_COUNTRY_NAMES = new Set([
+  '',
+  'uk',
+  'gb',
+  'united kingdom',
+  'great britain',
+  'england',
+  'scotland',
+  'wales',
+  'northern ireland',
+]);
+
+const EUROPE_COUNTRY_NAMES = new Set([
+  'europe',
+  'france',
+  'fr',
+  'germany',
+  'de',
+  'ireland',
+  'ie',
+  'italy',
+  'it',
+  'spain',
+  'es',
+  'netherlands',
+  'nl',
+  'belgium',
+  'be',
+  'portugal',
+  'pt',
+  'switzerland',
+  'ch',
+  'austria',
+  'at',
+  'sweden',
+  'se',
+  'norway',
+  'no',
+  'denmark',
+  'dk',
+]);
+
+const US_CA_COUNTRY_NAMES = new Set([
+  'united states',
+  'usa',
+  'us',
+  'canada',
+  'ca',
+]);
+
+export function isUnitedKingdomCountry(country?: string | null): boolean {
+  const normalized = (country || 'United Kingdom').trim().toLowerCase();
+  return UK_COUNTRY_NAMES.has(normalized);
+}
+
+export function getCheckoutShippingOptions(subtotal: number, country?: string | null): RoyalMailServiceOption[] {
+  const normalized = (country || 'United Kingdom').trim().toLowerCase();
+  if (isUnitedKingdomCountry(normalized)) {
+    return ROYAL_MAIL_UK_SERVICES;
+  }
+  if (EUROPE_COUNTRY_NAMES.has(normalized)) {
+    return [INTERNATIONAL_DELIVERY_OPTIONS[0], ROYAL_MAIL_UK_SERVICES[2]];
+  }
+  if (US_CA_COUNTRY_NAMES.has(normalized)) {
+    return [INTERNATIONAL_DELIVERY_OPTIONS[1]];
+  }
+  return [INTERNATIONAL_DELIVERY_OPTIONS[2]];
+}
+
+export function resolveCheckoutShippingOption(
+  subtotal: number,
+  country?: string | null,
+  selectedId?: string | null
+): RoyalMailServiceOption {
+  const available = getCheckoutShippingOptions(subtotal, country);
+  const normalizedCountry = (country || 'United Kingdom').trim().toLowerCase();
+
+  if (isUnitedKingdomCountry(normalizedCountry)) {
+    if (selectedId === 'collection-pickup') {
+      return ROYAL_MAIL_UK_SERVICES[2];
+    }
+    if (selectedId === 'free-uk') {
+      return subtotal >= 100 ? ROYAL_MAIL_UK_SERVICES[1] : ROYAL_MAIL_UK_SERVICES[0];
+    }
+    if (selectedId === 'standard-uk') {
+      return subtotal >= 100 ? ROYAL_MAIL_UK_SERVICES[1] : ROYAL_MAIL_UK_SERVICES[0];
+    }
+    return subtotal >= 100 ? ROYAL_MAIL_UK_SERVICES[1] : ROYAL_MAIL_UK_SERVICES[0];
+  }
+
+  if (selectedId) {
+    const match = available.find((opt) => opt.id === selectedId);
+    if (match) return match;
+  }
+  return available[0];
+}
 
 export interface ShippingLabelData {
   trackingNumber: string;
@@ -121,161 +250,8 @@ export interface ShippingLabelData {
   }[];
 }
 
-// Initial shipments for live tracking
-export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {
-  '7829-1092-4821': {
-    trackingNumber: 'RY-RM-84920GB',
-    orderNumber: 'RY-84920',
-    carrier: 'Royal Mail',
-    serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
-    senderAddress: {
-      name: 'Rycarix Fulfillment Center',
-      company: 'Rycarix Luxury Goods Co.',
-      street: '18 Place Vendôme',
-      city: 'Paris',
-      postalCode: '75001',
-      country: 'France',
-    },
-    recipientAddress: {
-      name: 'Éléonore de Vance',
-      email: 'eleonore.devance@example.com',
-      phone: '+44 7946 0991',
-      street: '42 Kensington Palace Gardens',
-      city: 'London',
-      state: 'Greater London',
-      postalCode: 'W8 4QP',
-      country: 'United Kingdom',
-    },
-    customerEmail: 'eleonore.devance@example.com',
-    customerPhone: '+44 7946 0991',
-    weightKg: 0.85,
-    isHazardous: true,
-    unNumber: 'UN 1266',
-    hazardClass: 'Class 3 Flammable Liquid (LQ)',
-    properShippingName: 'Perfumery Products with Flammable Solvents (UN 1266)',
-    lqCompliant: true,
-    estimatedDelivery: 'Today by 1:00 PM',
-    currentStatus: 'OUT_FOR_DELIVERY',
-    milestones: [
-      {
-        timestamp: 'Sep 28, 2026 • 08:30 AM',
-        status: 'Out for Delivery',
-        location: 'London North Delivery Office (Royal Mail)',
-        description: 'Package sorted onto Royal Mail postal delivery van for direct residential doorstep delivery.',
-        isCompleted: true,
-      },
-      {
-        timestamp: 'Sep 27, 2026 • 11:15 PM',
-        status: 'Arrived at Regional Hub',
-        location: 'Royal Mail London Central Mail Centre',
-        description: 'Cleared dangerous goods (UN 1266 LQ) compliance inspection and sorted to local delivery depot.',
-        isCompleted: true,
-      },
-      {
-        timestamp: 'Sep 26, 2026 • 06:40 PM',
-        status: 'Departed Export Facility',
-        location: 'Paris Charles de Gaulle (CDG)',
-        description: 'International air manifest sealed with Limited Quantity (LQ) marking and handed over to Royal Mail customs clearance.',
-        isCompleted: true,
-      },
-      {
-        timestamp: 'Sep 25, 2026 • 02:15 PM',
-        status: 'Dispatched via ShipStation',
-        location: 'Rycarix Fulfillment Center, Paris',
-        description: 'Royal Mail Tracked 24 thermal label printed with UN 1266 Limited Quantity diamond marking.',
-        isCompleted: true,
-      },
-      {
-        timestamp: 'Sep 24, 2026 • 10:00 AM',
-        status: 'Order Placed & Confirmed',
-        location: 'Online Storefront',
-        description: 'Payment authorized via Klarna (Pay in 3) / Clearpay (Pay in 4). Order dispatched to fulfillment.',
-        isCompleted: true,
-      },
-    ],
-    items: [
-      {
-        title: 'Santal Noir Extrait de Parfum',
-        variant: '100ml / 3.4 fl. oz.',
-        quantity: 1,
-        price: 280.0,
-        image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
-        containsAlcohol: true,
-      },
-    ],
-  },
-  'EVRI-9840-2811': {
-    trackingNumber: 'RY-EVRI-98402811',
-    orderNumber: 'RY-77218',
-    carrier: 'Evri',
-    serviceLevel: 'Evri Express Tracked Delivery (48h Doorstep)',
-    senderAddress: {
-      name: 'Rycarix Fulfillment Center',
-      company: 'Rycarix Luxury Goods Co.',
-      street: '18 Place Vendôme',
-      city: 'Paris',
-      postalCode: '75001',
-      country: 'France',
-    },
-    recipientAddress: {
-      name: 'Lord Alistair Sterling',
-      email: 'alistair.sterling@mayfair.co.uk',
-      phone: '+44 7946 0992',
-      street: '14 Berkeley Square',
-      city: 'London',
-      state: 'Mayfair',
-      postalCode: 'W1J 6ER',
-      country: 'United Kingdom',
-    },
-    customerEmail: 'alistair.sterling@mayfair.co.uk',
-    customerPhone: '+44 7946 0992',
-    weightKg: 0.65,
-    isHazardous: false,
-    lqCompliant: true,
-    estimatedDelivery: 'Delivered on August 02, 2026',
-    currentStatus: 'DELIVERED',
-    milestones: [
-      {
-        timestamp: 'Aug 02, 2026 • 01:20 PM',
-        status: 'Delivered',
-        location: 'London Mayfair Safe Place',
-        description: 'Delivered to recipient safe place with GPS digital photo verification by local Evri courier.',
-        isCompleted: true,
-      },
-      {
-        timestamp: 'Aug 02, 2026 • 07:45 AM',
-        status: 'Out for Delivery',
-        location: 'Evri London Central Depot',
-        description: 'With your local Evri delivery courier for delivery today.',
-        isCompleted: true,
-      },
-      {
-        timestamp: 'Aug 01, 2026 • 09:00 PM',
-        status: 'Hub Arrival & Sorted',
-        location: 'Evri Rugby SuperHub',
-        description: 'Parcel processed through automated sorting network.',
-        isCompleted: true,
-      },
-    ],
-    items: [
-      {
-        title: 'L’Huile Sublime Regenerative Hair Nectar',
-        variant: '100ml / 3.4 fl. oz.',
-        quantity: 1,
-        price: 135.0,
-        image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
-        containsAlcohol: false,
-      },
-    ],
-  },
-};
-
-// Aliases for resilient search lookup
-SHIPMENT_DATABASE['RY-84920'] = SHIPMENT_DATABASE['7829-1092-4821'];
-SHIPMENT_DATABASE['RY-RM-84920GB'] = SHIPMENT_DATABASE['7829-1092-4821'];
-SHIPMENT_DATABASE['DHL-9840-2811'] = SHIPMENT_DATABASE['EVRI-9840-2811'];
-SHIPMENT_DATABASE['RY-77218'] = SHIPMENT_DATABASE['EVRI-9840-2811'];
-SHIPMENT_DATABASE['RY-EVRI-98402811'] = SHIPMENT_DATABASE['EVRI-9840-2811'];
+// Real orders loaded dynamically from Neon PostgreSQL (/api/orders)
+export const SHIPMENT_DATABASE: Record<string, ShippingLabelData> = {};
 
 /**
  * Address validation simulator (in the style of ShipStation / Sendcloud address verification)
@@ -304,7 +280,7 @@ export function validateDeliveryAddress(address: {
 /**
  * Carrier Selector & LQ Hazard Evaluation:
  * Perfumes with alcohol require UN 1266 Limited Quantity (LQ) diamond labeling.
- * Defaults to Royal Mail Tracked 24 (LQ Compliant) for Perfumes, and Evri for Hair/Body care.
+ * Uses Royal Mail Tracked (LQ Compliant) for Perfumes, and Royal Mail / Evri for Hair/Body care.
  */
 export function evaluateShipmentPackaging(items: { title: string; category?: string }[]): {
   isHazardous: boolean;
@@ -319,8 +295,9 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
       item.title.toLowerCase().includes('parfum') ||
       item.title.toLowerCase().includes('fragrance') ||
       item.title.toLowerCase().includes('mist') ||
-      item.category === 'Parfum' ||
-      item.category === 'Haute Parfumerie'
+      (item.category || '').toLowerCase().includes('parfum') ||
+      (item.category || '').toLowerCase().includes('perfume') ||
+      (item.category || '').toLowerCase().includes('fragrance')
   );
 
   if (hasPerfume) {
@@ -330,7 +307,7 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
       hazardClass: 'Class 3 Flammable Liquid (PG II/III)',
       lqLabelRequired: true,
       recommendedCarrier: 'Royal Mail',
-      serviceLevel: 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)',
+      serviceLevel: 'Royal Mail Tracked (Dangerous Goods LQ Compliant)',
     };
   }
 
@@ -339,13 +316,13 @@ export function evaluateShipmentPackaging(items: { title: string; category?: str
     unNumber: null,
     hazardClass: null,
     lqLabelRequired: false,
-    recommendedCarrier: 'Evri',
-    serviceLevel: 'Evri Express Tracked Delivery (48h Doorstep)',
+    recommendedCarrier: 'Royal Mail',
+    serviceLevel: 'Royal Mail Standard UK Delivery',
   };
 }
 
 /**
- * Generate a new shipping label via aggregator simulation with Evri or Royal Mail
+ * Generate a new shipping label via aggregator dispatch with Royal Mail or Evri
  */
 export function createAggregatorDispatch(params: {
   orderNumber: string;
@@ -376,10 +353,10 @@ export function createAggregatorDispatch(params: {
   if (!chosenService) {
     if (chosenCarrier === 'Royal Mail') {
       chosenService = packaging.isHazardous
-        ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)'
-        : 'Royal Mail Tracked 24';
+        ? 'Royal Mail Tracked (Dangerous Goods LQ Compliant)'
+        : 'Royal Mail Standard UK Delivery';
     } else if (chosenCarrier === 'Evri') {
-      chosenService = 'Evri Express Tracked Delivery (48h Doorstep)';
+      chosenService = 'Evri Tracked Doorstep Delivery';
     } else {
       chosenService = packaging.serviceLevel;
     }
@@ -388,11 +365,11 @@ export function createAggregatorDispatch(params: {
   let trackingNumber = params.trackingNumber || '';
   if (!trackingNumber) {
     if (chosenCarrier === 'Royal Mail') {
-      trackingNumber = `RY-RM-${Math.floor(1000 + Math.random() * 9000)}GB`;
+      trackingNumber = `GB${Date.now().toString().slice(-8)}RY`;
     } else if (chosenCarrier === 'Evri') {
-      trackingNumber = `RY-EVRI-${Math.floor(10000000 + Math.random() * 90000000)}`;
+      trackingNumber = `RY-EVRI-${Date.now().toString().slice(-8)}`;
     } else {
-      trackingNumber = `RY-${chosenCarrier.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      trackingNumber = `RY-${chosenCarrier.toUpperCase()}-${Date.now().toString().slice(-6)}`;
     }
   }
 
@@ -406,10 +383,10 @@ export function createAggregatorDispatch(params: {
     senderAddress: {
       name: 'Rycarix Fulfillment Center',
       company: 'Rycarix Luxury Goods Co.',
-      street: '18 Place Vendôme',
-      city: 'Paris',
-      postalCode: '75001',
-      country: 'France',
+      street: 'Unit 4, Rycarix Atelier House',
+      city: 'London',
+      postalCode: 'W1S 2TE',
+      country: 'United Kingdom',
     },
     recipientAddress: {
       name: params.customerName,
@@ -429,7 +406,7 @@ export function createAggregatorDispatch(params: {
     hazardClass: packaging.hazardClass || undefined,
     properShippingName: packaging.isHazardous ? 'Perfumery Products (UN 1266)' : undefined,
     lqCompliant: true,
-    estimatedDelivery: chosenCarrier === 'Royal Mail' ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days',
+    estimatedDelivery: chosenCarrier === 'Royal Mail' ? '2–3 Working Days' : '2–3 Working Days',
     currentStatus: status,
     milestones: [
       {
@@ -441,16 +418,16 @@ export function createAggregatorDispatch(params: {
           : `Dispatched via ${chosenCarrier}`,
         location: status === 'DELIVERED' || status === 'OUT_FOR_DELIVERY'
           ? `${params.city} Local Depot`
-          : 'Rycarix Fulfillment Center, Paris',
+          : 'Rycarix Fulfillment Center, London, UK',
         description: packaging.isHazardous
-          ? `${chosenCarrier} barcode generated with required UN 1266 Limited Quantity (LQ) hazard diamond.`
-          : `${chosenCarrier} express courier waybill ${trackingNumber} in transit.`,
+          ? `${chosenCarrier} waybill ${trackingNumber} generated with UN 1266 Limited Quantity (LQ) compliance.`
+          : `${chosenCarrier} waybill ${trackingNumber} dispatched from London fulfillment center.`,
         isCompleted: true,
       },
       {
         timestamp: 'Earlier today',
         status: 'Order Verified & Packed',
-        location: 'Online Storefront',
+        location: 'Rycarix Online Storefront',
         description: 'Customer delivery address validated and items prepared for courier pickup.',
         isCompleted: true,
       },
@@ -464,16 +441,6 @@ export function createAggregatorDispatch(params: {
   SHIPMENT_DATABASE[trackingNumber] = newShipment;
   SHIPMENT_DATABASE[params.orderNumber] = newShipment;
 
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('rycarix_shipments');
-      const map = stored ? JSON.parse(stored) : {};
-      map[trackingNumber] = newShipment;
-      map[params.orderNumber] = newShipment;
-      localStorage.setItem('rycarix_shipments', JSON.stringify(map));
-    } catch (e) {}
-  }
-
   return newShipment;
 }
 
@@ -483,18 +450,43 @@ export function createAggregatorDispatch(params: {
  */
 export function buildShipmentFromOrder(ord: any): ShippingLabelData {
   const isPerfume =
-    (ord.itemCategory && ord.itemCategory.toLowerCase().includes('parfum')) ||
-    (ord.items && typeof ord.items === 'string' && (ord.items.toLowerCase().includes('parfum') || ord.items.toLowerCase().includes('fragrance')));
+    (ord.itemCategory && String(ord.itemCategory).toLowerCase().match(/parfum|perfume|fragrance/)) ||
+    (ord.items && typeof ord.items === 'string' && (ord.items.toLowerCase().includes('parfum') || ord.items.toLowerCase().includes('perfume') || ord.items.toLowerCase().includes('fragrance')));
 
-  const carrier = ord.carrier || (isPerfume ? 'Royal Mail' : 'Evri');
-  const trackingNumber = ord.trackingNumber || ord.id || 'RY-TRACKING';
-  const orderNumber = ord.orderNumber || ord.id || 'RY-ORDER';
+  const rawCarrier = String(ord.carrier || '').trim();
+  const carrier: 'Royal Mail' | 'Evri' | 'FedEx' | 'DHL' | 'UPS' =
+    rawCarrier.toLowerCase().includes('evri')
+      ? 'Evri'
+      : rawCarrier.toLowerCase().includes('fedex')
+      ? 'FedEx'
+      : rawCarrier.toLowerCase().includes('dhl')
+      ? 'DHL'
+      : rawCarrier.toLowerCase().includes('ups')
+      ? 'UPS'
+      : 'Royal Mail';
+
+  const isDispatched = Boolean(
+    (ord.status && ['SHIPPED', 'DELIVERED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'].includes(String(ord.status).toUpperCase())) ||
+      (ord.fulfillment && String(ord.fulfillment).toLowerCase().includes('dispatched')) ||
+      (ord.fulfillmentStatus && String(ord.fulfillmentStatus).toUpperCase() === 'FULFILLED') ||
+      (ord.trackingNumber && String(ord.trackingNumber).trim().length > 0)
+  );
+
+  const trackingNumber = isDispatched && ord.trackingNumber ? String(ord.trackingNumber).trim() : '';
+  const orderNumber = ord.orderNumber || ord.id || '';
   const customerName = ord.customer || ord.address?.name || 'Valued Client';
   const customerEmail = ord.email || ord.address?.email || '';
   const customerPhone = ord.phone || ord.address?.phone || '';
   const city = ord.address?.city || 'London';
-  const destination = `${city}, ${ord.address?.postalCode || ''}`.trim();
-  const status = (ord.currentStatus as any) || (ord.fulfillment?.includes('Dispatched') ? 'IN_TRANSIT' : 'DISPATCH_PENDING');
+  const destination = `${city}${ord.address?.postalCode ? `, ${ord.address.postalCode}` : ''}`.trim();
+
+  let status: ShippingLabelData['currentStatus'] = 'DISPATCH_PENDING';
+  if (isDispatched) {
+    const upperCurrent = String(ord.currentStatus || ord.status || '').toUpperCase();
+    if (upperCurrent === 'DELIVERED') status = 'DELIVERED';
+    else if (upperCurrent === 'OUT_FOR_DELIVERY') status = 'OUT_FOR_DELIVERY';
+    else status = 'IN_TRANSIT';
+  }
 
   const milestones: TrackingMilestone[] = [];
   const now = new Date();
@@ -502,87 +494,89 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
 
   if (status === 'DELIVERED') {
     milestones.push({
-      timestamp: `${dateStr} • 01:15 PM`,
+      timestamp: `${dateStr} • Delivered`,
       status: 'Delivered to Doorstep',
       location: `${destination} (Residential)`,
-      description: `Package delivered into safe place by local ${carrier} courier with GPS confirmation.`,
+      description: `Package delivered by local ${carrier} courier.`,
       isCompleted: true,
     });
   }
 
   if (status === 'OUT_FOR_DELIVERY' || status === 'DELIVERED') {
     milestones.push({
-      timestamp: `${dateStr} • 08:30 AM`,
+      timestamp: `${dateStr} • Out for Delivery`,
       status: 'Out for Delivery',
       location: `${city} Delivery Office (${carrier})`,
-      description: `Sorted onto local ${carrier} delivery route for residential doorstep dropoff today.`,
+      description: `Sorted onto local ${carrier} delivery route for residential doorstep dropoff.`,
       isCompleted: true,
     });
   }
 
   if (status === 'IN_TRANSIT' || status === 'OUT_FOR_DELIVERY' || status === 'DELIVERED') {
     milestones.push({
-      timestamp: `${dateStr} • 03:40 AM`,
-      status: 'Arrived at Regional Hub',
-      location: `${city} Central Sorting Depot`,
-      description: isPerfume
-        ? `Cleared Dangerous Goods (UN 1266 LQ) inspection and sorted to local delivery depot.`
-        : `Processed through automated parcel sorting network.`,
+      timestamp: `${dateStr} • In Transit`,
+      status: 'Dispatched & In Transit',
+      location: `${city} Regional Sorting Depot`,
+      description: Boolean(isPerfume)
+        ? `Dispatched via ${carrier} with tracking #${trackingNumber || orderNumber}. Cleared UN 1266 Limited Quantity (LQ) packaging check.`
+        : `Dispatched via ${carrier} with tracking #${trackingNumber || orderNumber}.`,
       isCompleted: true,
     });
     milestones.push({
-      timestamp: `${ord.date || dateStr} • 04:30 PM`,
+      timestamp: `${ord.date || dateStr} • Handed to Courier`,
       status: `Collected by ${carrier}`,
-      location: 'Rycarix Fulfillment Center, Paris',
-      description: `Package collected and scanned into ${carrier} priority logistics network.`,
+      location: 'Rycarix Fulfillment Center, London, UK',
+      description: `Package collected and scanned into ${carrier} logistics network.`,
       isCompleted: true,
     });
   }
 
   milestones.push({
-    timestamp: `${ord.date || dateStr} • 10:00 AM`,
+    timestamp: `${ord.date || dateStr}`,
     status: 'Order Placed & Confirmed',
     location: 'Rycarix Online Storefront',
-    description: `Payment authorized via ${ord.paymentMethod || 'Stripe'}. Packaging prepared for courier dispatch.`,
+    description: isDispatched
+      ? `Payment confirmed via ${ord.paymentMethod || 'Stripe'}. Packaging prepared and handed to courier.`
+      : `Payment confirmed via ${ord.paymentMethod || 'Stripe'}. Order received and awaiting admin dispatch confirmation.`,
     isCompleted: true,
   });
 
   const itemsList = Array.isArray(ord.itemsList) && ord.itemsList.length > 0
     ? ord.itemsList.map((i: any) => ({
         title: i.title || 'Botanical Item',
-        variant: i.variantTitle || 'Luxury Packaging',
+        variant: i.variantTitle || 'Standard',
         quantity: i.quantity || 1,
-        price: i.price || 0,
-        image: i.image || 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
-        containsAlcohol: isPerfume,
+        price: Number(i.price ?? 0),
+        image: i.image || '/images/perfumes/princess-reef.jpg',
+        containsAlcohol: Boolean(isPerfume),
       }))
     : [
         {
-          title: typeof ord.items === 'string' ? ord.items : 'Discovery Sample',
-          variant: 'Standard Packaging',
+          title: typeof ord.items === 'string' && ord.items ? ord.items : 'Order Item',
+          variant: 'Standard',
           quantity: 1,
-          price: ord.total || 0,
-          image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?q=80&w=600&auto=format&fit=crop',
-          containsAlcohol: isPerfume,
+          price: Number(ord.total ?? 0),
+          image: '/images/perfumes/princess-reef.jpg',
+          containsAlcohol: Boolean(isPerfume),
         },
       ];
 
   return {
     trackingNumber,
     orderNumber,
-    carrier: carrier.toLowerCase().includes('royal') ? 'Royal Mail' : 'Evri',
+    carrier,
     serviceLevel:
       ord.shippingService ||
       ord.serviceLevel ||
       ord.shippingMethod ||
-      (isPerfume ? 'Royal Mail Tracked 24 (Dangerous Goods LQ Compliant)' : 'Royal Mail Tracked 48'),
+      'Standard UK Delivery',
     senderAddress: {
       name: 'Rycarix Fulfillment Center',
       company: 'Rycarix Luxury Goods Co.',
-      street: '18 Place Vendôme',
-      city: 'Paris',
-      postalCode: '75001',
-      country: 'France',
+      street: 'Unit 4, Rycarix Atelier House',
+      city: 'London',
+      postalCode: 'W1S 2TE',
+      country: 'United Kingdom',
     },
     recipientAddress: {
       name: customerName,
@@ -590,19 +584,21 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
       phone: customerPhone,
       street: ord.address?.street || 'Address on file',
       city: ord.address?.city || 'London',
-      state: ord.address?.state || 'Greater London',
+      state: ord.address?.state || '',
       postalCode: ord.address?.postalCode || '',
       country: ord.address?.country || 'United Kingdom',
     },
     customerEmail,
     customerPhone,
     weightKg: 0.85,
-    isHazardous: isPerfume,
+    isHazardous: Boolean(isPerfume),
     unNumber: isPerfume ? 'UN 1266' : undefined,
     hazardClass: isPerfume ? 'Class 3 Flammable Liquid (LQ)' : undefined,
     properShippingName: isPerfume ? 'Perfumery Products (UN 1266)' : undefined,
     lqCompliant: true,
-    estimatedDelivery: ord.estimatedDelivery || (carrier.toLowerCase().includes('royal') ? 'Tomorrow by 1:00 PM' : 'In 1-2 Business Days'),
+    estimatedDelivery: isDispatched
+      ? (ord.estimatedDelivery || ord.shippingRecommendation || '2–3 working days')
+      : 'Awaiting Dispatch',
     currentStatus: status,
     milestones,
     items: itemsList,
@@ -610,70 +606,26 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
 }
 
 /**
- * Retrieve tracking data by tracking number or order number
+ * Retrieve tracking data by tracking number or order number from in-memory aggregator cache
  */
 export function lookupTracking(query: string): ShippingLabelData | null {
   const trimmed = query.trim().toUpperCase();
   if (!trimmed) return null;
 
-  // Direct tracking number match
   if (SHIPMENT_DATABASE[trimmed]) {
     return SHIPMENT_DATABASE[trimmed];
   }
 
-  // Look through memory database
   for (const shipment of Object.values(SHIPMENT_DATABASE)) {
     if (
-      shipment.trackingNumber.toUpperCase() === trimmed ||
+      (shipment.trackingNumber && shipment.trackingNumber.toUpperCase() === trimmed) ||
       shipment.orderNumber.toUpperCase() === trimmed ||
-      shipment.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === trimmed.replace(/[^a-zA-Z0-9]/g, '')
+      (shipment.trackingNumber &&
+        shipment.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === trimmed.replace(/[^a-zA-Z0-9]/g, ''))
     ) {
       return shipment;
     }
   }
 
-  // Look through local browser saved shipments
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('rycarix_shipments');
-      if (stored) {
-        const map = JSON.parse(stored);
-        if (map[trimmed]) return map[trimmed];
-        for (const s of Object.values(map) as any[]) {
-          if (
-            s.trackingNumber?.toUpperCase() === trimmed ||
-            s.orderNumber?.toUpperCase() === trimmed ||
-            (s.trackingNumber && s.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === trimmed.replace(/[^a-zA-Z0-9]/g, ''))
-          ) {
-            return s;
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
-  // Look through local browser saved orders
-  if (typeof window !== 'undefined') {
-    try {
-      const rawOrders = localStorage.getItem('rycarix_orders');
-      if (rawOrders) {
-        const parsed = JSON.parse(rawOrders);
-        if (Array.isArray(parsed)) {
-          const match = parsed.find(
-            (o: any) =>
-              o.id?.toUpperCase() === trimmed ||
-              o.orderNumber?.toUpperCase() === trimmed ||
-              o.trackingNumber?.toUpperCase() === trimmed ||
-              (o.trackingNumber && o.trackingNumber.replace(/[^a-zA-Z0-9]/g, '') === trimmed.replace(/[^a-zA-Z0-9]/g, ''))
-          );
-          if (match) {
-            return buildShipmentFromOrder(match);
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
-  // No matching shipment found
   return null;
 }

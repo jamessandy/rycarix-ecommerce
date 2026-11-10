@@ -38,7 +38,7 @@ export default function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const [liveProducts, setLiveProducts] = useState<any[]>(PRODUCTS);
+  const [liveProducts, setLiveProducts] = useState<any[]>([]);
 
   const { toggleCart, getTotalCount, addItem: addCartItem, openCart } = useCartStore();
   const totalCartCount = getTotalCount();
@@ -52,22 +52,10 @@ export default function Header() {
     setHasMounted(true);
 
     const syncLiveCatalog = () => {
-      try {
-        if (typeof window !== 'undefined') {
-          const cached = localStorage.getItem('rycarix_catalog_products');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setLiveProducts(parsed);
-            }
-          }
-        }
-      } catch (e) {}
-
-      fetch('/api/products', { cache: 'no-store' })
+      fetch('/api/products?includeDrafts=false', { cache: 'no-store' })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data?.products && Array.isArray(data.products) && data.products.length > 0) {
+          if (data?.products && Array.isArray(data.products)) {
             setLiveProducts(data.products);
           }
         })
@@ -161,7 +149,7 @@ export default function Header() {
               href="/delivery"
               className="hover:text-ry-oatmeal transition-colors text-center font-light"
             >
-              FREE UK DELIVERY ON ALL ORDERS OVER £50
+              FREE UK DELIVERY ON ALL ORDERS OVER £100
             </Link>
             <ChevronRight className="w-3.5 h-3.5 opacity-60 cursor-pointer hover:opacity-100 transition-opacity" />
           </div>
@@ -413,6 +401,11 @@ export default function Header() {
                             src={typeof product.images[0] === 'string' ? product.images[0] : product.images[0]?.url}
                             alt={product.name || product.title}
                             fill
+                            sizes="48px"
+                            unoptimized={
+                              typeof (typeof product.images[0] === 'string' ? product.images[0] : product.images[0]?.url) === 'string' &&
+                              String(typeof product.images[0] === 'string' ? product.images[0] : product.images[0]?.url).startsWith('data:')
+                            }
                             className="object-cover"
                           />
                         ) : null}
@@ -480,17 +473,28 @@ export default function Header() {
                     </Link>
                   </div>
                 ) : (
-                  wishlistItems.map((item) => (
+                  wishlistItems.map((item) => {
+                    const liveMatch = liveProducts.find(
+                      (p: any) => p.id === item.id || p.slug === item.slug
+                    );
+                    const effectiveStock = liveMatch ? Number(liveMatch.stock ?? 0) : Number(item.stock ?? 0);
+                    const effectivePrice = liveMatch ? Number(liveMatch.price ?? item.price) : Number(item.price);
+                    const isOutOfStock = liveProducts.length > 0 && (!liveMatch || effectiveStock <= 0);
+                    const imgSrc = typeof item.images?.[0] === 'string' ? item.images[0] : (item.images?.[0] as any)?.url || '';
+
+                    return (
                     <div
                       key={item.id}
                       className="p-3 bg-ry-pearl/40 border border-ry-ash/70 rounded-lg flex gap-3.5 items-center group"
                     >
                       <div className="relative w-16 h-16 rounded overflow-hidden bg-ry-pearl shrink-0 border border-ry-ash/50">
-                        {item.images?.[0] ? (
+                        {imgSrc ? (
                           <Image
-                            src={typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url}
+                            src={imgSrc}
                             alt={item.name || item.title || 'Product'}
                             fill
+                            sizes="64px"
+                            unoptimized={typeof imgSrc === 'string' && imgSrc.startsWith('data:')}
                             className="object-cover"
                           />
                         ) : null}
@@ -505,13 +509,15 @@ export default function Header() {
                           {item.name || item.title}
                         </Link>
                         <div className="text-xs text-ry-charcoal font-mono mt-0.5">
-                          £{Number(item.price).toFixed(2)}
+                          £{effectivePrice.toFixed(2)}
                         </div>
 
                         <div className="mt-2 flex items-center gap-3">
                           <button
                             type="button"
+                            disabled={isOutOfStock}
                             onClick={() => {
+                              if (isOutOfStock) return;
                               addCartItem({
                                 id: `${item.id}-default`,
                                 productId: item.id,
@@ -519,16 +525,17 @@ export default function Header() {
                                 title: item.name || item.title || '',
                                 variantTitle: 'Standard Edition',
                                 sku: item.sku || `RYC-${item.id.slice(-6)}`,
-                                price: item.price,
+                                price: effectivePrice,
                                 quantity: 1,
-                                image: typeof item.images?.[0] === 'string' ? item.images[0] : (item.images?.[0] as any)?.url || '',
+                                maxStock: effectiveStock,
+                                image: imgSrc,
                               });
                               setWishlistDrawerOpen(false);
                               openCart();
                             }}
-                            className="text-[10px] uppercase font-semibold text-ry-burgundy hover:underline underline-offset-2"
+                            className="text-[10px] uppercase font-semibold text-ry-burgundy hover:underline underline-offset-2 disabled:text-ry-stone disabled:no-underline disabled:cursor-not-allowed"
                           >
-                            Add to Bag
+                            {isOutOfStock ? 'Out of Stock' : 'Add to Bag'}
                           </button>
 
                           <button
@@ -542,7 +549,7 @@ export default function Header() {
                         </div>
                       </div>
                     </div>
-                  ))
+                  );})
                 )}
               </div>
 
@@ -615,7 +622,7 @@ export default function Header() {
                 className="flex items-center gap-2 text-ry-stone hover:text-ry-onyx"
               >
                 <Truck className="w-4 h-4 text-ry-burgundy" />
-                <span>UK Delivery (£3.50 / Free over £50)</span>
+                <span>UK Delivery (£3.50 / Free over £100)</span>
               </Link>
               <Link
                 href="/login"

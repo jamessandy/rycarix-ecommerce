@@ -1,195 +1,155 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
-import { ShieldCheck, CreditCard, Lock, ArrowRight, Loader2, Info, CheckCircle2, Truck, Store } from 'lucide-react';
+import {
+  ShieldCheck,
+  CreditCard,
+  Lock,
+  Loader2,
+  Info,
+  CheckCircle2,
+  Truck,
+  Store,
+  AlertCircle,
+  Globe,
+} from 'lucide-react';
 import Image from 'next/image';
-import { ROYAL_MAIL_UK_SERVICES } from '@/lib/services/shippingAggregator';
+import {
+  getCheckoutShippingOptions,
+  resolveCheckoutShippingOption,
+  isUnitedKingdomCountry,
+} from '@/lib/services/shippingAggregator';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getCartSubtotal, clearCart } = useCartStore();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, refreshProfile, updateProfile } = useAuthStore();
 
-  const [selectedShippingId, setSelectedShippingId] = useState<string>('standard-uk');
   const subtotal = getCartSubtotal();
-
-  // Auto-switch to free delivery if order is over £100 and standard was selected
-  useEffect(() => {
-    if (subtotal >= 100 && selectedShippingId === 'standard-uk') {
-      setSelectedShippingId('free-uk');
-    }
-  }, [subtotal, selectedShippingId]);
-
-  const selectedShipping =
-    ROYAL_MAIL_UK_SERVICES.find((s) => s.id === selectedShippingId) || ROYAL_MAIL_UK_SERVICES[0];
-  const shipping = selectedShipping.price;
-  const total = subtotal + shipping;
 
   const [hasMounted, setHasMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+  const [canceledNotice, setCanceledNotice] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'klarna' | 'clearpay'>('card');
 
   // Contact & Delivery State
-  const defaultAddress = user?.addresses?.find((a) => a.isDefault) || user?.addresses?.[0];
-  const nameParts = (user?.name || '').split(' ');
-  const [firstName, setFirstName] = useState(nameParts[0] || '');
-  const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [street, setStreet] = useState(defaultAddress?.street || '');
-  const [city, setCity] = useState(defaultAddress?.city || '');
-  const [state, setState] = useState(defaultAddress?.state || '');
-  const [postalCode, setPostalCode] = useState(defaultAddress?.postalCode || '');
-  const [country, setCountry] = useState(defaultAddress?.country || 'United Kingdom');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('United Kingdom');
+  const [selectedShippingId, setSelectedShippingId] = useState<string>('standard-uk');
+
+  const hasPrefilledRef = useRef(false);
 
   useEffect(() => {
     setHasMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      if (!firstName && user.name) {
-        const parts = user.name.split(' ');
-        setFirstName(parts[0] || '');
-        setLastName(parts.slice(1).join(' ') || '');
-      }
-      if (!email && user.email) setEmail(user.email);
-      if (!phone && user.phone) setPhone(user.phone);
-      if (defaultAddress) {
-        if (!street) setStreet(defaultAddress.street);
-        if (!city) setCity(defaultAddress.city);
-        if (!state) setState(defaultAddress.state);
-        if (!postalCode) setPostalCode(defaultAddress.postalCode);
-        if (!country) setCountry(defaultAddress.country);
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('canceled') === 'true') {
+        setCanceledNotice(true);
       }
     }
-  }, [user, defaultAddress, firstName, email, phone, street, city, state, postalCode, country]);
+    refreshProfile().catch(() => {});
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    if (user && !hasPrefilledRef.current) {
+      hasPrefilledRef.current = true;
+      const parts = (user.name || '').trim().split(/\s+/);
+      setFirstName(parts[0] || '');
+      setLastName(parts.slice(1).join(' ') || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+
+      const defaultAddr = user.addresses?.find((a) => a.isDefault) || user.addresses?.[0];
+      if (defaultAddr) {
+        setStreet(defaultAddr.street || '');
+        setCity(defaultAddr.city || '');
+        setState(defaultAddr.state || '');
+        setPostalCode(defaultAddr.postalCode || '');
+        setCountry(defaultAddr.country || 'United Kingdom');
+      }
+    }
+  }, [user]);
+
+  const availableShippingOptions = getCheckoutShippingOptions(subtotal, country);
+  const resolvedShipping = resolveCheckoutShippingOption(subtotal, country, selectedShippingId);
+
+  // Sync selectedShippingId cleanly when country or £100 free-UK threshold changes
+  useEffect(() => {
+    if (resolvedShipping.id !== selectedShippingId) {
+      setSelectedShippingId(resolvedShipping.id);
+    }
+  }, [resolvedShipping.id, selectedShippingId]);
+
+  const shipping = resolvedShipping.price;
+  const total = Math.round((subtotal + shipping) * 100) / 100;
 
   const klarnaMonthly = Math.max(1, Math.round((total / 3) * 100) / 100);
   const clearpayBiweekly = Math.max(1, Math.round((total / 4) * 100) / 100);
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCheckoutError('');
+    setCanceledNotice(false);
     setIsProcessing(true);
 
-    const newOrderId = `RY-${Math.floor(10000 + Math.random() * 90000)}`;
     const customerFullName = `${firstName} ${lastName}`.trim() || 'Valued Client';
-    const customerEmailAddr = email || user?.email || 'client@rycarix.com';
-    const customerPhoneNumber = phone || user?.phone || '';
+    const customerEmailAddr = email.trim();
+    const customerPhoneNumber = phone.trim();
 
-    const newOrder = {
-      id: newOrderId,
-      customer: customerFullName,
-      email: customerEmailAddr,
-      phone: customerPhoneNumber,
-      items: items.map((i) => `${i.title} (${i.variantTitle})`).join(', '),
-      itemsList: items,
-      itemCategory: items[0]?.title?.toLowerCase().includes('parfum') ? 'Parfum' : 'Hair',
-      total: total,
-      paymentMethod:
-        paymentMethod === 'klarna'
-          ? 'Klarna Pay in 3'
-          : paymentMethod === 'clearpay'
-          ? 'Clearpay Pay in 4'
-          : 'Stripe Card (1-Click)',
-      fulfillment: 'Ready for Dispatch',
-      carrier: 'Royal Mail',
-      shippingService: selectedShipping.service,
-      shippingMethod: selectedShipping.carrierName,
-      shippingCost: shipping,
-      shippingRecommendation: selectedShipping.recommendation,
-      trackingNumber: '',
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      address: {
-        name: customerFullName,
-        email: customerEmailAddr,
-        phone: customerPhoneNumber,
-        street,
-        city,
-        state,
-        postalCode,
-        country,
-      },
-    };
-
-    try {
-      if (typeof window !== 'undefined') {
-        const existingRaw = localStorage.getItem('rycarix_orders');
-        const existing = existingRaw ? JSON.parse(existingRaw) : [];
-        localStorage.setItem('rycarix_orders', JSON.stringify([newOrder, ...existing]));
-      }
-    } catch (saveErr) {
-      console.warn('Could not persist order locally', saveErr);
+    if (!customerEmailAddr || !customerEmailAddr.includes('@')) {
+      setCheckoutError('Please provide a valid email address for your order confirmation.');
+      setIsProcessing(false);
+      return;
     }
 
-    // Trigger automated order confirmation email immediately
-    try {
-      fetch('/api/email/order-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderNumber: newOrderId,
-          customerName: customerFullName,
-          customerEmail: customerEmailAddr,
-          customerPhone: customerPhoneNumber,
-          date: newOrder.date,
-          total: total,
-          subtotal: subtotal,
-          shippingCost: shipping,
-          shippingMethod: selectedShipping.service,
-          paymentMethod: newOrder.paymentMethod,
-          items: items.map((i) => ({
-            title: i.title,
-            variantTitle: i.variantTitle,
-            quantity: i.quantity,
-            price: i.price,
-            image: i.image,
-          })),
-          address: {
-            name: customerFullName,
-            street,
-            city,
-            state,
-            postalCode,
-            country,
-          },
-        }),
-      }).catch((emailErr) => console.warn('Order confirmation email trigger failed', emailErr));
-    } catch (e) {}
+    // Persist phone update back to logged-in user's Postgres profile if signed in
+    if (isAuthenticated && user && customerPhoneNumber && customerPhoneNumber !== user.phone) {
+      updateProfile({ phone: customerPhoneNumber }).catch(() => {});
+    }
 
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerEmail: customerEmailAddr || undefined,
-          customerName: customerFullName || undefined,
-          customerPhone: customerPhoneNumber || undefined,
-          paymentMethod,
-          shippingOption: {
-            id: selectedShipping.id,
-            service: selectedShipping.service,
-            price: shipping,
-            recommendation: selectedShipping.recommendation,
-          },
+          customerEmail: customerEmailAddr,
+          customerName: customerFullName,
+          customerPhone: customerPhoneNumber,
+          paymentMethod:
+            paymentMethod === 'klarna'
+              ? 'Klarna Pay in 3'
+              : paymentMethod === 'clearpay'
+              ? 'Clearpay Pay in 4'
+              : 'Stripe Card',
+          shippingOptionId: resolvedShipping.id,
           shippingAddress: {
             name: customerFullName,
             email: customerEmailAddr,
             phone: customerPhoneNumber,
-            street,
-            city,
-            state,
-            postalCode,
+            street: street.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            postalCode: postalCode.trim(),
             country,
           },
           items: items.map((item) => ({
             id: item.productId,
+            productId: item.productId,
             variantId: item.variantId,
             title: item.title,
             variantTitle: item.variantTitle,
+            sku: item.sku,
             price: item.price,
             quantity: item.quantity,
             image: item.image,
@@ -198,18 +158,29 @@ export default function CheckoutPage() {
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        setCheckoutError(data.error || 'Could not process checkout. Please review your bag.');
+        setIsProcessing(false);
+        return;
+      }
+
       if (data.url && !data.simulated) {
         window.location.href = data.url;
         return;
       }
 
-      // Successful simulated checkout
-      clearCart();
-      router.push(`/dashboard/user?checkout_simulated=true&method=${paymentMethod}&orderId=${newOrderId}`);
+      if (data.url && data.simulated) {
+        clearCart();
+        router.push(data.url);
+        return;
+      }
+
+      setCheckoutError('Unexpected checkout response. Please try again.');
+      setIsProcessing(false);
     } catch (err: any) {
       console.error('Checkout error:', err);
-      clearCart();
-      router.push(`/dashboard/user?checkout_simulated=true&orderId=${newOrderId}`);
+      setCheckoutError(err?.message || 'Unable to connect to payment gateway. Please try again.');
+      setIsProcessing(false);
     }
   };
 
@@ -226,17 +197,19 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-ry-pearl flex items-center justify-center pt-20 font-sans">
         <div className="text-center p-10 bg-ry-white shadow-sm border border-ry-ash max-w-md">
           <h2 className="font-serif text-2xl text-ry-onyx mb-4">Your cart is empty</h2>
-          <p className="text-ry-stone text-sm mb-6">Add botanical items to your cart before proceeding to checkout.</p>
+          <p className="text-ry-stone text-sm mb-6">Add products to your bag before proceeding to checkout.</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/products')}
             className="px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors"
           >
-            Return to Boutique
+            Return to Storefront
           </button>
         </div>
       </div>
     );
   }
+
+  const isUK = isUnitedKingdomCountry(country);
 
   return (
     <div className="min-h-screen bg-ry-pearl pt-28 pb-24 text-ry-onyx font-sans">
@@ -252,24 +225,43 @@ export default function CheckoutPage() {
             </p>
           </div>
 
+          {canceledNotice && (
+            <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2.5">
+              <Info className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>Your payment session was cancelled. Your bag is preserved so you can review and complete your order whenever ready.</span>
+            </div>
+          )}
+
+          {checkoutError && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{checkoutError}</span>
+            </div>
+          )}
+
           <form onSubmit={handlePaymentSubmit} className="space-y-8">
             
             {/* Contact & Shipping */}
             <div className="bg-ry-white p-6 border border-ry-ash/70 shadow-sm space-y-6">
               <div className="flex items-center justify-between border-b border-ry-ash/50 pb-3">
-                <h3 className="font-serif text-xl">Contact & Delivery Address</h3>
-                {isAuthenticated && defaultAddress && (
+                <h3 className="font-serif text-xl">Contact &amp; Delivery Address</h3>
+                {isAuthenticated && user && (
                   <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 font-medium flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    Prefilled from account profile
+                    Synced with your account
                   </span>
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">First Name</label>
+                  <label htmlFor="chk-first-name" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    First Name
+                  </label>
                   <input
+                    id="chk-first-name"
+                    name="firstName"
+                    autoComplete="given-name"
                     required
                     type="text"
                     value={firstName}
@@ -279,8 +271,13 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">Last Name</label>
+                  <label htmlFor="chk-last-name" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    Last Name
+                  </label>
                   <input
+                    id="chk-last-name"
+                    name="lastName"
+                    autoComplete="family-name"
                     required
                     type="text"
                     value={lastName}
@@ -291,8 +288,14 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">Email Address</label>
+                  <label htmlFor="chk-email" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    Email Address
+                  </label>
                   <input
+                    id="chk-email"
+                    name="email"
+                    autoComplete="email"
+                    spellCheck={false}
                     required
                     type="email"
                     value={email}
@@ -303,10 +306,13 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
-                    Phone (Courier SMS Tracking)
+                  <label htmlFor="chk-phone" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    Phone (Courier Updates)
                   </label>
                   <input
+                    id="chk-phone"
+                    name="phone"
+                    autoComplete="tel"
                     required
                     type="tel"
                     value={phone}
@@ -317,8 +323,13 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">Street Address</label>
+                  <label htmlFor="chk-street" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    Street Address
+                  </label>
                   <input
+                    id="chk-street"
+                    name="street"
+                    autoComplete="street-address"
                     required
                     type="text"
                     value={street}
@@ -328,6 +339,9 @@ export default function CheckoutPage() {
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <input
+                      id="chk-city"
+                      name="city"
+                      autoComplete="address-level2"
                       required
                       type="text"
                       value={city}
@@ -336,6 +350,9 @@ export default function CheckoutPage() {
                       placeholder="City / Town"
                     />
                     <input
+                      id="chk-state"
+                      name="state"
+                      autoComplete="address-level1"
                       type="text"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
@@ -343,6 +360,9 @@ export default function CheckoutPage() {
                       placeholder="County / Region"
                     />
                     <input
+                      id="chk-postal"
+                      name="postalCode"
+                      autoComplete="postal-code"
                       required
                       type="text"
                       value={postalCode}
@@ -354,41 +374,53 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">Country / Territory</label>
+                  <label htmlFor="chk-country" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    Country / Delivery Region
+                  </label>
                   <select
+                    id="chk-country"
+                    name="country"
+                    autoComplete="country-name"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     className="w-full border border-ry-ash p-2.5 text-sm focus:outline-none focus:border-ry-onyx bg-ry-pearl/20 text-ry-onyx"
                   >
-                    <option value="United Kingdom">United Kingdom (Evri & Royal Mail)</option>
-                    <option value="United States">United States (FedEx International)</option>
-                    <option value="France">France (DHL Express EU)</option>
-                    <option value="Germany">Germany (DHL Express EU)</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
+                    <option value="United Kingdom">United Kingdom (£3.50 Standard / FREE over £100 / FREE Pickup)</option>
+                    <option value="Ireland">Ireland — Europe (£9.95 • 3–5 working days)</option>
+                    <option value="France">France — Europe (£9.95 • 3–5 working days)</option>
+                    <option value="Germany">Germany — Europe (£9.95 • 3–5 working days)</option>
+                    <option value="Italy">Italy — Europe (£9.95 • 3–5 working days)</option>
+                    <option value="Spain">Spain — Europe (£9.95 • 3–5 working days)</option>
+                    <option value="Netherlands">Netherlands — Europe (£9.95 • 3–5 working days)</option>
+                    <option value="United States">United States (£14.95 • 5–7 working days)</option>
+                    <option value="Canada">Canada (£14.95 • 5–7 working days)</option>
+                    <option value="Australia">Australia — Rest of the World (£18.95 • 5–7+ working days)</option>
+                    <option value="United Arab Emirates">United Arab Emirates — Rest of the World (£18.95 • 5–7+ working days)</option>
+                    <option value="Nigeria">Nigeria — Rest of the World (£18.95 • 5–7+ working days)</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            {/* Delivery Method (Matching Official Checkout Spec) */}
+            {/* Delivery Method (Synced dynamically with /delivery page schedule) */}
             <div className="bg-ry-white p-6 border border-ry-ash/70 shadow-sm space-y-4">
               <div className="border-b border-ry-ash/50 pb-3 flex items-center justify-between">
                 <h3 className="font-sans font-semibold text-base text-neutral-900">
                   Delivery method
                 </h3>
-                <span className="text-[10px] text-neutral-500 uppercase tracking-editorial">
-                  United Kingdom
+                <span className="text-[10px] text-neutral-600 uppercase tracking-editorial flex items-center gap-1">
+                  <Globe className="w-3 h-3" />
+                  {country || 'United Kingdom'}
                 </span>
               </div>
 
               <div className="space-y-3">
-                {ROYAL_MAIL_UK_SERVICES.map((option) => {
-                  const isSelected = selectedShippingId === option.id;
+                {availableShippingOptions.map((option) => {
+                  const isSelected = resolvedShipping.id === option.id;
                   const isFreeOption = option.id === 'free-uk';
                   const isPickup = option.id === 'collection-pickup';
                   const isFreeEligible = subtotal >= 100;
-                  const isClickable = !isFreeOption || isFreeEligible;
+                  const isClickable = !isUK || !isFreeOption || isFreeEligible;
 
                   return (
                     <label
@@ -423,7 +455,7 @@ export default function CheckoutPage() {
                             </div>
                             <p className="text-xs text-neutral-500 mt-1">
                               {option.deliveryTime}
-                              {isFreeOption && !isFreeEligible && (
+                              {isUK && isFreeOption && !isFreeEligible && (
                                 <span className="text-amber-700 font-medium ml-1">
                                   (add £{(100 - subtotal).toFixed(2)} more)
                                 </span>
@@ -452,22 +484,25 @@ export default function CheckoutPage() {
               <div className="pt-2 text-[11px] text-neutral-500 flex items-center gap-1.5 border-t border-neutral-100">
                 <Info className="w-3.5 h-3.5 shrink-0 text-neutral-700" />
                 <span>
-                  All UK shipments are handled with Royal Mail tracking and UN 1266 Limited Quantity (LQ) compliance.
+                  Rates apply automatically at payment checkout. Free UK Delivery applies on orders over £100.
                 </span>
               </div>
 
               {/* International Delivery Info */}
               <div className="pt-3 border-t border-ry-ash/40">
-                <p className="text-[10px] uppercase tracking-editorial text-ry-stone mb-2">International Delivery</p>
+                <p className="text-[10px] uppercase tracking-editorial text-ry-stone mb-2">Delivery Schedule Reference</p>
                 <div className="space-y-1.5 text-[11px] text-ry-stone">
                   <div className="flex justify-between">
-                    <span>Europe</span><span className="font-mono text-ry-onyx">3–5 working days</span>
+                    <span>UK Standard (Orders under £100)</span><span className="font-mono text-ry-onyx">£3.50 • 2–3 working days</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>USA & Canada</span><span className="font-mono text-ry-onyx">5–7 working days</span>
+                    <span>Europe</span><span className="font-mono text-ry-onyx">£9.95 • 3–5 working days</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Rest of the World</span><span className="font-mono text-ry-onyx">5–7 working days or longer</span>
+                    <span>USA &amp; Canada</span><span className="font-mono text-ry-onyx">£14.95 • 5–7 working days</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rest of the World</span><span className="font-mono text-ry-onyx">£18.95 • 5–7 working days or longer</span>
                   </div>
                 </div>
               </div>
@@ -478,7 +513,6 @@ export default function CheckoutPage() {
               <h3 className="font-serif text-xl border-b border-ry-ash/50 pb-3">Payment Options</h3>
               
               <div className="space-y-3">
-                {/* 1. Card */}
                 <label className={`block border p-4 cursor-pointer transition-colors ${paymentMethod === 'card' ? 'border-ry-onyx bg-ry-pearl/30' : 'border-ry-ash hover:border-ry-stone'}`}>
                   <div className="flex items-center gap-3">
                     <input 
@@ -497,7 +531,6 @@ export default function CheckoutPage() {
                   </div>
                 </label>
                 
-                {/* 2. Klarna (Pay in 3) */}
                 <label className={`block border p-4 cursor-pointer transition-colors ${paymentMethod === 'klarna' ? 'border-ry-onyx bg-[#FFF2F7]/50' : 'border-ry-ash hover:border-ry-stone'}`}>
                   <div className="flex items-center gap-3">
                     <input 
@@ -520,7 +553,6 @@ export default function CheckoutPage() {
                   </div>
                 </label>
 
-                {/* 3. Clearpay (Pay in 4) */}
                 <label className={`block border p-4 cursor-pointer transition-colors ${paymentMethod === 'clearpay' ? 'border-ry-onyx bg-[#E6F9F5]/50' : 'border-ry-ash hover:border-ry-stone'}`}>
                   <div className="flex items-center gap-3">
                     <input 
@@ -544,65 +576,12 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
-              {/* Card Form */}
-              {paymentMethod === 'card' && (
-                <div className="pt-4 space-y-4 animate-fade-in">
-                  <div className="bg-ry-pearl/50 border border-ry-ash p-3 flex items-start gap-3 mb-4">
-                    <Info className="w-4 h-4 text-ry-stone shrink-0 mt-0.5" />
-                    <p className="text-xs text-ry-stone leading-relaxed">
-                      All live card and installment transactions are secured by Stripe 256-bit TLS encryption, 3D Secure authentication, and white-glove anti-fraud protocols.
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5 flex justify-between">
-                      Card Number
-                      <Lock className="w-3 h-3 text-ry-stone" />
-                    </label>
-                    <input type="text" className="w-full border border-ry-ash p-2.5 text-sm font-mono focus:outline-none focus:border-ry-onyx" placeholder="0000 0000 0000 0000" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">Expiration Date</label>
-                      <input type="text" className="w-full border border-ry-ash p-2.5 text-sm font-mono focus:outline-none focus:border-ry-onyx" placeholder="MM/YY" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">Security Code (CVC)</label>
-                      <input type="text" className="w-full border border-ry-ash p-2.5 text-sm font-mono focus:outline-none focus:border-ry-onyx" placeholder="123" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Klarna Info */}
-              {paymentMethod === 'klarna' && (
-                <div className="pt-4 animate-fade-in text-center p-6 border border-ry-ash bg-[#FFF2F7]/40">
-                  <span className="bg-[#FFA8CD] text-black font-bold text-xs px-2.5 py-0.5 rounded-sm inline-block mb-2">
-                    Klarna. Pay in 3
-                  </span>
-                  <p className="text-sm text-ry-onyx font-medium mb-1">
-                    3 interest-free payments of £{klarnaMonthly.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-ry-stone leading-relaxed max-w-sm mx-auto">
-                    Payment 1 charged today, Payment 2 in 30 days, and Payment 3 in 60 days. No fees when you pay on time.
-                  </p>
-                </div>
-              )}
-
-              {/* Clearpay Info */}
-              {paymentMethod === 'clearpay' && (
-                <div className="pt-4 animate-fade-in text-center p-6 border border-ry-ash bg-[#E6F9F5]/40">
-                  <span className="bg-[#B2ECE1] text-black font-bold text-xs px-2.5 py-0.5 rounded-sm inline-block mb-2">
-                    clearpay✦ Pay in 4
-                  </span>
-                  <p className="text-sm text-ry-onyx font-medium mb-1">
-                    4 interest-free payments of £{clearpayBiweekly.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-ry-stone leading-relaxed max-w-sm mx-auto">
-                    Split over 6 weeks. Payment 1 charged today, followed by 3 bi-weekly installments every 2 weeks.
-                  </p>
-                </div>
-              )}
+              <div className="bg-ry-pearl/50 border border-ry-ash p-3 flex items-start gap-3">
+                <Info className="w-4 h-4 text-ry-stone shrink-0 mt-0.5" />
+                <p className="text-xs text-ry-stone leading-relaxed">
+                  You will confirm payment securely with your exact GBP total and chosen delivery rate. Once payment succeeds, stock updates live and an itemized order confirmation email is sent automatically.
+                </p>
+              </div>
             </div>
 
             <button
@@ -613,12 +592,12 @@ export default function CheckoutPage() {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Authorizing Order & Dispatch...</span>
+                  <span>Preparing Secure Payment...</span>
                 </>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Place Order • £{total.toFixed(2)}</span>
+                  <span>Continue to Payment • £{total.toFixed(2)}</span>
                 </>
               )}
             </button>
@@ -639,6 +618,8 @@ export default function CheckoutPage() {
                         src={item.image} 
                         alt={item.title} 
                         fill
+                        sizes="64px"
+                        unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
                         className="object-cover"
                       />
                     ) : (
@@ -664,13 +645,13 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-ry-stone items-start">
                 <div>
-                  <span>Shipping (Royal Mail)</span>
+                  <span>Delivery</span>
                   <span className="block text-[11px] text-ry-charcoal font-medium">
-                    {selectedShipping.service}
+                    {resolvedShipping.service}
                   </span>
                 </div>
                 <span className="font-mono text-ry-onyx">
-                  £{shipping.toFixed(2)}
+                  {shipping === 0 ? 'FREE (£0.00)' : `£${shipping.toFixed(2)}`}
                 </span>
               </div>
               <div className="border-t border-ry-ash/60 pt-3 flex justify-between text-base font-serif text-ry-onyx font-medium">
@@ -679,11 +660,10 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Installment Payment Notice */}
             <div className="mt-6 p-3 bg-ry-pearl/60 border border-ry-ash/60 text-[11px] text-ry-stone space-y-2">
               <div className="font-medium text-ry-onyx">Flexible Payment Options</div>
               <p>
-                You can pay installmentally with{' '}
+                Split payments available with{' '}
                 <span className="inline-flex items-center bg-[#FFA8CD] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">Klarna.</span>
                 {' '}and{' '}
                 <span className="inline-flex items-center bg-[#B2ECE1] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">clearpay✦</span>

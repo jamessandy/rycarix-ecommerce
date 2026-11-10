@@ -93,6 +93,7 @@ export interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  maxStock?: number;
 }
 
 export interface KlarnaInstallmentPlan {

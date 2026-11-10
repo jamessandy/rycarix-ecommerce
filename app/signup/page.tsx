@@ -4,22 +4,23 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Lock,
-  Mail,
   User,
   Eye,
   EyeOff,
   ShieldCheck,
-  Sparkles,
   ArrowRight,
   CheckCircle2,
   Crown,
   Truck,
   MapPin,
-  Phone,
-  Gift,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+
+type SignupFieldErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+};
 
 function SignupFormContent() {
   const router = useRouter();
@@ -32,6 +33,7 @@ function SignupFormContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
 
   // Account Credentials
   const [name, setName] = useState('');
@@ -48,42 +50,62 @@ function SignupFormContent() {
   const [deliveryNote, setDeliveryNote] = useState('');
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
+  const clearFieldError = (field: keyof SignupFieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateEmailField = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return 'Email address is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return 'Enter a valid email address.';
+    return '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!name.trim() || !email.trim() || !password) {
-      setErrorMessage('Please complete your name, email, and password.');
-      return;
-    }
+    const nameErr = !name.trim() ? 'Full name is required.' : '';
+    const emailErr = validateEmailField(email);
+    const passErr =
+      !password || password.length < 6 ? 'Password must be at least 6 characters.' : '';
 
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters.');
-      return;
-    }
-
-    if (!street.trim() || !city.trim() || !postalCode.trim()) {
-      setErrorMessage('Please provide your complete delivery address (street, city, postcode).');
+    if (nameErr || emailErr || passErr) {
+      setFieldErrors({
+        name: nameErr || undefined,
+        email: emailErr || undefined,
+        password: passErr || undefined,
+      });
       return;
     }
 
     setIsLoading(true);
     try {
-      const deliveryAddress = {
-        street: deliveryNote ? `${street.trim()} (Note: ${deliveryNote.trim()})` : street.trim(),
-        city: city.trim(),
-        state: state.trim(),
-        postalCode: postalCode.trim(),
-        country,
-      };
+      const hasAddressInput = street.trim() || city.trim() || postalCode.trim();
+      const deliveryAddress = hasAddressInput
+        ? {
+            street: deliveryNote.trim()
+              ? `${street.trim()} (Note: ${deliveryNote.trim()})`
+              : street.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            postalCode: postalCode.trim(),
+            country,
+          }
+        : undefined;
 
       const res = await signup(name, email, password, deliveryAddress, phone);
       if (res.success) {
-        setSuccessMessage('Welcome to Rycarix. Your client account and delivery address have been recorded.');
+        setSuccessMessage('Welcome to Rycarix. Your client account and delivery details have been saved.');
         setTimeout(() => {
           router.push(redirectUrl || '/dashboard/user');
-        }, 500);
+        }, 350);
       } else {
         setErrorMessage(res.error || 'Failed to create account.');
       }
@@ -111,7 +133,7 @@ function SignupFormContent() {
             </h1>
 
             <p className="text-xs text-ry-ash/80 mt-4 leading-relaxed font-light">
-              Register with your delivery address for one-click express courier dispatch, live GPS milestone tracking via Evri and Royal Mail, and split-payment checkout with Klarna and Clearpay.
+              Save your contact phone number and delivery address for streamlined checkout, live dispatch updates via Royal Mail &amp; international couriers, and split-payment flexibility.
             </p>
 
             <div className="mt-8 space-y-4 text-xs font-sans border-t border-ry-burgundy pt-6">
@@ -119,7 +141,7 @@ function SignupFormContent() {
                 <Truck className="w-4 h-4 text-amber-200 mt-0.5 shrink-0" />
                 <div>
                   <strong className="text-ry-white font-medium block">Tracked Courier Delivery</strong>
-                  <span className="text-ry-ash/70 text-[11px]">Milestone shipment tracking via Evri and Royal Mail.</span>
+                  <span className="text-ry-ash/70 text-[11px]">UK Standard £3.50, Free over £100, and tracked worldwide shipping.</span>
                 </div>
               </div>
 
@@ -157,24 +179,27 @@ function SignupFormContent() {
                 Account Registration
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl text-ry-onyx">
-                Personal & Delivery Details
+                Personal &amp; Delivery Details
               </h2>
               <p className="text-xs text-ry-stone mt-1">
-                Provide your delivery address now so future orders dispatch seamlessly.
+                Provide your contact number and delivery address now so future orders dispatch seamlessly.
               </p>
             </div>
 
-            {/* Error Message */}
             {errorMessage && (
               <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs animate-fade-in flex items-center justify-between">
                 <span>{errorMessage}</span>
-                <button onClick={() => setErrorMessage('')} className="text-red-500 hover:text-red-800 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage('')}
+                  className="text-red-500 hover:text-red-800 text-sm"
+                  aria-label="Dismiss error"
+                >
                   &times;
                 </button>
               </div>
             )}
 
-            {/* Success Message */}
             {successMessage && (
               <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs animate-fade-in flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -182,7 +207,7 @@ function SignupFormContent() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} noValidate className="space-y-6">
               {/* SECTION 1: ACCOUNT CREDENTIALS */}
               <div>
                 <h3 className="text-xs uppercase tracking-editorial font-medium text-ry-onyx border-b border-ry-ash/50 pb-2 mb-3 flex items-center gap-1.5">
@@ -192,62 +217,130 @@ function SignupFormContent() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    <label
+                      htmlFor="reg-name"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
                       Full Name *
                     </label>
                     <input
+                      id="reg-name"
+                      name="name"
                       type="text"
+                      autoComplete="name"
                       required
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        clearFieldError('name');
+                      }}
+                      onBlur={() => {
+                        if (!name.trim()) setFieldErrors((p) => ({ ...p, name: 'Full name is required.' }));
+                      }}
+                      aria-invalid={Boolean(fieldErrors.name)}
                       placeholder="Lady Eleanor Vance"
-                      className="w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border border-ry-ash focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors"
+                      className={`w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors ${
+                        fieldErrors.name ? 'border-red-500' : 'border-ry-ash'
+                      }`}
                     />
+                    {fieldErrors.name && (
+                      <p className="mt-1 text-[11px] text-red-600">{fieldErrors.name}</p>
+                    )}
                   </div>
 
                   <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    <label
+                      htmlFor="reg-email"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
                       Email Address *
                     </label>
                     <input
+                      id="reg-email"
+                      name="email"
                       type="email"
+                      autoComplete="username"
+                      spellCheck={false}
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        clearFieldError('email');
+                      }}
+                      onBlur={() => {
+                        const err = validateEmailField(email);
+                        if (err) setFieldErrors((p) => ({ ...p, email: err }));
+                      }}
+                      aria-invalid={Boolean(fieldErrors.email)}
                       placeholder="client@rycarix.com"
-                      className="w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border border-ry-ash focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors"
+                      className={`w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors ${
+                        fieldErrors.email ? 'border-red-500' : 'border-ry-ash'
+                      }`}
                     />
+                    {fieldErrors.email && (
+                      <p className="mt-1 text-[11px] text-red-600">{fieldErrors.email}</p>
+                    )}
                   </div>
 
                   <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    <label
+                      htmlFor="reg-password"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
                       Password * (min 6 characters)
                     </label>
                     <div className="relative">
                       <input
+                        id="reg-password"
+                        name="password"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         required
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          clearFieldError('password');
+                        }}
+                        onBlur={() => {
+                          if (!password || password.length < 6) {
+                            setFieldErrors((p) => ({
+                              ...p,
+                              password: 'Password must be at least 6 characters.',
+                            }));
+                          }
+                        }}
+                        aria-invalid={Boolean(fieldErrors.password)}
                         placeholder="••••••••"
-                        className="w-full pl-3.5 pr-10 py-2.5 text-xs bg-ry-pearl/50 border border-ry-ash focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors"
+                        className={`w-full pl-3.5 pr-10 py-2.5 text-xs bg-ry-pearl/50 border focus:outline-none focus:border-ry-onyx text-ry-onyx placeholder-ry-stone transition-colors ${
+                          fieldErrors.password ? 'border-red-500' : 'border-ry-ash'
+                        }`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-ry-stone hover:text-ry-onyx"
+                        aria-label="Toggle password visibility"
                       >
                         {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </div>
+                    {fieldErrors.password && (
+                      <p className="mt-1 text-[11px] text-red-600">{fieldErrors.password}</p>
+                    )}
                   </div>
 
                   <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    <label
+                      htmlFor="reg-phone"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
                       Phone Number (for Courier SMS Tracking)
                     </label>
                     <input
+                      id="reg-phone"
+                      name="phone"
                       type="tel"
+                      autoComplete="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+44 7700 900077"
@@ -261,17 +354,22 @@ function SignupFormContent() {
               <div>
                 <h3 className="text-xs uppercase tracking-editorial font-medium text-ry-onyx border-b border-ry-ash/50 pb-2 mb-3 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-ry-stone" />
-                  Primary Delivery Address
+                  Primary Delivery Address (Optional)
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="col-span-1 sm:col-span-3">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
-                      Street Address & Apartment / Suite *
+                    <label
+                      htmlFor="reg-street"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
+                      Street Address &amp; Apartment / Suite
                     </label>
                     <input
+                      id="reg-street"
+                      name="street"
                       type="text"
-                      required
+                      autoComplete="street-address"
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
                       placeholder="Flat 4B, 18 Grosvenor Gardens"
@@ -280,12 +378,17 @@ function SignupFormContent() {
                   </div>
 
                   <div className="col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
-                      City / Town *
+                    <label
+                      htmlFor="reg-city"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
+                      City / Town
                     </label>
                     <input
+                      id="reg-city"
+                      name="city"
                       type="text"
-                      required
+                      autoComplete="address-level2"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="London"
@@ -294,11 +397,17 @@ function SignupFormContent() {
                   </div>
 
                   <div className="col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    <label
+                      htmlFor="reg-state"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
                       County / Region
                     </label>
                     <input
+                      id="reg-state"
+                      name="state"
                       type="text"
+                      autoComplete="address-level1"
                       value={state}
                       onChange={(e) => setState(e.target.value)}
                       placeholder="Greater London"
@@ -307,12 +416,17 @@ function SignupFormContent() {
                   </div>
 
                   <div className="col-span-1">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
-                      Postcode / ZIP *
+                    <label
+                      htmlFor="reg-postal"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
+                      Postcode / ZIP (Optional)
                     </label>
                     <input
+                      id="reg-postal"
+                      name="postalCode"
                       type="text"
-                      required
+                      autoComplete="postal-code"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
                       placeholder="SW1W 0DH"
@@ -321,28 +435,40 @@ function SignupFormContent() {
                   </div>
 
                   <div className="col-span-1 sm:col-span-3">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
-                      Country / Territory *
+                    <label
+                      htmlFor="reg-country"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
+                      Country / Territory
                     </label>
                     <select
+                      id="reg-country"
+                      name="country"
+                      autoComplete="country-name"
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-xs bg-ry-pearl/50 border border-ry-ash focus:outline-none focus:border-ry-onyx text-ry-onyx transition-colors"
                     >
-                      <option value="United Kingdom">United Kingdom (Evri & Royal Mail)</option>
-                      <option value="United States">United States (FedEx Express)</option>
-                      <option value="France">France (DHL Express EU)</option>
-                      <option value="Germany">Germany (DHL Express EU)</option>
-                      <option value="Canada">Canada</option>
-                      <option value="Australia">Australia</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Ireland">Ireland (Europe)</option>
+                      <option value="France">France (Europe)</option>
+                      <option value="Germany">Germany (Europe)</option>
+                      <option value="United States">United States (USA &amp; Canada)</option>
+                      <option value="Canada">Canada (USA &amp; Canada)</option>
+                      <option value="Australia">Australia (Rest of World)</option>
                     </select>
                   </div>
 
                   <div className="col-span-1 sm:col-span-3">
-                    <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5">
+                    <label
+                      htmlFor="reg-note"
+                      className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1.5"
+                    >
                       Delivery Safe Place / Gate Instructions (Optional)
                     </label>
                     <input
+                      id="reg-note"
+                      name="deliveryNote"
                       type="text"
                       value={deliveryNote}
                       onChange={(e) => setDeliveryNote(e.target.value)}
@@ -358,6 +484,7 @@ function SignupFormContent() {
                 <input
                   type="checkbox"
                   id="newsletter"
+                  name="newsletter"
                   checked={newsletterOptIn}
                   onChange={(e) => setNewsletterOptIn(e.target.checked)}
                   className="rounded border-ry-ash text-ry-burgundy focus:ring-ry-burgundy"
@@ -376,7 +503,7 @@ function SignupFormContent() {
                   <span>Registering Account...</span>
                 ) : (
                   <>
-                    <span>Create Account & Save Delivery Address</span>
+                    <span>Create Account &amp; Save Profile</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Package, Sparkles } from 'lucide-react';
-import { ProductItem, Product } from '@/lib/types/ecommerce';
-import { PRODUCTS } from '@/lib/data/mockData';
+import { Package } from 'lucide-react';
+import { ProductItem } from '@/lib/types/ecommerce';
 import ProductDetailView from './ProductDetailView';
 
 interface ProductDetailContainerProps {
@@ -17,61 +16,38 @@ export default function ProductDetailContainer({ slug, initialProduct }: Product
   const [isLoading, setIsLoading] = useState(!initialProduct);
 
   useEffect(() => {
-    // If we already have the product from server, check if there's a more updated version in localStorage
-    let found: ProductItem | null = initialProduct || null;
+    let active = true;
 
-    if (typeof window !== 'undefined') {
+    const refreshProduct = async () => {
       try {
-        const raw = localStorage.getItem('rycarix_catalog_products');
-        if (raw) {
-          const list: ProductItem[] = JSON.parse(raw);
-          const match = list.find(
-            (p) =>
-              p.slug === slug ||
-              p.id === slug ||
-              p.slug.toLowerCase() === slug.toLowerCase() ||
-              p.id.toLowerCase() === slug.toLowerCase()
-          );
-          if (match) {
-            found = match;
-          }
+        const res = await fetch(`/api/products?slug=${encodeURIComponent(slug)}&includeDrafts=false`, {
+          cache: 'no-store',
+        });
+        if (!active) return;
+
+        if (res.ok) {
+          const data = await res.json();
+          setProduct(data?.product || null);
+        } else if (res.status === 404) {
+          setProduct(null);
         }
       } catch (e) {
-        console.warn('Could not read product from localStorage', e);
+        console.warn('Could not refresh product from API', e);
+      } finally {
+        if (active) setIsLoading(false);
       }
-    }
+    };
 
-    if (!found) {
-      // Check static PRODUCTS as fallback
-      const staticMatch = PRODUCTS.find(
-        (p) =>
-          p.slug === slug ||
-          p.id === slug ||
-          p.slug.toLowerCase() === slug.toLowerCase() ||
-          p.id.toLowerCase() === slug.toLowerCase()
-      );
-      if (staticMatch) found = staticMatch;
-    }
+    refreshProduct();
 
-    // Also try fetching from /api/products?slug=...
-    if (!found) {
-      fetch(`/api/products?slug=${encodeURIComponent(slug)}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.product) {
-            setProduct(data.product);
-          }
-          setIsLoading(false);
-        })
-        .catch(() => {
-          setIsLoading(false);
-        });
-      return;
-    }
-
-    setProduct(found);
-    setIsLoading(false);
-  }, [slug, initialProduct]);
+    window.addEventListener('rycarix-catalog-updated', refreshProduct);
+    window.addEventListener('focus', refreshProduct);
+    return () => {
+      active = false;
+      window.removeEventListener('rycarix-catalog-updated', refreshProduct);
+      window.removeEventListener('focus', refreshProduct);
+    };
+  }, [slug]);
 
   if (isLoading) {
     return (
@@ -129,7 +105,7 @@ export default function ProductDetailContainer({ slug, initialProduct }: Product
     price: Number((product as any).price ?? (product as any).basePrice ?? 0),
     basePrice: Number((product as any).price ?? (product as any).basePrice ?? 0),
     compareAtPrice: (product as any).compareAtPrice ? Number((product as any).compareAtPrice) : undefined,
-    stock: Number((product as any).stock ?? (product as any).variants?.[0]?.inventory ?? 15),
+    stock: Number((product as any).stock ?? (product as any).variants?.[0]?.inventory ?? 0),
     category: (product as any).category || 'Parfum',
     images: (product as any).images || [],
     variants: (product as any).variants || [],

@@ -94,9 +94,17 @@ export default function AdminDashboardPage() {
   // Orders state
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [dispatchingOrderId, setDispatchingOrderId] = useState<string | null>(null);
   const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
+  const [dispatchErrorMsg, setDispatchErrorMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const notifyStorefrontUpdated = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('rycarix-catalog-updated'));
+    }
+  };
 
   const fetchSharedDatabaseCatalog = async () => {
     setLoading(true);
@@ -112,13 +120,7 @@ export default function AdminDashboardPage() {
       const prodList = data.products || [];
       setProducts(prodList);
       setCategoryCounts(data.categoryCounts || {});
-
-      // Keep client localStorage in sync as a quick local cache
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('rycarix_catalog_products', JSON.stringify(prodList));
-        } catch (e) {}
-      }
+      notifyStorefrontUpdated();
     } catch (err: any) {
       setDbError(err.message || 'Database connection failed');
     } finally {
@@ -129,31 +131,11 @@ export default function AdminDashboardPage() {
   const fetchOrders = async () => {
     setOrdersLoading(true);
     try {
-      let localOrders: any[] = [];
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('rycarix_orders');
-        if (saved) {
-          try {
-            localOrders = JSON.parse(saved);
-          } catch (e) {}
-        }
-      }
-
-      const res = await fetch('/api/orders');
+      const res = await fetch(`/api/orders?_t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data.orders && Array.isArray(data.orders)) {
-          const combined = [...data.orders];
-          localOrders.forEach((lo) => {
-            if (!combined.some((co) => co.id === lo.id)) {
-              combined.push(lo);
-            }
-          });
-          setOrders(combined);
-          return;
-        }
+        setOrders(Array.isArray(data.orders) ? data.orders : []);
       }
-      setOrders(localOrders);
     } catch (err) {
       console.warn('Failed to fetch orders:', err);
     } finally {
@@ -239,7 +221,7 @@ export default function AdminDashboardPage() {
     const validImages =
       images.length > 0
         ? images
-        : ['https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=1200&auto=format&fit=crop'];
+        : ['/images/perfumes/princess-reef.jpg'];
 
     setSubmitting(true);
     try {
@@ -344,50 +326,53 @@ export default function AdminDashboardPage() {
   };
 
   const handleConfirmDispatch = async (ord: any) => {
-    const trackingNumber = ord.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`;
-    const trackingUrl = `https://www.royalmail.com/track-your-item#/tracking-results/${trackingNumber}`;
+    const refId = ord.orderNumber || ord.id;
+    setDispatchingOrderId(refId);
+    setDispatchSuccessMsg('');
+    setDispatchErrorMsg('');
 
-    // Send automated dispatch notification email
+    const trackingNumber = ord.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`;
+    const carrier =
+      ord.carrier && ord.carrier !== ''
+        ? ord.carrier
+        : 'Royal Mail Tracked';
+
     try {
-      await fetch('/api/email/dispatch-notification', {
-        method: 'POST',
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderNumber: ord.id,
-          recipientEmail: ord.email || ord.customerEmail || 'client@rycarix.com',
-          customerName: ord.customer || ord.customerName || 'Valued Client',
-          carrier: ord.carrier || 'Royal Mail Tracked 48',
+          orderNumber: refId,
+          orderId: refId,
+          carrier,
           trackingNumber,
-          trackingUrl,
-          estimatedDeliveryDays: '2–3 working days',
-          shippingAddress: ord.address
-            ? `${ord.address.street || ''}, ${ord.address.city || ''} ${ord.address.postalCode || ''}`
-            : 'United Kingdom',
+          estimatedDelivery: ord.shippingRecommendation || '2–3 working days',
+          currentStatus: 'IN_TRANSIT',
         }),
       });
-    } catch (e) {
-      console.warn('Dispatch email notice could not be sent:', e);
-    }
-
-    const updatedOrders = orders.map((o) => {
-      if (o.id === ord.id) {
-        return {
-          ...o,
-          fulfillment: 'Dispatched',
-          status: 'SHIPPED',
-          trackingNumber,
-        };
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not confirm dispatch in database.');
       }
-      return o;
-    });
 
-    setOrders(updatedOrders);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('rycarix_orders', JSON.stringify(updatedOrders));
+      if (data.order) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.orderNumber === refId || o.id === refId ? data.order : o
+          )
+        );
+      }
+      await fetchOrders();
+
+      setDispatchSuccessMsg(
+        `Order ${refId} permanently marked as Dispatched (Tracking: ${data.order?.trackingNumber || trackingNumber}) and dispatch email sent.`
+      );
+      setTimeout(() => setDispatchSuccessMsg(''), 6000);
+    } catch (err: any) {
+      setDispatchErrorMsg(err?.message || 'Failed to confirm dispatch.');
+    } finally {
+      setDispatchingOrderId(null);
     }
-
-    setDispatchSuccessMsg(`Order ${ord.id} marked as Dispatched! Tracking: ${trackingNumber}`);
-    setTimeout(() => setDispatchSuccessMsg(''), 5000);
   };
 
   const totalUnits = products.reduce((acc, p) => acc + Number(p.stock ?? 0), 0);
@@ -897,8 +882,15 @@ export default function AdminDashboardPage() {
           </div>
 
           {dispatchSuccessMsg && (
-            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-medium">
-              {dispatchSuccessMsg}
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-medium flex items-center gap-2">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{dispatchSuccessMsg}</span>
+            </div>
+          )}
+
+          {dispatchErrorMsg && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-xs font-medium">
+              {dispatchErrorMsg}
             </div>
           )}
 
@@ -921,19 +913,29 @@ export default function AdminDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {orders.map((ord: any) => {
-                    const isDispatched = ord.fulfillment === 'Dispatched' || ord.status === 'SHIPPED';
+                    const isDispatched = Boolean(
+                      ord.status === 'SHIPPED' ||
+                        ord.status === 'DELIVERED' ||
+                        ord.fulfillmentStatus === 'FULFILLED' ||
+                        (ord.fulfillment && String(ord.fulfillment).toLowerCase().includes('dispatched')) ||
+                        (ord.trackingNumber && String(ord.trackingNumber).trim().length > 0)
+                    );
+                    const refId = ord.orderNumber || ord.id;
+                    const isSubmittingDispatch = dispatchingOrderId === refId;
                     return (
-                      <tr key={ord.id} className="hover:bg-neutral-50">
+                      <tr key={refId} className="hover:bg-neutral-50">
                         <td className="py-3 px-3 font-mono text-xs font-medium text-neutral-900">
-                          {ord.id}
+                          {refId}
                         </td>
                         <td className="py-3 px-3">
                           <p className="font-medium text-neutral-900">{ord.customer || ord.customerName || 'Valued Client'}</p>
                           <p className="text-xs text-neutral-400">{ord.email || ord.customerEmail}</p>
                         </td>
                         <td className="py-3 px-3 text-xs text-neutral-600">
-                          {Array.isArray(ord.items)
-                            ? ord.items.map((it: any) => `${it.title || it.name} (${it.quantity || 1})`).join(', ')
+                          {Array.isArray(ord.itemsList) && ord.itemsList.length > 0
+                            ? ord.itemsList.map((it: any) => `${it.title || it.name} (x${it.quantity || 1})`).join(', ')
+                            : typeof ord.items === 'string' && ord.items
+                            ? ord.items
                             : `${ord.itemsCount || 1} item(s)`}
                         </td>
                         <td className="py-3 px-3 font-semibold text-neutral-900">
@@ -941,26 +943,29 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="py-3 px-3">
                           <span
-                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               isDispatched
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : 'bg-amber-100 text-amber-800'
                             }`}
                           >
-                            {isDispatched ? 'Dispatched' : 'Awaiting Dispatch'}
+                            {isDispatched && <Check className="w-3 h-3" />}
+                            <span>{ord.status === 'DELIVERED' ? 'Delivered' : isDispatched ? 'Dispatched' : 'Awaiting Dispatch'}</span>
                           </span>
                         </td>
                         <td className="py-3 px-3 text-right">
                           {isDispatched ? (
                             <div className="flex items-center justify-end gap-2">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-xs font-medium">
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Confirmed</span>
+                              </span>
                               <span className="text-xs text-neutral-500 font-mono">
-                                {ord.trackingNumber || 'Dispatched'}
+                                {ord.trackingNumber}
                               </span>
                               {ord.trackingNumber && (
                                 <a
-                                  href={`https://www.royalmail.com/track-your-item#/tracking-results/${ord.trackingNumber}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                  href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
                                   className="text-xs text-neutral-700 hover:text-neutral-900 underline flex items-center gap-1"
                                 >
                                   <span>Track</span>
@@ -970,10 +975,12 @@ export default function AdminDashboardPage() {
                             </div>
                           ) : (
                             <button
+                              type="button"
+                              disabled={isSubmittingDispatch}
                               onClick={() => handleConfirmDispatch(ord)}
-                              className="px-3 py-1.5 bg-neutral-900 text-white rounded text-xs font-medium hover:bg-neutral-800 transition cursor-pointer"
+                              className="px-3 py-1.5 bg-neutral-900 text-white rounded text-xs font-medium hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50"
                             >
-                              Confirm Dispatch
+                              {isSubmittingDispatch ? 'Confirming...' : 'Confirm Dispatch'}
                             </button>
                           )}
                         </td>

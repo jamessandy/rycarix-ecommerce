@@ -172,8 +172,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#transparency" className="hover:text-ry-white transition-colors">
-                  Product Transparency
+                <Link href="/about" className="hover:text-ry-white transition-colors">
+                  Our Ethos &amp; Story
                 </Link>
               </li>
             </ul>

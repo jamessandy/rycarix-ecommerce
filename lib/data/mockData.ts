@@ -1,4 +1,5 @@
 import { ProductItem, Product } from '@/lib/types/ecommerce';
+import { normalizeCategorySlug } from '@/lib/utils/categoryUtils';
 
 export interface CategoryItem {
   id: string;
@@ -35,7 +36,7 @@ export const CATEGORIES: CategoryItem[] = [
     name: 'Hair',
     slug: 'hair',
     description: 'Biomimetic ceramides, vegan silk polypeptides, and restorative nectar oils.',
-    image: '/images/media_1791069473262.jpg',
+    image: '/images/products/hair-nectar-oil.jpg',
     productCount: 3,
     featuredTag: 'Bestseller',
   },
@@ -53,24 +54,24 @@ export const CATEGORIES: CategoryItem[] = [
     name: 'Skincare',
     slug: 'skincare',
     description: 'High-potency cellular serums, barrier restorative balms, and cold-extracted actives.',
-    image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=1200&auto=format&fit=crop',
-    productCount: 3,
+    image: '/images/products/botanical-serum.jpg',
+    productCount: 2,
   },
   {
     id: 'cat-body',
     name: 'Body & Bath',
     slug: 'body-bath',
     description: 'Sensory mineral body polishes, velvety botanical washes, and restorative botanicals.',
-    image: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?q=80&w=1200&auto=format&fit=crop',
-    productCount: 1,
+    image: '/images/products/body-wash.jpg',
+    productCount: 2,
   },
   {
     id: 'cat-home',
     name: 'Home & Candles',
     slug: 'home-living',
     description: 'Hand-poured ceramic candles, room mists, and luxury home goods.',
-    image: '/images/about/IMG_1981.jpg',
-    productCount: 1,
+    image: '/images/products/scented-candle.jpg',
+    productCount: 2,
     featuredTag: 'New In',
   },
   {
@@ -78,8 +79,8 @@ export const CATEGORIES: CategoryItem[] = [
     name: 'Accessories',
     slug: 'accessories',
     description: 'Hand-stitched Italian leather travel cases and 22-momme pure mulberry silk goods.',
-    image: '/images/about/IMG_1983.jpg',
-    productCount: 1,
+    image: '/images/products/leather-travel-case.jpg',
+    productCount: 2,
   },
 ];
 
@@ -112,20 +113,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-hs-hero',
-        url: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=1200&auto=format&fit=crop',
-        alt: 'L’Huile Sublime luxury bottle in dark-field lighting',
+        url: '/images/products/hair-nectar-oil.jpg',
+        alt: 'L’Huile Sublime luxury hair oil bottle on travertine stone',
         isHero: true,
-      },
-      {
-        id: 'img-hs-texture',
-        url: 'https://images.unsplash.com/photo-1617897903246-719242758050?q=80&w=1200&auto=format&fit=crop',
-        alt: 'L’Huile Sublime macro golden oil droplet texture with refraction',
-        isTexture: true,
-      },
-      {
-        id: 'img-hs-lifestyle',
-        url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Application ritual on silk textured hair',
       },
     ],
     variants: [
@@ -181,15 +171,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-cs-hero',
-        url: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Crème de Soie minimalist porcelain tub packaging',
+        url: '/images/products/keratin-hair-mask.jpg',
+        alt: 'Crème de Soie minimalist porcelain keratin hair mask jar',
         isHero: true,
-      },
-      {
-        id: 'img-cs-texture',
-        url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro silky whipped emulsion swirl texture',
-        isTexture: true,
       },
     ],
     variants: [
@@ -619,15 +603,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-br-hero',
-        url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?q=80&w=1200&auto=format&fit=crop',
+        url: '/images/products/botanical-serum.jpg',
         alt: 'Botanical Radiance Cellular Serum with precision dropper',
         isHero: true,
-      },
-      {
-        id: 'img-br-texture',
-        url: 'https://images.unsplash.com/photo-1617897903246-719242758050?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro golden serum droplet with light refraction',
-        isTexture: true,
       },
     ],
     variants: [
@@ -674,15 +652,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-nb-hero',
-        url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1200&auto=format&fit=crop',
+        url: '/images/products/night-balm.jpg',
         alt: 'Regenerative Barrier Night Balm in minimalist porcelain jar',
         isHero: true,
-      },
-      {
-        id: 'img-nb-texture',
-        url: 'https://images.unsplash.com/photo-1512290900672-1f55b6c00560?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro silky whipped balm swirl texture',
-        isTexture: true,
       },
     ],
     variants: [
@@ -724,15 +696,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-vb-hero',
-        url: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?q=80&w=1200&auto=format&fit=crop',
+        url: '/images/products/body-wash.jpg',
         alt: 'Velvet Botanique Body Wash sleek amber pump dispenser',
         isHero: true,
-      },
-      {
-        id: 'img-vb-texture',
-        url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Silky clear botanical gel texture with fine lather',
-        isTexture: true,
       },
     ],
     variants: [
@@ -777,15 +743,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-es-hero',
-        url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Exfoliant de Soie in luxurious glass bowl setting',
+        url: '/images/products/body-polish.jpg',
+        alt: 'Exfoliant de Soie in weighted matte glass jar',
         isHero: true,
-      },
-      {
-        id: 'img-es-texture',
-        url: 'https://images.unsplash.com/photo-1512290900672-1f55b6c00560?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro shot of pink mineral salt crystals and rich botanical oil',
-        isTexture: true,
       },
     ],
     variants: [
@@ -827,15 +787,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-fn-hero',
-        url: 'https://images.unsplash.com/photo-1603006905003-be475563bc59?q=80&w=1200&auto=format&fit=crop',
+        url: '/images/products/scented-candle.jpg',
         alt: 'Flamme Noire ceramic scented candle with glowing warm flame',
         isHero: true,
-      },
-      {
-        id: 'img-fn-texture',
-        url: 'https://images.unsplash.com/photo-1507652313519-d4e9174996dd?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro shot of smooth matte ceramic glaze and organic wax surface',
-        isTexture: true,
       },
     ],
     variants: [
@@ -870,15 +824,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-bi-hero',
-        url: 'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Brume d’Intérieur glass mist bottle in tranquil morning light',
+        url: '/images/products/linen-mist.jpg',
+        alt: 'Brume d’Intérieur glass mist bottle in morning light',
         isHero: true,
-      },
-      {
-        id: 'img-bi-texture',
-        url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Fine airborne fragrance mist dispersion detail',
-        isTexture: true,
       },
     ],
     variants: [
@@ -921,15 +869,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-lc-hero',
-        url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=1200&auto=format&fit=crop',
+        url: '/images/products/leather-travel-case.jpg',
         alt: 'Artisan leather travel case with fine saddle stitching detail',
         isHero: true,
-      },
-      {
-        id: 'img-lc-texture',
-        url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro shot of grain and edge-stitching craftsmanship',
-        isTexture: true,
       },
     ],
     variants: [
@@ -976,15 +918,9 @@ export const PRODUCTS: ProductItem[] = [
     images: [
       {
         id: 'img-sm-hero',
-        url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?q=80&w=1200&auto=format&fit=crop',
+        url: '/images/products/silk-sleep-mask.jpg',
         alt: 'Pure Mulberry Silk Sleep Mask in rich charcoal silk setting',
         isHero: true,
-      },
-      {
-        id: 'img-sm-texture',
-        url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1200&auto=format&fit=crop',
-        alt: 'Macro silky luster and hand-finished piping detail',
-        isTexture: true,
       },
     ],
     variants: [
@@ -1035,7 +971,7 @@ export const CUSTOMER_REVIEWS: ReviewItem[] = [
   {
     id: 'rev-1',
     author: 'Elena Rostova',
-    location: 'Zurich, Switzerland',
+    location: 'Edinburgh, UK',
     rating: 5,
     productTitle: 'Botanical Radiance Cellular Serum',
     category: 'Skincare',
@@ -1059,24 +995,24 @@ export const CUSTOMER_REVIEWS: ReviewItem[] = [
   {
     id: 'rev-3',
     author: 'Clara Delacroix',
-    location: 'Paris, France',
+    location: 'Bath, UK',
     rating: 5,
     productTitle: 'Flamme Noire Artisanal Candle',
     category: 'Home & Candles',
     title: 'The Limoges ceramic vessel is exquisite',
-    comment: 'The scent throw fills our entire Parisian apartment with warm fig and oud without ever being overpowering. When finished, I will keep the ceramic container for my vanity.',
+    comment: 'The scent throw fills our entire Bath townhouse with warm fig and oud without ever being overpowering. When finished, I will keep the ceramic container for my vanity.',
     verified: true,
     date: '1 month ago',
   },
   {
     id: 'rev-4',
     author: 'Aria Chen',
-    location: 'San Francisco, CA',
+    location: 'Manchester, UK',
     rating: 5,
     productTitle: 'L’Huile Sublime Regenerative Nectar',
     category: 'Hair',
     title: 'Weightless shine with zero buildup',
-    comment: 'Transformed my bleached hair ends. Two drops warm in palms and it absorbs instantly leaving hair like spun silk. Split my purchase with Klarna in 4 payments with zero hassle.',
+    comment: 'Transformed my bleached hair ends. Two drops warm in palms and it absorbs instantly leaving hair like spun silk. Split my purchase with Klarna in 3 payments with zero hassle.',
     verified: true,
     date: '1 month ago',
   },
@@ -1091,7 +1027,7 @@ export const mockProducts: Product[] = PRODUCTS.map((p) => ({
   price: Number(p.basePrice),
   compareAtPrice: p.compareAtPrice ? Number(p.compareAtPrice) : undefined,
   stock: Number(p.variants?.[0]?.inventory ?? 20),
-  category: (p.category || 'perfume').toLowerCase(),
+  category: normalizeCategorySlug(p.category),
   images: Array.isArray(p.images)
     ? p.images.map((img) => (typeof img === 'string' ? img : img.url))
     : ['/images/media_1791069473262.jpg'],

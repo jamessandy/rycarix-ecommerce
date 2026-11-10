@@ -116,26 +116,30 @@ export default function DeliveryPage() {
 
           <div className="bg-white border border-ry-ash/70 rounded-xl overflow-hidden shadow-xs divide-y divide-ry-ash/50">
             {/* Table Header */}
-            <div className="grid grid-cols-2 bg-neutral-900 text-white text-xs uppercase tracking-editorial px-5 py-3.5">
+            <div className="grid grid-cols-3 bg-neutral-900 text-white text-xs uppercase tracking-editorial px-5 py-3.5">
               <span>Destination</span>
+              <span className="text-center">Rate</span>
               <span className="text-right">Estimated delivery</span>
             </div>
 
             {/* Europe */}
-            <div className="grid grid-cols-2 items-center px-5 py-4">
+            <div className="grid grid-cols-3 items-center px-5 py-4">
               <span className="text-sm font-medium text-neutral-900">Europe</span>
+              <span className="text-sm font-mono font-semibold text-neutral-900 text-center">£9.95</span>
               <span className="text-sm text-neutral-600 text-right">3–5 working days</span>
             </div>
 
             {/* USA & Canada */}
-            <div className="grid grid-cols-2 items-center px-5 py-4 bg-neutral-50/50">
+            <div className="grid grid-cols-3 items-center px-5 py-4 bg-neutral-50/50">
               <span className="text-sm font-medium text-neutral-900">USA &amp; Canada</span>
+              <span className="text-sm font-mono font-semibold text-neutral-900 text-center">£14.95</span>
               <span className="text-sm text-neutral-600 text-right">5–7 working days</span>
             </div>
 
             {/* Rest of the World */}
-            <div className="grid grid-cols-2 items-center px-5 py-4">
+            <div className="grid grid-cols-3 items-center px-5 py-4">
               <span className="text-sm font-medium text-neutral-900">Rest of the World</span>
+              <span className="text-sm font-mono font-semibold text-neutral-900 text-center">£18.95</span>
               <span className="text-sm text-neutral-600 text-right">5–7 working days or longer</span>
             </div>
           </div>

@@ -1,30 +1,27 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Package,
-  Calendar,
-  CreditCard,
   MapPin,
   Heart,
   User,
   ShieldCheck,
   CheckCircle2,
-  ArrowRight,
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
   LogOut,
   Truck,
   Plus,
   X,
   Phone,
+  AlertCircle,
+  Clock,
+  Loader2,
 } from 'lucide-react';
 import { useCartStore } from '@/lib/store/useCartStore';
-import { useAuthStore, UserAddress } from '@/lib/store/useAuthStore';
+import { useAuthStore } from '@/lib/store/useAuthStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
 
 function UserDashboardContent() {
@@ -32,37 +29,100 @@ function UserDashboardContent() {
     'orders'
   );
   const { addItem, openCart, clearCart } = useCartStore();
-  const { user, isAuthenticated, logout, updateProfile, addAddress } = useAuthStore();
+  const { user, isAuthenticated, logout, updateProfile, addAddress, refreshProfile } = useAuthStore();
   const { items: wishlistItems, removeItem: removeWishlistItem } = useWishlistStore();
-  
+
   const searchParams = useSearchParams();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
-  const [paymentMethodParam, setPaymentMethodParam] = useState<string>('card');
+  const [confirmingOrder, setConfirmingOrder] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
+  const [liveCatalog, setLiveCatalog] = useState<any[]>([]);
+
+  const confirmedAttemptRef = useRef<string>('');
+
+  // Confirm order completion & load latest profile/catalog on mount
+  useEffect(() => {
+    refreshProfile().catch(() => {});
+    fetch('/api/products?includeDrafts=false', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.products && Array.isArray(data.products)) {
+          setLiveCatalog(data.products);
+        }
+      })
+      .catch(() => {});
+  }, [refreshProfile]);
 
   useEffect(() => {
-    if (searchParams.get('checkout_simulated') === 'true' || searchParams.get('status') === 'success') {
+    const sessionId = searchParams.get('session_id') || '';
+    const orderId = searchParams.get('orderId') || '';
+    const isSimulated = searchParams.get('checkout_simulated') === 'true';
+    const isSuccess = searchParams.get('status') === 'success';
+    const method = searchParams.get('method') || '';
+
+    if (sessionId || isSimulated || isSuccess) {
       setShowCheckoutSuccess(true);
       clearCart();
-      const method = searchParams.get('method') || 'card';
-      setPaymentMethodParam(method);
+
+      const key = `${sessionId}|${orderId}|${isSimulated}`;
+      if (confirmedAttemptRef.current === key) return;
+      confirmedAttemptRef.current = key;
+
+      if (sessionId || orderId) {
+        setConfirmingOrder(true);
+        setConfirmError('');
+        fetch('/api/orders/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: sessionId || undefined,
+            orderNumber: orderId || undefined,
+            simulated: isSimulated,
+            paymentMethod: method || undefined,
+          }),
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Could not confirm order details.');
+            }
+            if (data.order) {
+              setConfirmedOrder(data.order);
+            }
+          })
+          .catch((err) => {
+            setConfirmError(err?.message || 'Unable to verify order receipt.');
+          })
+          .finally(() => {
+            setConfirmingOrder(false);
+          });
+      }
     }
   }, [searchParams, clearCart]);
 
   // Profile Form State
   const [profileSaved, setProfileSaved] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
   });
+  const lastSyncedUserKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (user) {
-      setProfileForm({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      });
+      const nextKey = `${user.email}|${user.name}|${user.phone}`;
+      if (lastSyncedUserKeyRef.current !== nextKey) {
+        lastSyncedUserKeyRef.current = nextKey;
+        setProfileForm({
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || '',
+        });
+      }
     }
   }, [user]);
 
@@ -78,22 +138,28 @@ function UserDashboardContent() {
     isDefault: true,
   });
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile({
-      name: profileForm.name,
-      email: profileForm.email,
-      phone: profileForm.phone,
-      avatarInitial: profileForm.name.charAt(0).toUpperCase(),
+    setProfileSaveError('');
+    setIsSavingProfile(true);
+    const res = await updateProfile({
+      name: profileForm.name.trim(),
+      phone: profileForm.phone.trim(),
+      avatarInitial: (profileForm.name.trim() || user?.name || 'C').charAt(0).toUpperCase(),
     });
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 3000);
+    setIsSavingProfile(false);
+    if (res.success) {
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } else {
+      setProfileSaveError(res.error || 'Failed to save profile details.');
+    }
   };
 
-  const handleAddAddressSubmit = (e: React.FormEvent) => {
+  const handleAddAddressSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAddress.street || !newAddress.city || !newAddress.postalCode) return;
-    addAddress(newAddress);
+    if (!newAddress.street || !newAddress.city) return;
+    await addAddress(newAddress);
     setIsAddingAddress(false);
     setNewAddress({
       type: 'Secondary Address',
@@ -106,150 +172,154 @@ function UserDashboardContent() {
     });
   };
 
-  // Load persisted orders from live Stripe API and localStorage
+  // Load persisted orders directly from Neon PostgreSQL API
   const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   const [adminOrdersView, setAdminOrdersView] = useState<'all' | 'personal'>('all');
-  const defaultAddr = user?.addresses?.find((a) => a.isDefault) || user?.addresses?.[0];
 
   const personalOrders = userOrders.filter(
     (o) => (o.email || '').toLowerCase() === (user?.email || '').toLowerCase()
   );
   const displayedOrders =
-    user?.role === 'ADMIN' ? (adminOrdersView === 'personal' ? personalOrders : userOrders) : userOrders;
+    user?.role === 'ADMIN'
+      ? adminOrdersView === 'personal'
+        ? personalOrders
+        : userOrders
+      : userOrders;
 
   useEffect(() => {
-    let localList: any[] = [];
-    try {
-      const raw = localStorage.getItem('rycarix_orders');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) localList = parsed;
-      }
-    } catch (err) {
-      console.warn('Could not load saved orders', err);
-    }
+    const orderIdParam = searchParams.get('orderId') || confirmedOrder?.orderNumber || '';
 
     const fetchLiveOrders = async () => {
+      if (!user?.email && !orderIdParam) return;
+      setOrdersLoading(true);
       try {
-        const query = user?.role === 'ADMIN' ? '' : user?.email ? `?email=${encodeURIComponent(user.email)}` : '';
-        const res = await fetch(`/api/orders${query}`);
+        const query =
+          user?.role === 'ADMIN'
+            ? ''
+            : user?.email
+            ? `?email=${encodeURIComponent(user.email)}`
+            : `?orderId=${encodeURIComponent(orderIdParam)}`;
+
+        const res = await fetch(`/api/orders${query}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
-            const combined = [...data.orders];
-            for (let i = 0; i < combined.length; i++) {
-              const c = combined[i];
-              const match = localList.find((l) => l.id === c.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId));
-              if (match) {
-                if (!c.phone && match.phone) {
-                  c.phone = match.phone;
-                  if (c.address) c.address.phone = match.phone;
-                }
-                // NEVER REVERT DISPATCH STATUS
-                if (
-                  match.fulfillment &&
-                  match.fulfillment.toLowerCase().includes('dispatched') &&
-                  (!c.fulfillment || !c.fulfillment.toLowerCase().includes('dispatched'))
-                ) {
-                  c.fulfillment = match.fulfillment;
-                  c.carrier = match.carrier || c.carrier;
-                  c.trackingNumber = match.trackingNumber || c.trackingNumber;
-                  c.currentStatus = match.currentStatus || 'IN_TRANSIT';
-                  c.estimatedDelivery = match.estimatedDelivery || c.estimatedDelivery;
-                }
-              }
-              if (!c.phone && user?.phone && c.email?.toLowerCase() === user?.email?.toLowerCase()) {
-                c.phone = user.phone;
-                if (c.address) c.address.phone = user.phone;
-              }
-            }
-            for (const l of localList) {
-              if (!combined.some((c) => c.id === l.id || (c.stripeSessionId && c.stripeSessionId === l.stripeSessionId))) {
-                combined.push(l);
-              }
-            }
-            setUserOrders(combined);
-            try {
-              localStorage.setItem('rycarix_orders', JSON.stringify(combined));
-            } catch (e) {}
-            return;
+          const list: any[] = Array.isArray(data.orders) ? [...data.orders] : [];
+          if (
+            confirmedOrder &&
+            !list.some(
+              (o) =>
+                o.orderNumber === confirmedOrder.orderNumber || o.id === confirmedOrder.id
+            )
+          ) {
+            list.unshift(confirmedOrder);
           }
+          setUserOrders(list);
+          return;
         }
       } catch (e) {
         console.warn('Could not fetch orders from API', e);
-      }
-
-      if (localList.length > 0) {
-        setUserOrders(localList);
-        return;
-      }
-
-      // If no saved orders but checkout was just completed, create and persist a record
-      if (showCheckoutSuccess) {
-        const fallbackOrder = {
-          id: searchParams.get('orderId') || 'RY-84920',
-          orderNumber: searchParams.get('orderId') || 'RY-84920',
-          date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-          status: 'CONFIRMED',
-          fulfillment: 'Ready for Dispatch',
-          carrier: 'Royal Mail Tracked 48',
-          shippingService: 'Tracked 48, small parcel up to 2kg',
-          trackingNumber: '7829-1092-4821',
-          total: 135.0,
-          paymentMethod:
-            paymentMethodParam === 'klarna'
-              ? 'Klarna Pay in 3'
-              : paymentMethodParam === 'clearpay'
-              ? 'Clearpay Pay in 4'
-              : 'Stripe Card (1-Click)',
-          address: defaultAddr
-            ? {
-                street: defaultAddr.street,
-                city: defaultAddr.city,
-                state: defaultAddr.state,
-                postalCode: defaultAddr.postalCode,
-                country: defaultAddr.country,
-              }
-            : {
-                street: '18 Grosvenor Gardens',
-                city: 'London',
-                state: 'Greater London',
-                postalCode: 'SW1W 0DH',
-                country: 'United Kingdom',
-              },
-          itemsList: [
-            {
-              title: 'Order Item',
-              variantTitle: 'Standard',
-              quantity: 1,
-              price: 135.0,
-              image: 'https://images.unsplash.com/photo-1608248597359-57e3f1638271?q=80&w=600&auto=format&fit=crop',
-            },
-          ],
-        };
-        setUserOrders([fallbackOrder]);
-        try {
-          localStorage.setItem('rycarix_orders', JSON.stringify([fallbackOrder]));
-        } catch (e) {}
+      } finally {
+        setOrdersLoading(false);
       }
     };
 
     fetchLiveOrders();
-  }, [showCheckoutSuccess, paymentMethodParam, defaultAddr, searchParams, user]);
+  }, [user?.email, user?.role, confirmedOrder, searchParams]);
 
-  // If not authenticated, render welcoming prompt
+  // If unauthenticated (e.g. guest checkout receipt view or prompt to sign in)
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen bg-ry-pearl text-ry-onyx pt-36 pb-24 px-4 flex flex-col items-center justify-center font-sans">
+      <div className="min-h-screen bg-ry-pearl text-ry-onyx pt-32 pb-24 px-4 flex flex-col items-center justify-center font-sans">
         {showCheckoutSuccess && (
-          <div className="max-w-md w-full mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 animate-fade-in shadow-sm">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <div className="text-sm">
-              <strong className="font-semibold block">Order Successfully Placed</strong>
-              <span className="text-emerald-700/80 mt-0.5 block">
-                Thank you for your purchase. Please log in or create an account to view and track your delivery.
-              </span>
+          <div className="max-w-2xl w-full mb-8 bg-ry-white border border-emerald-200 shadow-lg overflow-hidden animate-fade-in">
+            <div className="p-5 bg-emerald-50 border-b border-emerald-200 flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div className="text-sm">
+                <strong className="font-semibold text-emerald-900 block">
+                  Order Confirmed {confirmedOrder?.orderNumber ? `• ${confirmedOrder.orderNumber}` : ''}
+                </strong>
+                <span className="text-emerald-800/90 text-xs block mt-0.5">
+                  Thank you for your purchase. Your payment succeeded and an itemized confirmation email has been sent
+                  {confirmedOrder?.email ? ` to ${confirmedOrder.email}` : ''}.
+                </span>
+              </div>
             </div>
+
+            {confirmingOrder && (
+              <div className="p-6 text-center text-xs text-ry-stone flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Loading your exact order summary...</span>
+              </div>
+            )}
+
+            {confirmError && (
+              <div className="p-4 m-4 bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{confirmError}</span>
+              </div>
+            )}
+
+            {confirmedOrder && (
+              <div className="p-6 space-y-5">
+                <div className="divide-y divide-ry-ash/40">
+                  {(confirmedOrder.itemsList || []).map((item: any, idx: number) => (
+                    <div key={idx} className="flex gap-4 py-3 first:pt-0 last:pb-0 items-center">
+                      <div className="relative w-14 h-16 bg-ry-oatmeal overflow-hidden border border-ry-ash/50 shrink-0">
+                        <Image
+                          src={item.image || '/images/perfumes/princess-reef.jpg'}
+                          alt={item.title || 'Purchased item'}
+                          fill
+                          sizes="56px"
+                          unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-serif text-sm text-ry-onyx truncate">{item.title}</h4>
+                        <p className="text-xs text-ry-stone">{item.variantTitle}</p>
+                        <div className="text-xs font-mono text-ry-charcoal mt-0.5">
+                          Qty: {item.quantity} &times; £{Number(item.price || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="font-mono text-sm font-medium text-ry-onyx">
+                        £{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-4 border-t border-ry-ash/50 text-xs space-y-1.5">
+                  <div className="flex justify-between text-ry-stone">
+                    <span>Delivery ({confirmedOrder.shippingService})</span>
+                    <span className="font-mono text-ry-onyx">
+                      {Number(confirmedOrder.shippingCost || 0) === 0
+                        ? 'FREE'
+                        : `£${Number(confirmedOrder.shippingCost).toFixed(2)}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm font-serif font-medium text-ry-onyx pt-1">
+                    <span>Total Paid</span>
+                    <span className="font-mono">£{Number(confirmedOrder.total || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>
+                      <strong>Awaiting Dispatch:</strong> We will email your courier tracking details once the order ships.
+                    </span>
+                  </div>
+                  <Link
+                    href={`/track?ref=${encodeURIComponent(confirmedOrder.orderNumber)}`}
+                    className="px-3 py-1.5 bg-ry-onyx text-white text-[10px] uppercase tracking-editorial shrink-0"
+                  >
+                    Order Status
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -264,7 +334,7 @@ function UserDashboardContent() {
             Sign In Required
           </h2>
           <p className="text-xs text-ry-stone leading-relaxed mb-6">
-            Please sign in to view your private order archive, track live courier dispatches, and access saved delivery addresses.
+            Please sign in to view your private order archive, manage your saved phone number and delivery addresses, and monitor dispatches.
           </p>
 
           <div className="space-y-3">
@@ -278,7 +348,7 @@ function UserDashboardContent() {
               href="/signup?redirect=/dashboard/user"
               className="block w-full py-3.5 bg-ry-white border border-ry-ash text-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-colors"
             >
-              Register Account & Delivery Address
+              Register Account &amp; Delivery Address
             </Link>
           </div>
         </div>
@@ -292,23 +362,36 @@ function UserDashboardContent() {
         
         {/* Checkout Success Banner */}
         {showCheckoutSuccess && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between gap-3 animate-fade-in shadow-sm">
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in shadow-sm">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
               <div className="text-sm">
-                <strong className="font-semibold block">Order Successfully Placed • Manifest Generated</strong>
-                <span className="text-emerald-700/80 mt-0.5 block text-xs">
-                  We have authorized your order and scheduled courier pickup via Royal Mail Tracked 24 & Evri.
+                <strong className="font-semibold block">
+                  Order Confirmed {confirmedOrder?.orderNumber ? `• ${confirmedOrder.orderNumber}` : ''}
+                </strong>
+                <span className="text-emerald-800/90 mt-0.5 block text-xs">
+                  {confirmedOrder?.trackingNumber
+                    ? `Your order has been dispatched via ${confirmedOrder.carrier} (Tracking: ${confirmedOrder.trackingNumber}).`
+                    : 'Your payment succeeded and an itemized confirmation email has been sent. You will receive tracking details as soon as admin confirms dispatch.'}
                 </span>
               </div>
             </div>
-            <Link
-              href="/track?ref=7829-1092-4821"
-              className="px-4 py-2 bg-emerald-700 text-white text-xs uppercase tracking-editorial font-medium hover:bg-emerald-800 transition-colors shrink-0 flex items-center gap-1.5"
-            >
-              <Truck className="w-3.5 h-3.5" />
-              <span>Track Live Delivery &rarr;</span>
-            </Link>
+            {confirmedOrder?.orderNumber && (
+              <Link
+                href={`/track?ref=${encodeURIComponent(confirmedOrder.trackingNumber || confirmedOrder.orderNumber)}`}
+                className="px-4 py-2 bg-emerald-700 text-white text-xs uppercase tracking-editorial font-medium hover:bg-emerald-800 transition-colors shrink-0 flex items-center gap-1.5 self-start sm:self-center"
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>{confirmedOrder.trackingNumber ? 'Track Live Delivery' : 'View Order Status'} &rarr;</span>
+              </Link>
+            )}
+          </div>
+        )}
+
+        {confirmError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{confirmError}</span>
           </div>
         )}
 
@@ -361,7 +444,7 @@ function UserDashboardContent() {
               className="px-4 py-2.5 bg-ry-pearl border border-ry-ash text-xs uppercase tracking-editorial hover:bg-ry-oatmeal transition-colors flex items-center gap-1.5"
             >
               <Truck className="w-3.5 h-3.5 text-ry-stone" />
-              <span>Live Parcel Tracking</span>
+              <span>Order &amp; Parcel Status</span>
             </Link>
             <button
               onClick={logout}
@@ -383,7 +466,7 @@ function UserDashboardContent() {
                 : 'text-ry-stone hover:text-ry-onyx'
             }`}
           >
-            Orders & Tracking ({displayedOrders.length})
+            Orders &amp; Tracking ({displayedOrders.length})
           </button>
           <button
             onClick={() => setActiveTab('wishlist')}
@@ -420,7 +503,6 @@ function UserDashboardContent() {
         {/* TAB 1: ORDERS & TRACKING */}
         {activeTab === 'orders' && (
           <div className="space-y-6 animate-fade-in">
-            {/* Administrator Mode Switcher Bar */}
             {user?.role === 'ADMIN' && (
               <div className="p-4 bg-ry-pearl border border-ry-ash/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
                 <div>
@@ -428,7 +510,7 @@ function UserDashboardContent() {
                     <span className="px-2 py-0.5 bg-ry-onyx text-ry-white text-[9px] uppercase tracking-editorial font-bold">
                       Admin Access
                     </span>
-                    <span className="font-medium text-ry-onyx">Store Orders & Personal Orders</span>
+                    <span className="font-medium text-ry-onyx">Store Orders &amp; Personal Orders</span>
                   </div>
                   <p className="text-[11px] text-ry-stone">
                     Signed in as Store Administrator ({user.email}). Toggle between all store orders and your personal purchases.
@@ -469,43 +551,59 @@ function UserDashboardContent() {
               </div>
             )}
 
-            {displayedOrders.length === 0 ? (
+            {ordersLoading && displayedOrders.length === 0 ? (
+              <div className="bg-ry-white border border-ry-ash/70 p-12 text-center shadow-sm text-xs text-ry-stone">
+                Loading your orders...
+              </div>
+            ) : displayedOrders.length === 0 ? (
               <div className="bg-ry-white border border-ry-ash/70 p-12 text-center shadow-sm">
                 <Package className="w-8 h-8 text-ry-stone/60 mx-auto mb-3 stroke-[1.4]" />
                 <h3 className="font-serif text-xl text-ry-onyx mb-2">No Active Orders</h3>
                 <p className="text-xs text-ry-stone max-w-sm mx-auto mb-6">
                   {user?.role === 'ADMIN' && adminOrdersView === 'personal'
-                    ? 'You have not placed any personal orders as Store Administrator. Switch to "All Store Orders" above to inspect incoming orders.'
-                    : 'You have not placed any orders yet. Discover our restorative botanical hair care, luxury parfums, and candles.'}
+                    ? 'You have not placed any personal orders as Store Administrator.'
+                    : 'You have not placed any orders yet. Explore our signature scents, luxury hair care, skincare, and home essentials.'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <Link
-                    href="/category/hair"
+                    href="/category/fragrance"
                     className="px-5 py-2.5 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors"
                   >
-                    Shop Hair Care
+                    Shop Fragrances
                   </Link>
                   <Link
-                    href="/category/candles"
+                    href="/category/hair"
                     className="px-5 py-2.5 bg-ry-white border border-ry-ash text-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-colors"
                   >
-                    Shop Candles & Living
+                    Shop Hair Care
                   </Link>
                 </div>
               </div>
             ) : (
               displayedOrders.map((order: any, orderIdx: number) => {
-                const orderItems = order.itemsList || order.items || [];
+                const orderItems = Array.isArray(order.itemsList) ? order.itemsList : [];
                 const orderAddress = order.address
-                  ? `${order.address.street}, ${order.address.city} ${order.address.postalCode}, ${order.address.country}`
-                  : order.deliveryAddress || 'Address on file';
+                  ? `${order.address.street || ''}, ${order.address.city || ''} ${order.address.postalCode || ''}, ${order.address.country || ''}`
+                  : 'Address on file';
                 const orderNumber = order.orderNumber || order.id || `RY-${orderIdx + 1}`;
                 const orderDate = order.date || 'Recently';
-                const orderStatus = order.status || order.fulfillment || 'CONFIRMED';
+                const isDispatched = Boolean(
+                  order.status === 'SHIPPED' ||
+                    order.status === 'DELIVERED' ||
+                    order.fulfillmentStatus === 'FULFILLED' ||
+                    (order.trackingNumber && String(order.trackingNumber).trim().length > 0)
+                );
+                const statusLabel =
+                  order.status === 'DELIVERED'
+                    ? 'Delivered'
+                    : isDispatched
+                    ? 'Dispatched'
+                    : 'Order Confirmed • Awaiting Dispatch';
                 const orderTotal = typeof order.total === 'number' ? order.total : 0;
-                const orderCarrier = order.shippingService || order.shippingMethod || order.carrier || 'Royal Mail Tracked 48';
-                const orderTracking = order.trackingNumber || '';
-                const orderPayment = order.paymentMethod || 'Card';
+                const deliveryMethodLabel =
+                  order.shippingService || order.shippingMethod || 'Standard UK Delivery';
+                const orderTracking = isDispatched ? order.trackingNumber || '' : '';
+                const orderPayment = order.paymentMethod || 'Stripe Card';
 
                 return (
                   <div key={order.id || orderIdx} className="bg-ry-white border border-ry-ash/70 overflow-hidden shadow-sm">
@@ -531,8 +629,14 @@ function UserDashboardContent() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 bg-ry-burgundy text-ry-white text-[10px] uppercase tracking-editorial font-medium">
-                          {orderStatus}
+                        <span
+                          className={`px-3 py-1 text-[10px] uppercase tracking-editorial font-medium ${
+                            isDispatched
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-amber-100 text-amber-900 border border-amber-300'
+                          }`}
+                        >
+                          {statusLabel}
                         </span>
                       </div>
                     </div>
@@ -543,7 +647,14 @@ function UserDashboardContent() {
                         <div key={idx} className="flex gap-4 py-3 first:pt-0 last:pb-0">
                           <div className="relative w-16 h-20 bg-ry-oatmeal overflow-hidden border border-ry-ash/50 shrink-0">
                             {item.image ? (
-                              <Image src={item.image} alt={item.title || 'Product'} fill sizes="64px" className="object-cover" />
+                              <Image
+                                src={item.image}
+                                alt={item.title || 'Product'}
+                                fill
+                                sizes="64px"
+                                unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
+                                className="object-cover"
+                              />
                             ) : (
                               <div className="w-full h-full bg-ry-pearl" />
                             )}
@@ -552,14 +663,14 @@ function UserDashboardContent() {
                             <h4 className="font-serif text-base text-ry-onyx">{item.title}</h4>
                             <p className="text-xs text-ry-stone">{item.variantTitle}</p>
                             <div className="text-xs font-mono text-ry-charcoal mt-1">
-                              Qty: {item.quantity} • £{(typeof item.price === 'number' ? item.price : 0).toFixed(2)}
+                              Qty: {item.quantity} &bull; £{(typeof item.price === 'number' ? item.price : 0).toFixed(2)}
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Installment Payment Notice (simple message, no timeline) */}
+                    {/* Installment Payment Notice */}
                     {(orderPayment.toLowerCase().includes('klarna') || orderPayment.toLowerCase().includes('clearpay')) && (
                       <div className="px-6 py-4 bg-ry-pearl/40 border-t border-ry-ash/60 flex items-center gap-3">
                         <div className="flex items-center gap-2">
@@ -571,7 +682,7 @@ function UserDashboardContent() {
                           )}
                         </div>
                         <p className="text-xs text-ry-stone">
-                          You are paying installmentally with{' '}
+                          Paid via{' '}
                           <strong className="text-ry-onyx">
                             {orderPayment.toLowerCase().includes('klarna') ? 'Klarna (Pay in 3)' : 'Clearpay (Pay in 4)'}
                           </strong>
@@ -585,7 +696,9 @@ function UserDashboardContent() {
                       <div>
                         <div className="flex items-center gap-2 text-ry-charcoal">
                           <Truck className="w-4 h-4 text-ry-onyx" />
-                          <span>Carrier: <strong>{orderCarrier}</strong></span>
+                          <span>
+                            Delivery Method: <strong>{deliveryMethodLabel}</strong>
+                          </span>
                         </div>
                         <div className="text-[11px] text-ry-stone mt-1 space-y-0.5">
                           <div>
@@ -594,21 +707,42 @@ function UserDashboardContent() {
                               <span className="ml-1.5 text-ry-stone">({order.email || order.address?.email})</span>
                             )}
                             {(order.phone || order.address?.phone) && (
-                              <span className="ml-1.5 text-ry-stone font-mono">• {order.phone || order.address?.phone}</span>
+                              <span className="ml-1.5 text-ry-stone font-mono">&bull; {order.phone || order.address?.phone}</span>
                             )}
                           </div>
                           <div>Delivering to: {orderAddress}</div>
+                          {isDispatched && orderTracking ? (
+                            <div className="text-emerald-800 font-medium pt-0.5">
+                              Courier: <strong>{order.carrier}</strong> &bull; Tracking #:{' '}
+                              <span className="font-mono">{orderTracking}</span>
+                            </div>
+                          ) : (
+                            <div className="text-amber-800 pt-0.5 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>Awaiting dispatch confirmation — tracking details will be emailed once shipped.</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <Link
-                          href={`/track?ref=${encodeURIComponent(orderTracking || orderNumber)}`}
-                          className="px-4 py-2 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
-                        >
-                          <Truck className="w-3.5 h-3.5" />
-                          <span>Track Delivery</span>
-                        </Link>
+                        {isDispatched ? (
+                          <Link
+                            href={`/track?ref=${encodeURIComponent(orderTracking || orderNumber)}`}
+                            className="px-4 py-2 bg-ry-onyx text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-charcoal transition-colors flex items-center gap-1.5"
+                          >
+                            <Truck className="w-3.5 h-3.5" />
+                            <span>Track Delivery</span>
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/track?ref=${encodeURIComponent(orderNumber)}`}
+                            className="px-4 py-2 bg-ry-white border border-ry-ash text-ry-onyx text-xs uppercase tracking-editorial font-medium hover:bg-ry-pearl transition-colors flex items-center gap-1.5"
+                          >
+                            <Clock className="w-3.5 h-3.5 text-amber-700" />
+                            <span>View Status</span>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -653,9 +787,18 @@ function UserDashboardContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {wishlistItems.map((item) => {
+                  const liveMatch = liveCatalog.find(
+                    (p) => p.id === item.id || p.slug === item.slug
+                  );
+                  const currentStock = liveMatch ? Number(liveMatch.stock ?? 0) : Number(item.stock ?? 0);
+                  const currentPrice = liveMatch ? Number(liveMatch.price ?? item.price) : Number(item.price);
+                  const isOutOfStock = liveCatalog.length > 0 ? (!liveMatch || currentStock <= 0) : currentStock <= 0;
+
                   const img = Array.isArray(item.images)
-                    ? (typeof item.images[0] === 'string' ? item.images[0] : (item.images[0] as any)?.url)
-                    : (item as any).image || '/images/media_1791069473262.jpg';
+                    ? typeof item.images[0] === 'string'
+                      ? item.images[0]
+                      : (item.images[0] as any)?.url
+                    : (item as any).image || '/images/perfumes/princess-reef.jpg';
 
                   return (
                     <div
@@ -680,7 +823,7 @@ function UserDashboardContent() {
                             </h4>
                           </Link>
                           <p className="font-mono text-sm font-semibold text-ry-onyx mt-1">
-                            £{Number(item.price).toFixed(2)}
+                            £{currentPrice.toFixed(2)}
                           </p>
                         </div>
                       </div>
@@ -688,13 +831,15 @@ function UserDashboardContent() {
                       <div className="p-4 pt-0 space-y-2">
                         <button
                           type="button"
+                          disabled={isOutOfStock}
                           onClick={() => {
-                            addItem(item, 1);
+                            if (isOutOfStock) return;
+                            addItem({ ...item, price: currentPrice, stock: currentStock }, 1);
                             openCart();
                           }}
-                          className="w-full py-2.5 bg-ry-onyx text-white text-xs uppercase tracking-editorial font-medium hover:bg-neutral-800 transition"
+                          className="w-full py-2.5 bg-ry-onyx text-white text-xs uppercase tracking-editorial font-medium hover:bg-neutral-800 transition disabled:bg-ry-ash disabled:text-ry-stone disabled:cursor-not-allowed"
                         >
-                          Move to Bag
+                          {isOutOfStock ? 'Out of Stock' : 'Move to Bag'}
                         </button>
                         <button
                           type="button"
@@ -718,7 +863,7 @@ function UserDashboardContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-serif text-xl">Saved Delivery Addresses</h3>
-                <p className="text-xs text-ry-stone">Used automatically to prefill checkout and generate courier manifests.</p>
+                <p className="text-xs text-ry-stone">Used automatically to prefill checkout and prepare your parcels.</p>
               </div>
               <button
                 onClick={() => setIsAddingAddress(true)}
@@ -729,7 +874,6 @@ function UserDashboardContent() {
               </button>
             </div>
 
-            {/* Address Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {user.addresses && user.addresses.length > 0 ? (
                 user.addresses.map((addr) => (
@@ -753,7 +897,7 @@ function UserDashboardContent() {
                 <div className="bg-ry-white border border-ry-ash p-8 text-center col-span-2">
                   <MapPin className="w-8 h-8 text-ry-stone mx-auto mb-2" />
                   <h4 className="font-serif text-lg mb-1">No Delivery Address Saved</h4>
-                  <p className="text-xs text-ry-stone mb-4">Add your shipping address to enable one-click courier dispatch.</p>
+                  <p className="text-xs text-ry-stone mb-4">Add your shipping address to prefill checkout cleanly.</p>
                   <button
                     onClick={() => setIsAddingAddress(true)}
                     className="px-5 py-2.5 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial hover:bg-ry-burgundyLight transition-colors"
@@ -764,7 +908,6 @@ function UserDashboardContent() {
               )}
             </div>
 
-            {/* Modal for Adding New Address */}
             {isAddingAddress && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                 <div className="bg-ry-white p-6 sm:p-8 border border-ry-ash shadow-2xl max-w-lg w-full relative">
@@ -775,7 +918,7 @@ function UserDashboardContent() {
                     <X className="w-5 h-5" />
                   </button>
                   <h3 className="font-serif text-2xl mb-1">Add Delivery Address</h3>
-                  <p className="text-xs text-ry-stone mb-4">Provide details for express courier dispatch.</p>
+                  <p className="text-xs text-ry-stone mb-4">Saved permanently to your client profile.</p>
 
                   <form onSubmit={handleAddAddressSubmit} className="space-y-4 text-xs font-sans">
                     <div>
@@ -833,11 +976,10 @@ function UserDashboardContent() {
                       </div>
                       <div className="col-span-1">
                         <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1">
-                          Postcode *
+                          Postcode
                         </label>
                         <input
                           type="text"
-                          required
                           value={newAddress.postalCode}
                           onChange={(e) => setNewAddress({ ...newAddress, postalCode: e.target.value })}
                           placeholder="SW1W 0DH"
@@ -856,9 +998,10 @@ function UserDashboardContent() {
                         className="w-full bg-ry-pearl border border-ry-ash p-2.5 text-xs focus:outline-none focus:border-ry-onyx"
                       >
                         <option value="United Kingdom">United Kingdom</option>
-                        <option value="United States">United States</option>
+                        <option value="Ireland">Ireland</option>
                         <option value="France">France</option>
                         <option value="Germany">Germany</option>
+                        <option value="United States">United States</option>
                         <option value="Canada">Canada</option>
                         <option value="Australia">Australia</option>
                       </select>
@@ -905,18 +1048,27 @@ function UserDashboardContent() {
               <h3 className="font-serif text-xl">Account Details</h3>
               {profileSaved && (
                 <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-1 border border-emerald-200 animate-fade-in">
-                  Account details updated
+                  Saved to your account permanently
                 </span>
               )}
             </div>
 
+            {profileSaveError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">
+                {profileSaveError}
+              </div>
+            )}
+
             <form onSubmit={handleProfileSave} className="space-y-4 text-xs font-sans">
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1">
+                <label htmlFor="profile-name" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1">
                   Full Name
                 </label>
                 <input
+                  id="profile-name"
+                  name="name"
                   type="text"
+                  autoComplete="name"
                   value={profileForm.name}
                   onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                   className="w-full bg-ry-pearl border border-ry-ash p-3 focus:outline-none focus:border-ry-onyx"
@@ -924,21 +1076,23 @@ function UserDashboardContent() {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1">
+                <label htmlFor="profile-email" className="block text-[10px] uppercase tracking-editorial text-ry-stone mb-1">
                   Email Address
                 </label>
                 <input
+                  id="profile-email"
+                  name="email"
                   type="email"
                   value={profileForm.email}
-                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  className="w-full bg-ry-pearl border border-ry-ash p-3 focus:outline-none focus:border-ry-onyx"
+                  readOnly
+                  className="w-full bg-ry-pearl/60 border border-ry-ash p-3 text-ry-stone cursor-not-allowed"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[10px] uppercase tracking-editorial text-ry-stone">
-                    Phone Number (for Courier Tracking & SMS Alerts)
+                  <label htmlFor="profile-phone" className="block text-[10px] uppercase tracking-editorial text-ry-stone">
+                    Phone Number (Saved Across Sessions &amp; Devices)
                   </label>
                   <span className="text-[10px] text-ry-stone">
                     {profileForm.phone ? 'Configured' : 'Not yet set'}
@@ -947,7 +1101,10 @@ function UserDashboardContent() {
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-ry-stone absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
+                    id="profile-phone"
+                    name="phone"
                     type="tel"
+                    autoComplete="tel"
                     value={profileForm.phone}
                     onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                     placeholder="+44 7700 900077"
@@ -955,15 +1112,16 @@ function UserDashboardContent() {
                   />
                 </div>
                 <p className="text-[11px] text-ry-stone mt-1">
-                  Used by Royal Mail and Evri for real-time dispatch updates and delivery notifications.
+                  Saved directly to your account database record so it remains available every time you return or check out.
                 </p>
               </div>
 
               <button
                 type="submit"
-                className="px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors cursor-pointer"
+                disabled={isSavingProfile}
+                className="px-6 py-3 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight transition-colors cursor-pointer disabled:opacity-60"
               >
-                Save Profile & Phone Number
+                {isSavingProfile ? 'Saving...' : 'Save Profile & Phone Number'}
               </button>
             </form>
           </div>

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import Stripe from 'stripe';
-import prisma from '@/lib/prisma';
-import { buildOrderConfirmationEmailHtml, sendEmail } from '@/lib/services/emailService';
+import { confirmOrderCompletion } from '@/lib/services/orderService';
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+const stripeSecretKey = (process.env.STRIPE_SECRET_KEY || '').trim().replace(/^["']|["']$/g, '');
+const webhookSecret = (process.env.STRIPE_WEBHOOK_SECRET || '').trim().replace(/^["']|["']$/g, '');
 
 const stripe = stripeSecretKey
   ? new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' as any })
@@ -30,54 +30,18 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const isKlarna = session.payment_method_types?.includes('klarna');
-
-        console.log(`[Rycarix Order] Checkout completed for session ${session.id}. Klarna: ${isKlarna}`);
-
-        // Send automated Order Confirmation email
-        const customerEmail = session.customer_details?.email || session.customer_email;
-        if (customerEmail) {
-          try {
-            const orderNumber = session.metadata?.orderId || `RY-${session.id.slice(-6).toUpperCase()}`;
-            const customerName = session.customer_details?.name || 'Valued Client';
-            const shipping = session.shipping_details;
-            const totalAmount = session.amount_total ? session.amount_total / 100 : 0;
-
-            const emailHtml = buildOrderConfirmationEmailHtml({
-              orderNumber,
-              customerName,
-              customerEmail,
-              date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-              total: totalAmount,
-              paymentMethod: isKlarna ? 'Klarna Pay in 3 (0% APR)' : 'Authorized Card (Stripe)',
-              items: [
-                {
-                  title: 'Rycarix Luxury Products',
-                  variantTitle: 'Curated Edition',
-                  quantity: 1,
-                  price: totalAmount,
-                },
-              ],
-              address: {
-                name: customerName,
-                street: shipping?.address?.line1 || 'Address on file',
-                city: shipping?.address?.city || 'London',
-                state: shipping?.address?.state || 'Greater London',
-                postalCode: shipping?.address?.postal_code || '',
-                country: shipping?.address?.country || 'United Kingdom',
-              },
-            });
-
-            await sendEmail({
-              to: customerEmail,
-              subject: `Order Confirmed • ${orderNumber} • Rycarix Store`,
-              html: emailHtml,
-              type: 'ORDER_CONFIRMATION',
-              orderNumber,
-            });
-          } catch (emailErr) {
-            console.warn('[Rycarix Webhook] Could not send confirmation email:', emailErr);
-          }
+        console.log(`[Rycarix Order] Checkout webhook completed for session ${session.id}`);
+        try {
+          await confirmOrderCompletion({
+            orderNumber: session.metadata?.orderId,
+            sessionId: session.id,
+          });
+          revalidatePath('/');
+          revalidatePath('/products');
+          revalidatePath('/category/[slug]', 'page');
+          revalidatePath('/products/[slug]', 'page');
+        } catch (confirmErr) {
+          console.warn('[Rycarix Webhook] Order confirmation warning:', confirmErr);
         }
         break;
       }
@@ -85,7 +49,6 @@ export async function POST(req: NextRequest) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const paymentMethodType = paymentIntent.payment_method_types?.[0];
-
         console.log(`[Rycarix Settlement] Payment Intent ${paymentIntent.id} succeeded via ${paymentMethodType}`);
         break;
       }

@@ -1,6 +1,6 @@
 // lib/services/catalogService.ts
 import { prisma } from '@/lib/prisma';
-import { mockProducts } from '@/lib/data/mockData';
+import { CATEGORIES, PRODUCTS, mockProducts } from '@/lib/data/mockData';
 import { Product } from '@/lib/types/ecommerce';
 import {
   normalizeCategorySlug,
@@ -18,6 +18,8 @@ export {
   CANONICAL_CATEGORIES,
 };
 
+let seedPromise: Promise<void> | null = null;
+
 function mapDbRecordToProduct(record: any): Product {
   const imgs =
     Array.isArray(record.images) && record.images.length > 0
@@ -31,13 +33,19 @@ function mapDbRecordToProduct(record: any): Product {
     name: prodName,
     title: prodName,
     slug: record.slug,
+    subtitle: record.subtitle || undefined,
+    summary: record.summary || undefined,
     description: record.description || record.summary || '',
+    ingredients: record.ingredients || undefined,
+    howToUse: record.howToUse || undefined,
+    sourcingEthics: record.sourcingEthics || undefined,
+    attributes: record.attributes || undefined,
     price: Number(record.price ?? 0),
     compareAtPrice:
       record.compareAtPrice !== null && record.compareAtPrice !== undefined
         ? Number(record.compareAtPrice)
         : undefined,
-    stock: Number(record.stock ?? 15),
+    stock: Number(record.stock ?? 0),
     category: normalizeCategorySlug(record.category),
     images: imgs,
     featured: Boolean(record.featured ?? true),
@@ -64,6 +72,7 @@ function getFallbackMockProducts(): Product[] {
     images: Array.isArray(p.images) && p.images.length > 0 ? p.images : ['/images/media_1791069473262.jpg'],
     featured: Boolean(p.featured ?? true),
     isLive: true,
+    isComingSoon: false,
     rating: 5.0,
     reviewsCount: 0,
     sku: p.sku || `RYC-${p.id.slice(-6).toUpperCase()}`,
@@ -73,42 +82,58 @@ function getFallbackMockProducts(): Product[] {
 
 export const catalogService = {
   /**
-   * Ensures baseline catalog products exist in PostgreSQL so every device sees the exact same baseline + admin additions
+   * One-time seeding sentinel keyed on Category count so deleted/hidden products NEVER respawn.
+   * Uses createMany({ skipDuplicates: true }) on missing Product slugs FIRST and writes Category
+   * sentinel rows LAST so live Admin items & stock (e.g. Dirham Gold) remain untouched and
+   * interrupted boots never leave an incomplete baseline seed.
    */
   async ensureSeeded(): Promise<void> {
-    try {
-      const count = await prisma.product.count();
-      if (count === 0 && Array.isArray(mockProducts) && mockProducts.length > 0) {
-        for (const item of mockProducts) {
-          const slug =
-            item.slug ||
-            item.name
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/(^-|-$)/g, '');
+    if (seedPromise) return seedPromise;
 
-          const validImgs =
-            Array.isArray(item.images) && item.images.length > 0
-              ? item.images
-              : ['/images/media_1791069473262.jpg'];
+    seedPromise = (async () => {
+      const categoryCount = await prisma.category.count();
+      if (categoryCount > 0) {
+        return;
+      }
 
-          await prisma.product.upsert({
-            where: { slug },
-            update: {
-              name: item.name,
-              title: item.name,
-              price: Number(item.price),
-              stock: Number(item.stock ?? 15),
-              category: normalizeCategorySlug(item.category),
-              images: validImgs,
-              isLive: true,
-            },
-            create: {
+      if (Array.isArray(mockProducts) && mockProducts.length > 0) {
+        const existingRows = await prisma.product.findMany({
+          select: { slug: true },
+        });
+        const existingSlugs = new Set(existingRows.map((r) => r.slug));
+
+        const missingRows = mockProducts
+          .map((item) => {
+            const slug =
+              item.slug ||
+              item.name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)/g, '');
+
+            if (existingSlugs.has(slug)) {
+              return null;
+            }
+
+            const validImgs =
+              Array.isArray(item.images) && item.images.length > 0
+                ? item.images
+                : ['/images/media_1791069473262.jpg'];
+
+            const richDef = PRODUCTS.find((p) => p.slug === slug || p.id === item.id);
+
+            return {
               id: item.id || `prod_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
               name: item.name,
               title: item.name,
               slug,
+              subtitle: richDef?.subtitle || null,
+              summary: richDef?.summary || null,
               description: item.description || '',
+              ingredients: richDef?.ingredients || null,
+              howToUse: richDef?.howToUse || null,
+              sourcingEthics: richDef?.sourcingEthics || null,
+              ...(richDef?.attributes ? { attributes: richDef.attributes as any } : {}),
               price: Number(item.price),
               compareAtPrice: item.compareAtPrice ? Number(item.compareAtPrice) : null,
               stock: Number(item.stock ?? 15),
@@ -116,14 +141,43 @@ export const catalogService = {
               images: validImgs,
               featured: Boolean(item.featured ?? true),
               isLive: true,
+              isComingSoon: false,
+              status: 'ACTIVE' as const,
               sku: item.sku || `RYC-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-            },
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null);
+
+        if (missingRows.length > 0) {
+          await prisma.product.createMany({
+            data: missingRows,
+            skipDuplicates: true,
           });
         }
       }
-    } catch (err) {
+
+      for (let idx = 0; idx < CANONICAL_CATEGORIES.length; idx++) {
+        const c = CANONICAL_CATEGORIES[idx];
+        const metaCat = CATEGORIES.find((mc) => normalizeCategorySlug(mc.slug) === c.slug);
+        await prisma.category.upsert({
+          where: { slug: c.slug },
+          update: {},
+          create: {
+            name: metaCat?.name || c.label,
+            slug: c.slug,
+            description: metaCat?.description || '',
+            image: metaCat?.image || null,
+            displayOrder: idx,
+            isActive: true,
+          },
+        });
+      }
+    })().catch((err) => {
+      seedPromise = null;
       console.warn('Catalog seeding check note:', err);
-    }
+    });
+
+    return seedPromise;
   },
 
   async getAllProducts(options?: {
@@ -136,7 +190,9 @@ export const catalogService = {
     try {
       await this.ensureSeeded();
 
-      const whereClause: any = {};
+      const whereClause: any = {
+        status: { not: 'ARCHIVED' },
+      };
       if (!options?.includeDrafts) {
         whereClause.isLive = true;
       }
@@ -146,33 +202,7 @@ export const catalogService = {
         orderBy: { createdAt: 'desc' },
       });
 
-      if (dbRecords && dbRecords.length > 0) {
-        const dbProducts = dbRecords.map(mapDbRecordToProduct);
-        const fallback = getFallbackMockProducts();
-
-        const seen = new Set<string>();
-        mapped = [];
-
-        // Prioritize live DB records
-        for (const p of dbProducts) {
-          const key = p.slug || p.id;
-          if (!seen.has(key)) {
-            seen.add(key);
-            mapped.push(p);
-          }
-        }
-
-        // Include baseline catalog products so categories like Hair, Skincare, and Candles always have their actual items
-        for (const p of fallback) {
-          const key = p.slug || p.id;
-          if (!seen.has(key)) {
-            seen.add(key);
-            mapped.push(p);
-          }
-        }
-      } else {
-        mapped = getFallbackMockProducts();
-      }
+      mapped = dbRecords.map(mapDbRecordToProduct);
     } catch (err) {
       console.warn('Database fetch fallback to mock products:', err);
       mapped = getFallbackMockProducts();
@@ -197,21 +227,29 @@ export const catalogService = {
     return mapped;
   },
 
-  async getProductBySlug(slug: string): Promise<Product | null> {
+  async getProductBySlug(
+    slug: string,
+    options?: { includeDrafts?: boolean }
+  ): Promise<Product | null> {
     try {
       await this.ensureSeeded();
+      const whereClause: any = {
+        OR: [{ slug }, { id: slug }],
+        status: { not: 'ARCHIVED' },
+      };
+      if (!options?.includeDrafts) {
+        whereClause.isLive = true;
+      }
+
       const record = await prisma.product.findFirst({
-        where: {
-          OR: [{ slug }, { id: slug }],
-        },
+        where: whereClause,
       });
-      if (record) return mapDbRecordToProduct(record);
+      return record ? mapDbRecordToProduct(record) : null;
     } catch (err) {
       console.warn('Database findFirst fallback to mock products:', err);
+      const fallback = getFallbackMockProducts().find((p) => p.slug === slug || p.id === slug);
+      return fallback || null;
     }
-
-    const fallback = getFallbackMockProducts().find((p) => p.slug === slug || p.id === slug);
-    return fallback || null;
   },
 
   async createProduct(input: {
@@ -238,7 +276,7 @@ export const catalogService = {
     const validImages =
       Array.isArray(input.images) && input.images.length > 0
         ? input.images.filter(Boolean)
-        : ['/images/media_1791069473262.jpg'];
+        : ['/images/perfumes/princess-reef.jpg'];
 
     const newProdData = {
       id: `prod_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -254,18 +292,14 @@ export const catalogService = {
       featured: Boolean(input.featured ?? true),
       isLive: input.isLive !== undefined ? Boolean(input.isLive) : true,
       isComingSoon: Boolean(input.isComingSoon ?? false),
+      status: 'ACTIVE' as const,
       sku: input.sku?.trim() || `RYC-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
     };
 
-    try {
-      const created = await prisma.product.create({
-        data: newProdData,
-      });
-      return mapDbRecordToProduct(created);
-    } catch (err) {
-      console.warn('Database write fallback:', err);
-      return mapDbRecordToProduct(newProdData);
-    }
+    const created = await prisma.product.create({
+      data: newProdData,
+    });
+    return mapDbRecordToProduct(created);
   },
 
   async updateProduct(
@@ -304,16 +338,11 @@ export const catalogService = {
     if (updates.isComingSoon !== undefined) dataToUpdate.isComingSoon = Boolean(updates.isComingSoon);
     if (updates.featured !== undefined) dataToUpdate.featured = Boolean(updates.featured);
 
-    try {
-      const updated = await prisma.product.update({
-        where: { id },
-        data: dataToUpdate,
-      });
-      return mapDbRecordToProduct(updated);
-    } catch (err) {
-      console.warn('Database update fallback:', err);
-      return mapDbRecordToProduct({ id, ...dataToUpdate });
-    }
+    const updated = await prisma.product.update({
+      where: { id },
+      data: dataToUpdate,
+    });
+    return mapDbRecordToProduct(updated);
   },
 
   async deleteProduct(id: string): Promise<void> {
@@ -321,8 +350,16 @@ export const catalogService = {
       await prisma.product.delete({
         where: { id },
       });
-    } catch (err) {
-      console.warn('Database delete note:', err);
+    } catch (err: any) {
+      // Preserve order history integrity when referenced by OrderItem (onDelete: Restrict)
+      if (err?.code === 'P2003') {
+        await prisma.product.update({
+          where: { id },
+          data: { status: 'ARCHIVED', isLive: false },
+        });
+        return;
+      }
+      throw err;
     }
   },
 };

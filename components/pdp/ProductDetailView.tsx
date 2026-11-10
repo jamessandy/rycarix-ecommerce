@@ -44,11 +44,11 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
           {
             id: `var-${product.id}`,
             sku: product.sku || `RYC-${String(product.id || '').slice(0, 6)}`,
-            title: '100ml / 3.4 fl. oz.',
+            title: 'Standard Edition',
             price: price,
             compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : undefined,
-            inventory: Number(product.stock ?? 15),
-            attributes: { size: '100ml' },
+            inventory: Number(product.stock ?? 0),
+            attributes: { size: 'Standard' },
           },
         ];
 
@@ -59,6 +59,40 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
   const [openAccordion, setOpenAccordion] = useState<string | null>('ingredients');
   const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const [wishlistFeedback, setWishlistFeedback] = useState<string | null>(null);
+
+  // Synchronize live stock & price whenever product refreshes from API
+  React.useEffect(() => {
+    const liveStock = Number(product.stock ?? 0);
+    if (!Array.isArray(product.variants) || product.variants.length === 0) {
+      setSelectedVariant((prev: any) => ({
+        ...prev,
+        price,
+        compareAtPrice: product.compareAtPrice ? Number(product.compareAtPrice) : undefined,
+        inventory: liveStock,
+      }));
+      setQuantity((q) => Math.max(1, Math.min(q, Math.max(1, liveStock))));
+    }
+  }, [product.stock, price, product.compareAtPrice, product.variants]);
+
+  const effectiveInventory = Math.max(
+    0,
+    Number(
+      product.stock !== undefined
+        ? Math.min(Number(selectedVariant.inventory ?? product.stock), Number(product.stock))
+        : selectedVariant.inventory ?? 0
+    )
+  );
+  const hasCompareAtDiscount =
+    selectedVariant.compareAtPrice !== undefined &&
+    selectedVariant.compareAtPrice !== null &&
+    Number(selectedVariant.compareAtPrice) > Number(selectedVariant.price);
+  const discountPercentage = hasCompareAtDiscount
+    ? Math.round(
+        ((Number(selectedVariant.compareAtPrice) - Number(selectedVariant.price)) /
+          Number(selectedVariant.compareAtPrice)) *
+          100
+      )
+    : 0;
 
   const { addItem, openCart } = useCartStore();
   const { toggleItem, isInWishlist } = useWishlistStore();
@@ -166,7 +200,8 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
       slug: product.slug,
       description: summary,
       price: selectedVariant.price,
-      stock: selectedVariant.inventory,
+      compareAtPrice: selectedVariant.compareAtPrice,
+      stock: effectiveInventory,
       category: category,
       images: rawImages.map((img: any) => img.url),
     };
@@ -177,6 +212,7 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
   };
 
   const handleAddToCart = () => {
+    if (effectiveInventory <= 0) return;
     addItem({
       id: `${product.id}-${selectedVariant.id}`,
       productId: product.id,
@@ -185,7 +221,8 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
       variantTitle: selectedVariant.title,
       sku: selectedVariant.sku,
       price: selectedVariant.price,
-      quantity,
+      quantity: Math.min(quantity, effectiveInventory),
+      maxStock: effectiveInventory,
       image: activeImage.url,
     });
 
@@ -369,22 +406,33 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
 
           {/* Pricing & Klarna On-Site Messaging */}
           <div className="py-4 border-y border-ry-ash/60 space-y-2">
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-serif text-ry-onyx font-normal">
-                £{selectedVariant.price.toFixed(2)}
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span className={`text-2xl font-serif font-normal ${hasCompareAtDiscount ? 'text-ry-burgundy' : 'text-ry-onyx'}`}>
+                £{Number(selectedVariant.price).toFixed(2)}
               </span>
-              {selectedVariant.compareAtPrice && (
+              {hasCompareAtDiscount && (
                 <span className="text-base font-serif text-ry-stone line-through">
-                  £{selectedVariant.compareAtPrice.toFixed(2)}
+                  £{Number(selectedVariant.compareAtPrice).toFixed(2)}
                 </span>
               )}
-              <span className={`text-[10px] tracking-editorial uppercase px-2 py-0.5 font-sans ml-auto ${
-                isComingSoon ? 'bg-amber-100 text-amber-900 font-semibold' : 'bg-ry-oatmeal text-ry-charcoal'
-              }`}>
+              {hasCompareAtDiscount && discountPercentage > 0 && (
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-ry-burgundy px-2 py-0.5 border border-rose-200">
+                  -{discountPercentage}% OFF
+                </span>
+              )}
+              <span
+                className={`text-[10px] tracking-editorial uppercase px-2 py-0.5 font-sans ml-auto ${
+                  isComingSoon
+                    ? 'bg-amber-100 text-amber-900 font-semibold'
+                    : effectiveInventory > 0
+                    ? 'bg-ry-oatmeal text-ry-charcoal'
+                    : 'bg-rose-100 text-rose-800 font-semibold'
+                }`}
+              >
                 {isComingSoon
                   ? 'Releasing Soon'
-                  : selectedVariant.inventory > 0
-                  ? `In Stock (${selectedVariant.inventory} Remaining)`
+                  : effectiveInventory > 0
+                  ? `In Stock (${effectiveInventory} Remaining)`
                   : 'Out of Stock'}
               </span>
             </div>
@@ -501,7 +549,11 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
               {variants.map((variant: any) => (
                 <button
                   key={variant.id}
-                  onClick={() => setSelectedVariant(variant)}
+                  onClick={() => {
+                    setSelectedVariant(variant);
+                    const nextMax = Math.max(1, Number(variant.inventory ?? product.stock ?? 1));
+                    setQuantity((q) => Math.max(1, Math.min(q, nextMax)));
+                  }}
                   className={`p-3 text-left border transition-all text-xs flex justify-between items-center cursor-pointer ${
                     selectedVariant.id === variant.id
                       ? 'border-ry-burgundy bg-ry-white ring-1 ring-ry-burgundy shadow-sm'
@@ -521,18 +573,22 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
               {/* Stepper */}
               <div className="flex items-center border border-ry-ash bg-ry-white shrink-0">
                 <button
+                  type="button"
+                  disabled={effectiveInventory <= 0 || quantity <= 1}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-3 text-ry-stone hover:text-ry-onyx transition-colors text-sm cursor-pointer"
+                  className="px-3 py-3 text-ry-stone hover:text-ry-onyx transition-colors text-sm cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Decrease quantity"
                 >
                   -
                 </button>
                 <span className="w-8 text-center text-xs font-mono font-medium">
-                  {quantity}
+                  {effectiveInventory > 0 ? quantity : 0}
                 </span>
                 <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="px-3 py-3 text-ry-stone hover:text-ry-onyx transition-colors text-sm cursor-pointer"
+                  type="button"
+                  disabled={effectiveInventory <= 0 || quantity >= effectiveInventory}
+                  onClick={() => setQuantity(Math.min(effectiveInventory, quantity + 1))}
+                  className="px-3 py-3 text-ry-stone hover:text-ry-onyx transition-colors text-sm cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   aria-label="Increase quantity"
                 >
                   +
@@ -551,9 +607,10 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handleAddToCart}
-                  disabled={isAdded || selectedVariant.inventory <= 0}
-                  className="flex-1 py-3.5 px-6 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-luxury group cursor-pointer disabled:opacity-50"
+                  disabled={isAdded || effectiveInventory <= 0}
+                  className="flex-1 py-3.5 px-6 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium hover:bg-ry-burgundyLight active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-luxury group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAdded ? (
                     <>
@@ -564,9 +621,9 @@ export default function ProductDetailView({ product }: ProductDetailViewProps) {
                     <>
                       <Droplet className="w-4 h-4 group-hover:scale-110 transition-transform" />
                       <span>
-                        {selectedVariant.inventory > 0
-                          ? `Add to Cart • £${(selectedVariant.price * quantity).toFixed(2)}`
-                          : 'Sold Out'}
+                        {effectiveInventory > 0
+                          ? `Add to Cart • £${(Number(selectedVariant.price) * quantity).toFixed(2)}`
+                          : 'Out of Stock'}
                       </span>
                     </>
                   )}

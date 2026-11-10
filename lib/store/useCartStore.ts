@@ -31,10 +31,30 @@ export const useCartStore = create<CartState>()(
       toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
 
       addItem: (item, maybeQuantity) => {
-        const qty = maybeQuantity || item.quantity || 1;
+        const rawQty = Number(maybeQuantity || item.quantity || 1);
+        const qty = Math.max(1, Math.floor(rawQty));
+        const rawMax =
+          item.maxStock !== undefined
+            ? Number(item.maxStock)
+            : item.stock !== undefined
+            ? Number(item.stock)
+            : item.inventory !== undefined
+            ? Number(item.inventory)
+            : undefined;
+        const maxStock =
+          rawMax !== undefined && !Number.isNaN(rawMax) ? Math.max(0, Math.floor(rawMax)) : undefined;
+
+        if (maxStock !== undefined && maxStock <= 0) {
+          return;
+        }
+
         const isCartItem = Boolean(item.variantId && item.productId);
         const resolvedItem: CartItem = isCartItem
-          ? { ...item, quantity: qty }
+          ? {
+              ...item,
+              quantity: maxStock !== undefined ? Math.min(qty, maxStock) : qty,
+              maxStock,
+            }
           : {
               id: item.id,
               productId: item.id,
@@ -43,21 +63,33 @@ export const useCartStore = create<CartState>()(
               variantTitle: item.variantTitle || 'Standard',
               sku: item.sku || `RYC-${item.id?.slice(0, 6) || '01'}`,
               price: Number(item.price ?? item.basePrice ?? 0),
-              quantity: qty,
+              quantity: maxStock !== undefined ? Math.min(qty, maxStock) : qty,
+              maxStock,
               image: Array.isArray(item.images)
-                ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0]?.url)
-                : item.image || '/images/media_1791069473262.jpg',
+                ? typeof item.images[0] === 'string'
+                  ? item.images[0]
+                  : item.images[0]?.url
+                : item.image || '/images/perfumes/princess-reef.jpg',
             };
 
         set((state) => {
           const existingIndex = state.items.findIndex((i) => i.id === resolvedItem.id);
           if (existingIndex > -1) {
             const nextItems = [...state.items];
-            nextItems[existingIndex].quantity += qty;
+            const existing = nextItems[existingIndex];
+            const effectiveMax = maxStock !== undefined ? maxStock : existing.maxStock;
+            const summedQty = existing.quantity + qty;
+            nextItems[existingIndex] = {
+              ...existing,
+              price: resolvedItem.price,
+              image: resolvedItem.image || existing.image,
+              maxStock: effectiveMax,
+              quantity: effectiveMax !== undefined ? Math.min(summedQty, effectiveMax) : summedQty,
+            };
             return { items: nextItems, isOpen: true };
           }
           return {
-            items: [...state.items, { ...resolvedItem, quantity: qty }],
+            items: [...state.items, resolvedItem],
             isOpen: true,
           };
         });
@@ -74,8 +106,10 @@ export const useCartStore = create<CartState>()(
           const updated = state.items
             .map((item) => {
               if (item.id === id) {
-                const newQty = item.quantity + delta;
-                return newQty > 0 ? { ...item, quantity: newQty } : null;
+                const rawNext = item.quantity + delta;
+                const clampedNext =
+                  item.maxStock !== undefined ? Math.min(rawNext, item.maxStock) : rawNext;
+                return clampedNext > 0 ? { ...item, quantity: clampedNext } : null;
               }
               return item;
             })

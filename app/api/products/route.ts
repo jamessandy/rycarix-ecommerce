@@ -12,6 +12,7 @@ function invalidateStorefrontCaches(categorySlug?: string) {
   try {
     revalidatePath('/', 'layout');
     revalidatePath('/products', 'page');
+    revalidatePath('/products/[slug]', 'page');
     revalidatePath('/dashboard/admin', 'page');
     if (categorySlug) {
       revalidatePath(`/category/${normalizeCategorySlug(categorySlug)}`, 'page');
@@ -23,15 +24,15 @@ function invalidateStorefrontCaches(categorySlug?: string) {
 }
 
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const category = searchParams.get('category') || undefined;
-    const slug = searchParams.get('slug') || undefined;
-    const search = searchParams.get('q') || searchParams.get('search') || undefined;
-    const includeDrafts = searchParams.get('includeDrafts') === 'true';
+  const { searchParams } = new URL(req.url);
+  const category = searchParams.get('category') || undefined;
+  const slug = searchParams.get('slug') || undefined;
+  const search = searchParams.get('q') || searchParams.get('search') || undefined;
+  const includeDrafts = searchParams.get('includeDrafts') === 'true';
 
+  try {
     if (slug) {
-      const product = await catalogService.getProductBySlug(slug);
+      const product = await catalogService.getProductBySlug(slug, { includeDrafts });
       if (!product) {
         return NextResponse.json({ error: 'Product not found' }, { status: 404 });
       }
@@ -78,7 +79,11 @@ export async function GET(req: NextRequest) {
     );
   } catch (error: any) {
     console.warn('Database GET /api/products note:', error?.message);
-    const fallbackProducts = await catalogService.getAllProducts();
+    const fallbackProducts = await catalogService.getAllProducts({
+      category,
+      includeDrafts,
+      searchQuery: search,
+    });
     const categoryCounts = fallbackProducts.reduce((acc: Record<string, number>, p) => {
       const cat = normalizeCategorySlug(p.category);
       acc[cat] = (acc[cat] || 0) + 1;

@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { X, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { useCartStore } from '@/lib/store/useCartStore';
-import { useAuthStore } from '@/lib/store/useAuthStore';
 import KlarnaWidget from '@/components/klarna/KlarnaWidget';
 
 export default function CartDrawer() {
+  const router = useRouter();
   const {
     isOpen,
     closeCart,
@@ -19,49 +19,15 @@ export default function CartDrawer() {
     getTotalCount,
   } = useCartStore();
 
-  const { user } = useAuthStore();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-
   const subtotal = getCartSubtotal();
   const totalCount = getTotalCount();
+  const amountToFreeUK = Math.max(0, 100 - subtotal);
 
   if (!isOpen) return null;
 
-  const handleCheckout = async () => {
-    setIsCheckingOut(true);
-    try {
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerEmail: user?.email || undefined,
-          customerName: user?.name || undefined,
-          customerPhone: user?.phone || undefined,
-          items: items.map((item) => ({
-            id: item.productId,
-            variantId: item.variantId,
-            title: item.title,
-            variantTitle: item.variantTitle,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.image,
-          })),
-        }),
-      });
-
-      const data = await response.json();
-      if (data.url) {
-        closeCart();
-        window.location.href = data.url;
-      } else {
-        closeCart();
-        window.location.href = '/checkout';
-      }
-    } catch (err) {
-      console.error('Checkout error:', err);
-      closeCart();
-      window.location.href = '/checkout';
-    }
+  const handleCheckout = () => {
+    closeCart();
+    router.push('/checkout');
   };
 
   return (
@@ -111,73 +77,98 @@ export default function CartDrawer() {
                 </button>
               </div>
             ) : (
-              items.map((item) => (
-                <div key={item.id} className="py-4 flex gap-4">
-                  {/* Thumbnail */}
-                  <div className="relative w-20 h-24 bg-ry-oatmeal shrink-0 overflow-hidden border border-ry-ash/50">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {/* Details */}
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-serif text-sm font-medium text-ry-onyx leading-snug">
-                          {item.title}
-                        </h4>
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          className="text-ry-stone hover:text-red-700 transition-colors p-1"
-                          aria-label="Remove item"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <p className="text-xs text-ry-stone mt-0.5">{item.variantTitle}</p>
+              items.map((item) => {
+                const atMaxStock = item.maxStock !== undefined && item.quantity >= item.maxStock;
+                return (
+                  <div key={item.id} className="py-4 flex gap-4">
+                    {/* Thumbnail */}
+                    <div className="relative w-20 h-24 bg-ry-oatmeal shrink-0 overflow-hidden border border-ry-ash/50">
+                      <Image
+                        src={item.image || '/images/perfumes/princess-reef.jpg'}
+                        alt={item.title}
+                        fill
+                        sizes="80px"
+                        unoptimized={typeof item.image === 'string' && item.image.startsWith('data:')}
+                        className="object-cover"
+                      />
                     </div>
 
-                    <div className="flex items-center justify-between mt-3">
-                      {/* Quantity Controls */}
-                      <div className="flex items-center border border-ry-ash bg-ry-white">
-                        <button
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="p-1 px-2 text-ry-stone hover:text-ry-onyx transition-colors"
-                          aria-label="Decrease quantity"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="px-2 text-xs font-mono font-medium min-w-[24px] text-center">
-                          {item.quantity}
+                    {/* Details */}
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-serif text-sm font-medium text-ry-onyx leading-snug">
+                            {item.title}
+                          </h4>
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="text-ry-stone hover:text-red-700 transition-colors p-1"
+                            aria-label="Remove item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-ry-stone mt-0.5">{item.variantTitle}</p>
+                        {item.maxStock !== undefined && (
+                          <p className="text-[10px] text-ry-stone mt-0.5">
+                            {item.maxStock} in stock
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between mt-3">
+                        {/* Quantity Controls */}
+                        <div className="flex items-center border border-ry-ash bg-ry-white">
+                          <button
+                            onClick={() => updateQuantity(item.id, -1)}
+                            className="p-1 px-2 text-ry-stone hover:text-ry-onyx transition-colors"
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="px-2 text-xs font-mono font-medium min-w-[24px] text-center">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item.id, 1)}
+                            disabled={atMaxStock}
+                            className="p-1 px-2 text-ry-stone hover:text-ry-onyx transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            aria-label="Increase quantity"
+                            title={atMaxStock ? 'Maximum available stock reached' : 'Increase quantity'}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Line Item Total */}
+                        <span className="text-sm font-mono font-medium text-ry-onyx">
+                          £{(item.price * item.quantity).toFixed(2)}
                         </span>
-                        <button
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="p-1 px-2 text-ry-stone hover:text-ry-onyx transition-colors"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
                       </div>
-
-                      {/* Line Item Total */}
-                      <span className="text-sm font-mono font-medium text-ry-onyx">
-                        £{(item.price * item.quantity).toFixed(2)}
-                      </span>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
           {/* Footer & Checkout Area */}
           {items.length > 0 && (
             <div className="p-6 bg-ry-pearlDark/80 border-t border-ry-ash/70 space-y-4">
+              {/* Free UK Delivery Threshold Notice */}
+              <div className="p-2.5 bg-ry-white border border-ry-ash/70 text-[11px] text-center text-ry-charcoal">
+                {amountToFreeUK <= 0 ? (
+                  <span className="text-emerald-700 font-medium">
+                    ✓ Unlocked FREE UK Delivery (Orders over £100)
+                  </span>
+                ) : (
+                  <span>
+                    Add <strong className="font-mono text-ry-onyx">£{amountToFreeUK.toFixed(2)}</strong> more for{' '}
+                    <strong>FREE UK Delivery</strong> (Standard £3.50)
+                  </span>
+                )}
+              </div>
+
               {/* Subtotal */}
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-ry-stone">
@@ -187,8 +178,8 @@ export default function CartDrawer() {
                   </span>
                 </div>
                 <div className="flex justify-between text-xs text-ry-stone">
-                  <span>Shipping</span>
-                  <span>Calculated at checkout</span>
+                  <span>UK Standard / International Delivery</span>
+                  <span>{amountToFreeUK <= 0 ? 'FREE (£0.00)' : 'From £3.50 at checkout'}</span>
                 </div>
               </div>
 
@@ -200,20 +191,10 @@ export default function CartDrawer() {
               {/* Checkout Button */}
               <button
                 onClick={handleCheckout}
-                disabled={isCheckingOut}
-                className="w-full py-4 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium flex items-center justify-center gap-2 hover:bg-ry-burgundyLight active:scale-[0.99] transition-all disabled:opacity-70 group shadow-luxury"
+                className="w-full py-4 bg-ry-burgundy text-ry-white text-xs uppercase tracking-editorial font-medium flex items-center justify-center gap-2 hover:bg-ry-burgundyLight active:scale-[0.99] transition-all group shadow-luxury"
               >
-                {isCheckingOut ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processing Checkout...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Proceed to Checkout</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
+                <span>Proceed to Checkout</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
 
               {/* Guarantee Badges */}

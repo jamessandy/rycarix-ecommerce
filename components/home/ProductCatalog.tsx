@@ -1,15 +1,15 @@
 // components/home/ProductCatalog.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { Product } from '@/lib/types/ecommerce';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
 import {
   CANONICAL_CATEGORIES,
-  getCategoryLabel,
   normalizeCategorySlug,
   getCategoryDisplayLabel,
 } from '@/lib/utils/categoryUtils';
@@ -19,6 +19,23 @@ interface ProductCatalogProps {
   selectedCategory?: string;
 }
 
+function UrlParamsWatcher({
+  onParamsChange,
+}: {
+  onParamsChange: (params: { search: string | null; sale: boolean }) => void;
+}) {
+  const searchParams = useSearchParams();
+  const paramsKey = searchParams.toString();
+
+  useEffect(() => {
+    const q = searchParams.get('search') || searchParams.get('q');
+    const sale = searchParams.get('sale') === 'true';
+    onParamsChange({ search: q, sale });
+  }, [paramsKey, searchParams, onParamsChange]);
+
+  return null;
+}
+
 export default function ProductCatalog({ initialCategory = 'all', selectedCategory }: ProductCatalogProps) {
   const startCat = (selectedCategory || initialCategory || 'all').toLowerCase();
   const [products, setProducts] = useState<Product[]>([]);
@@ -26,12 +43,34 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const prevUrlSaleRef = useRef<boolean>(false);
+  const prevUrlSearchRef = useRef<string | null>(null);
 
   const addItem = useCartStore((state) => state.addItem);
   const { toggleItem, isInWishlist } = useWishlistStore();
 
+  const handleUrlParams = React.useCallback(
+    ({ search, sale }: { search: string | null; sale: boolean }) => {
+      if (sale) {
+        setActiveCategory('sale');
+      } else if (prevUrlSaleRef.current) {
+        setActiveCategory((selectedCategory || initialCategory || 'all').toLowerCase());
+      }
+      prevUrlSaleRef.current = sale;
+
+      if (search !== null) {
+        setSearchQuery(search);
+      } else if (prevUrlSearchRef.current !== null) {
+        setSearchQuery('');
+      }
+      prevUrlSearchRef.current = search;
+    },
+    [selectedCategory, initialCategory]
+  );
+
   // Sync active category when prop changes (e.g. from Hero or CategoryGrid clicks)
   useEffect(() => {
+    if (prevUrlSaleRef.current) return;
     if (selectedCategory) {
       setActiveCategory(selectedCategory.toLowerCase());
     } else if (initialCategory) {
@@ -42,57 +81,12 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
   useEffect(() => {
     let mounted = true;
 
-    // Check for search query param (?search=... or ?q=...)
-    if (typeof window !== 'undefined') {
-      try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const queryFromUrl = urlParams.get('search') || urlParams.get('q');
-        if (queryFromUrl) {
-          setSearchQuery(queryFromUrl);
-        }
-      } catch (e) {}
-    }
-
-    // 1. Instant hydration from localStorage on client mount (0ms latency on refresh)
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('rycarix_catalog_products');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setProducts(parsed);
-            setLoading(false);
-          }
-        }
-      } catch (e) {
-        console.warn('Could not read cached catalog:', e);
-      }
-    }
-
-    // 2. Fetch fresh live catalog from /api/products
     async function loadProducts() {
       try {
-        const res = await fetch('/api/products', { cache: 'no-store' });
+        const res = await fetch('/api/products?includeDrafts=false', { cache: 'no-store' });
         const data = await res.json();
-        if (mounted && Array.isArray(data.products) && data.products.length > 0) {
-          setProducts((prev) => {
-            // Merge DB products with any local unsynced additions
-            const combined = [...data.products, ...prev];
-            const seen = new Set<string>();
-            const deduplicated = combined.filter((p) => {
-              const key = p.slug || p.id;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-
-            if (typeof window !== 'undefined') {
-              try {
-                localStorage.setItem('rycarix_catalog_products', JSON.stringify(deduplicated));
-              } catch (e) {}
-            }
-            return deduplicated;
-          });
+        if (mounted && Array.isArray(data.products)) {
+          setProducts(data.products);
         }
       } catch (err) {
         console.error('Failed to load live catalog:', err);
@@ -103,46 +97,51 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
     loadProducts();
 
-    // 3. Listen to local broadcast events if admin adds/updates products
     const handleCatalogUpdate = () => {
-      try {
-        const cached = localStorage.getItem('rycarix_catalog_products');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setProducts(parsed);
-          }
-        }
-      } catch (e) {}
+      loadProducts();
     };
 
     window.addEventListener('rycarix-catalog-updated', handleCatalogUpdate);
+    window.addEventListener('focus', handleCatalogUpdate);
     window.addEventListener('storage', handleCatalogUpdate);
 
     return () => {
       mounted = false;
       window.removeEventListener('rycarix-catalog-updated', handleCatalogUpdate);
+      window.removeEventListener('focus', handleCatalogUpdate);
       window.removeEventListener('storage', handleCatalogUpdate);
     };
   }, []);
+
+  const isOnSale = (p: Product) => {
+    const compare = p.compareAtPrice !== undefined && p.compareAtPrice !== null ? Number(p.compareAtPrice) : 0;
+    const current = Number(p.price ?? (p as any).basePrice ?? 0);
+    return compare > current;
+  };
 
   const normalizedActive = normalizeCategorySlug(activeCategory);
 
   const categoryPills = [
     { label: 'All Products', value: 'all' },
+    { label: 'Sale', value: 'sale' },
     ...CANONICAL_CATEGORIES.map((c) => ({ label: c.label, value: c.slug })),
   ];
 
   const getCategoryCount = (catSlug: string) => {
     if (catSlug === 'all') return products.length;
+    if (catSlug === 'sale') return products.filter(isOnSale).length;
     const target = normalizeCategorySlug(catSlug);
     return products.filter((p) => normalizeCategorySlug(p.category) === target).length;
   };
 
   const filteredProducts = products.filter((p) => {
+    if (p.isLive === false) return false;
+
     const matchesCategory =
       normalizedActive === 'all'
         ? true
+        : normalizedActive === 'sale'
+        ? isOnSale(p)
         : normalizeCategorySlug(p.category) === normalizedActive;
 
     if (!matchesCategory) return false;
@@ -187,15 +186,22 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
 
   return (
     <section id="catalog" className="max-w-7xl mx-auto px-4 sm:px-8 py-12 font-sans">
+      <Suspense fallback={null}>
+        <UrlParamsWatcher onParamsChange={handleUrlParams} />
+      </Suspense>
       {/* Header & Controls */}
       <div className="flex flex-col gap-6 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <span className="text-[10px] uppercase tracking-[0.3em] text-neutral-500 font-semibold block mb-1">
-              Curated Collection
+              {normalizedActive === 'sale' ? 'Special Offers & Reduced Editions' : 'Curated Collection'}
             </span>
             <h2 className="text-3xl font-serif font-bold text-neutral-900 capitalize">
-              {activeCategory === 'all' ? 'Complete Collection' : `${getCategoryDisplayLabel(activeCategory)} Collection`}
+              {normalizedActive === 'all'
+                ? 'Complete Collection'
+                : normalizedActive === 'sale'
+                ? 'Private Archive Sale'
+                : `${getCategoryDisplayLabel(activeCategory)} Collection`}
             </h2>
             <p className="text-sm text-neutral-600 mt-1">
               Showing {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
@@ -243,7 +249,11 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
                 onClick={() => setActiveCategory(cat.value)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition cursor-pointer ${
                   isActive
-                    ? 'bg-neutral-900 text-white shadow-sm'
+                    ? cat.value === 'sale'
+                      ? 'bg-ry-burgundy text-white shadow-sm'
+                      : 'bg-neutral-900 text-white shadow-sm'
+                    : cat.value === 'sale'
+                    ? 'bg-rose-50 text-ry-burgundy border border-rose-200 hover:bg-rose-100'
                     : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
@@ -266,6 +276,8 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
           <p className="text-base font-medium text-neutral-800">
             {searchQuery
               ? `No products found matching "${searchQuery}"`
+              : normalizedActive === 'sale'
+              ? 'No reduced editions are currently live.'
               : 'No products found in this category.'}
           </p>
           <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
@@ -299,6 +311,15 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
           {filteredProducts.map((product) => {
             const wishlisted = isInWishlist(product.id);
             const stockCount = Number(product.stock ?? 0);
+            const currentPrice = Number(product.price ?? (product as any).basePrice ?? 0);
+            const comparePrice =
+              product.compareAtPrice !== undefined && product.compareAtPrice !== null
+                ? Number(product.compareAtPrice)
+                : 0;
+            const hasDiscount = comparePrice > currentPrice;
+            const discountPercent = hasDiscount
+              ? Math.round(((comparePrice - currentPrice) / comparePrice) * 100)
+              : 0;
 
             return (
               <div
@@ -348,13 +369,27 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
                   {/* Product Image & Link */}
                   <Link href={`/products/${product.slug}`} className="block relative aspect-[4/5] bg-neutral-100 overflow-hidden">
                     <img
-                      src={product.images?.[0] || '/images/media_1791069473262.jpg'}
+                      src={product.images?.[0] || '/images/perfumes/princess-reef.jpg'}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      className={`w-full h-full object-cover transition duration-500 ${
+                        stockCount <= 0 && !product.isComingSoon
+                          ? 'opacity-70 grayscale-[25%]'
+                          : 'group-hover:scale-105'
+                      }`}
                     />
                     {product.isComingSoon && (
                       <div className="absolute top-3 left-3 bg-neutral-900/90 text-amber-300 backdrop-blur-xs text-[10px] font-semibold uppercase tracking-[0.2em] px-2.5 py-1 rounded-sm shadow-sm border border-amber-400/30">
                         Coming Soon
+                      </div>
+                    )}
+                    {!product.isComingSoon && stockCount <= 0 && (
+                      <div className="absolute top-3 left-3 bg-neutral-900/90 text-white backdrop-blur-xs text-[10px] font-semibold uppercase tracking-[0.18em] px-2.5 py-1 rounded-sm shadow-sm">
+                        Out of Stock
+                      </div>
+                    )}
+                    {!product.isComingSoon && hasDiscount && discountPercent > 0 && (
+                      <div className="absolute top-3 right-3 bg-ry-burgundy text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-sm shadow-sm">
+                        -{discountPercent}% OFF
                       </div>
                     )}
                   </Link>
@@ -362,16 +397,25 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
                   <div className="p-4">
                     <div className="flex items-center justify-between text-xs text-neutral-500 mb-1">
                       <span className="uppercase tracking-wider">{getCategoryDisplayLabel(product.category)}</span>
-                      <span>{stockCount > 0 ? `${stockCount} available` : 'Out of stock'}</span>
+                      <span className={stockCount <= 0 ? 'text-rose-700 font-semibold' : ''}>
+                        {stockCount > 0 ? `${stockCount} available` : 'Out of Stock'}
+                      </span>
                     </div>
                     <Link href={`/products/${product.slug}`}>
                       <h3 className="font-serif font-semibold text-base text-neutral-900 line-clamp-1 hover:underline">
                         {product.name}
                       </h3>
                     </Link>
-                    <p className="text-lg font-bold text-neutral-900 mt-1">
-                      £{Number(product.price).toFixed(2)}
-                    </p>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <p className={`text-lg font-bold ${hasDiscount ? 'text-ry-burgundy' : 'text-neutral-900'}`}>
+                        £{currentPrice.toFixed(2)}
+                      </p>
+                      {hasDiscount && (
+                        <span className="text-sm text-neutral-400 line-through font-mono">
+                          £{comparePrice.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -387,8 +431,8 @@ export default function ProductCatalog({ initialCategory = 'all', selectedCatego
                     <button
                       type="button"
                       disabled={stockCount <= 0}
-                      onClick={() => addItem(product, 1)}
-                      className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition disabled:opacity-40 cursor-pointer"
+                      onClick={() => addItem({ ...product, maxStock: stockCount }, 1)}
+                      className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold uppercase tracking-wider rounded-md hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {stockCount > 0 ? 'Add to Bag' : 'Out of Stock'}
                     </button>
