@@ -7,7 +7,6 @@ import ProductCatalog from '@/components/home/ProductCatalog';
 import FeaturedEditorial from '@/components/home/FeaturedEditorial';
 import Philosophy from '@/components/home/Philosophy';
 import CustomerReviews from '@/components/home/CustomerReviews';
-import TransparencySection from '@/components/home/TransparencySection';
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -39,9 +38,6 @@ export default function HomePage() {
 
       {/* 7. Verified Customer Reviews & Press Accolades */}
       <CustomerReviews />
-
-      {/* 8. Ingredients & Workshop Transparency */}
-      <TransparencySection />
     </main>
   );
 }
