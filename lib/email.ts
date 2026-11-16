@@ -2,7 +2,8 @@ import { saveEmailLog } from "./services/emailService";
 
 // lib/email.ts
 const BUSINESS_ADDRESS = "83 Fulwell Road, Sunderland, UK";
-const FROM_EMAIL = process.env.EMAIL_FROM || "RYCARIX <info@rycarix.com>";
+const FROM_EMAIL = process.env.EMAIL_FROM || "RYCARIX <orders@send.rycarix.com>";
+const REPLY_TO_EMAIL = process.env.EMAIL_REPLY_TO || "info@rycarix.com";
 
 class ResendClient {
   private apiKey?: string;
@@ -17,6 +18,7 @@ class ResendClient {
       to: string | string[];
       subject: string;
       html: string;
+      reply_to?: string;
     }) => {
       let isDelivered = false;
       const recipient = Array.isArray(payload.to) ? payload.to.join(", ") : payload.to;
@@ -91,6 +93,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailPayload) {
   return resend.emails.send({
     from: FROM_EMAIL,
     to: data.customerEmail,
+    reply_to: REPLY_TO_EMAIL,
     subject: `Order Confirmed — #${data.orderNumber} | Rycarix`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #111;">
@@ -127,6 +130,7 @@ export async function sendOrderShippedEmail(data: OrderEmailPayload) {
   return resend.emails.send({
     from: FROM_EMAIL,
     to: data.customerEmail,
+    reply_to: REPLY_TO_EMAIL,
     subject: `Your Rycarix Order #${data.orderNumber} Has Been Dispatched`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #111;">

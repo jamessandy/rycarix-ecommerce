@@ -426,7 +426,8 @@ export async function sendEmail({
 }): Promise<{ success: boolean; id: string; status: 'DELIVERED' | 'SIMULATED_DEMO' | 'FAILED'; error?: string }> {
   const id = `email-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const timestamp = new Date().toISOString();
-  const from = process.env.EMAIL_FROM || 'RYCARIX <info@rycarix.com>';
+  const from = process.env.EMAIL_FROM || 'RYCARIX <orders@send.rycarix.com>';
+  const replyTo = process.env.EMAIL_REPLY_TO || 'info@rycarix.com';
 
   // 1. Check for Resend API Key
   const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
@@ -441,6 +442,7 @@ export async function sendEmail({
         body: JSON.stringify({
           from,
           to: [to],
+          reply_to: replyTo,
           subject,
           html,
           text: text || subject,
