@@ -13,7 +13,7 @@ export default function PerksBanner() {
     {
       icon: Truck,
       title: 'Tracked UK Delivery',
-      description: 'Tracked shipping via Evri & Royal Mail with live milestones.',
+      description: 'Hand-dispatched from our Sunderland studio via Royal Mail with live milestones.',
     },
     {
       icon: ShieldCheck,

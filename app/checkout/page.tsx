@@ -15,6 +15,7 @@ import {
   Store,
   AlertCircle,
   Globe,
+  MapPin,
 } from 'lucide-react';
 import Image from 'next/image';
 import {
@@ -454,7 +455,9 @@ export default function CheckoutPage() {
                               </span>
                             </div>
                             <p className="text-xs text-neutral-500 mt-1">
-                              {option.deliveryTime}
+                              {isPickup
+                                ? 'Arrange collection after ordering • Studio: 83 Fulwell Road, Sunderland, UK'
+                                : option.deliveryTime}
                               {isUK && isFreeOption && !isFreeEligible && (
                                 <span className="text-amber-700 font-medium ml-1">
                                   (add £{(100 - subtotal).toFixed(2)} more)
@@ -669,6 +672,11 @@ export default function CheckoutPage() {
                 <span className="inline-flex items-center bg-[#B2ECE1] text-black font-semibold text-[9px] px-1.5 py-0.5 rounded-sm">clearpay✦</span>
                 . Interest-free, no hidden fees.
               </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-ry-ash/40 text-[10px] text-ry-stone flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>Dispatched from RYCARIX Studio • 83 Fulwell Road, Sunderland, UK</span>
             </div>
           </div>
         </div>

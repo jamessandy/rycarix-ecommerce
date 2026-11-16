@@ -229,7 +229,7 @@ function TrackingPortalContent() {
             Track Your Delivery
           </h1>
           <p className="text-xs text-ry-stone mt-3 leading-relaxed">
-            Real-time milestone tracking for your Rycarix order. Complete transparency from our London fulfillment center to your door.
+            Real-time milestone tracking for your Rycarix order. Complete transparency from our 83 Fulwell Road, Sunderland studio to your door.
           </p>
 
           {/* Quick Search Form */}

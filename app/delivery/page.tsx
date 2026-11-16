@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Truck, CheckCircle2, Store, Clock, Globe2, Package, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Truck, CheckCircle2, Store, Clock, Globe2, Package, ShieldCheck, ArrowLeft, MapPin } from 'lucide-react';
 
 export default function DeliveryPage() {
   return (
@@ -96,12 +96,35 @@ export default function DeliveryPage() {
                     </span>
                   </div>
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    Arrange collection after ordering
+                    Arrange collection after ordering • <strong className="text-neutral-700">83 Fulwell Road, Sunderland, UK</strong>
                   </p>
                 </div>
               </div>
               <div className="text-left sm:text-right font-semibold text-sm text-neutral-900 uppercase tracking-wider shrink-0 pl-11 sm:pl-0">
                 FREE
+              </div>
+            </div>
+          </div>
+
+          {/* Collection & Fulfillment Studio Location Card */}
+          <div className="mt-4 p-5 bg-white border border-neutral-300 rounded-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 bg-neutral-900 text-white rounded-lg shrink-0">
+                <MapPin className="w-5 h-5 text-amber-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif text-base text-neutral-900">Studio &amp; Collection Address</h3>
+                  <span className="px-2 py-0.5 bg-neutral-100 text-neutral-800 text-[9px] font-bold uppercase rounded border border-neutral-200">
+                    Sunderland Studio
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-neutral-800 mt-1">
+                  83 Fulwell Road, Sunderland, United Kingdom
+                </p>
+                <p className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">
+                  All orders are prepared, quality inspected, and dispatched directly from our Sunderland studio. In-person collection is available following checkout.
+                </p>
               </div>
             </div>
           </div>

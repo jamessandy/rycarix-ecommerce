@@ -2,7 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { Sparkles, Heart, Compass, ArrowRight, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
+import { Sparkles, Heart, Compass, ArrowRight, ShieldCheck, Truck, RefreshCw, MapPin } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'About Us | RYCARIX Luxury Fragrance, Hair & Lifestyle',
@@ -161,6 +161,31 @@ export default function AboutPage() {
             <p className="text-xs text-neutral-600 leading-relaxed">
               Live consultation support, Klarna &amp; Clearpay 0% interest installments, and 14-day client satisfaction.
             </p>
+          </div>
+        </div>
+
+        {/* Atelier & Studio Presence Section */}
+        <div className="p-8 sm:p-12 bg-white border border-ry-ash/70 rounded-2xl shadow-sm text-center max-w-3xl mx-auto space-y-4">
+          <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto">
+            <MapPin className="w-5 h-5 text-amber-700" />
+          </div>
+          <h3 className="font-serif text-2xl sm:text-3xl text-ry-onyx font-normal">
+            Our Atelier &amp; Studio
+          </h3>
+          <p className="text-sm font-semibold text-ry-onyx">
+            83 Fulwell Road, Sunderland, United Kingdom
+          </p>
+          <p className="text-xs text-ry-stone max-w-md mx-auto leading-relaxed">
+            Every formulation, bespoke hairpiece, and signature fragrance is prepared, inspected, and packaged with precision at our Sunderland atelier studio.
+          </p>
+          <div className="pt-2">
+            <Link
+              href="/delivery"
+              className="inline-flex items-center gap-2 text-xs uppercase tracking-editorial text-ry-burgundy font-semibold hover:underline"
+            >
+              <span>View Delivery &amp; Collection Details</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
 

@@ -53,11 +53,11 @@ export const ROYAL_MAIL_UK_SERVICES: RoyalMailServiceOption[] = [
   {
     id: 'collection-pickup',
     service: 'Collection / Pickup',
-    carrierName: 'Rycarix Atelier Collection',
+    carrierName: 'Rycarix Studio (83 Fulwell Road, Sunderland, UK)',
     price: 0.00,
     recommendation: 'Arrange after ordering',
     weightLimit: 'Pick up in person',
-    deliveryTime: 'Arrange collection after ordering',
+    deliveryTime: 'Arrange collection after ordering • 83 Fulwell Road, Sunderland, UK',
     minDays: 1,
     maxDays: 3,
     badge: 'FREE',
@@ -381,11 +381,11 @@ export function createAggregatorDispatch(params: {
     carrier: chosenCarrier,
     serviceLevel: chosenService,
     senderAddress: {
-      name: 'Rycarix Fulfillment Center',
+      name: 'Rycarix Fulfillment Studio',
       company: 'Rycarix Luxury Goods Co.',
-      street: 'Unit 4, Rycarix Atelier House',
-      city: 'London',
-      postalCode: 'W1S 2TE',
+      street: '83 Fulwell Road',
+      city: 'Sunderland',
+      postalCode: 'SR6 9PH',
       country: 'United Kingdom',
     },
     recipientAddress: {
@@ -418,10 +418,10 @@ export function createAggregatorDispatch(params: {
           : `Dispatched via ${chosenCarrier}`,
         location: status === 'DELIVERED' || status === 'OUT_FOR_DELIVERY'
           ? `${params.city} Local Depot`
-          : 'Rycarix Fulfillment Center, London, UK',
+          : 'RYCARIX Studio, 83 Fulwell Road, Sunderland, UK',
         description: packaging.isHazardous
           ? `${chosenCarrier} waybill ${trackingNumber} generated with UN 1266 Limited Quantity (LQ) compliance.`
-          : `${chosenCarrier} waybill ${trackingNumber} dispatched from London fulfillment center.`,
+          : `${chosenCarrier} waybill ${trackingNumber} dispatched from 83 Fulwell Road, Sunderland studio.`,
         isCompleted: true,
       },
       {
@@ -525,8 +525,8 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
     milestones.push({
       timestamp: `${ord.date || dateStr} • Handed to Courier`,
       status: `Collected by ${carrier}`,
-      location: 'Rycarix Fulfillment Center, London, UK',
-      description: `Package collected and scanned into ${carrier} logistics network.`,
+      location: 'RYCARIX Studio, 83 Fulwell Road, Sunderland, UK',
+      description: `Package collected and scanned into ${carrier} logistics network from Sunderland studio.`,
       isCompleted: true,
     });
   }
@@ -571,11 +571,11 @@ export function buildShipmentFromOrder(ord: any): ShippingLabelData {
       ord.shippingMethod ||
       'Standard UK Delivery',
     senderAddress: {
-      name: 'Rycarix Fulfillment Center',
+      name: 'Rycarix Fulfillment Studio',
       company: 'Rycarix Luxury Goods Co.',
-      street: 'Unit 4, Rycarix Atelier House',
-      city: 'London',
-      postalCode: 'W1S 2TE',
+      street: '83 Fulwell Road',
+      city: 'Sunderland',
+      postalCode: 'SR6 9PH',
       country: 'United Kingdom',
     },
     recipientAddress: {

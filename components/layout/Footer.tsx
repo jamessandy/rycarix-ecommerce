@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Check, ShieldCheck, Lock } from 'lucide-react';
+import { Check, ShieldCheck, Lock, MapPin } from 'lucide-react';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
@@ -67,21 +67,20 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 py-16 border-b border-ry-burgundy text-xs">
           
           {/* Brand Column */}
-          <div className="col-span-2 md:col-span-4 lg:col-span-2 pr-6">
+          <div className="col-span-2 md:col-span-4 lg:col-span-1 pr-4">
             <span className="font-serif text-2xl tracking-[0.25em] uppercase font-normal text-ry-white block mb-3">
               Rycarix
             </span>
-            <p className="text-xs text-ry-stone leading-relaxed max-w-sm mb-4">
+            <p className="text-xs text-ry-stone leading-relaxed mb-4">
               Artisanal botanical hair care, luxury parfums, clean skincare, and scented home goods crafted with premium ingredients.
             </p>
-            <div className="flex items-center gap-3 text-[10px] text-ry-ash/80">
+            <div className="flex flex-col gap-1.5 text-[10px] text-ry-ash/80">
               <span className="flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Klarna & Clearpay Partner
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                Klarna &amp; Clearpay Partner
               </span>
-              <span>•</span>
               <span className="flex items-center gap-1">
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-3.5 h-3.5 shrink-0" />
                 256-Bit SSL Encrypted
               </span>
             </div>
@@ -105,7 +104,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/category/fragrance" className="hover:text-ry-white transition-colors">
-                  Parfum & Fragrance
+                  Parfum &amp; Fragrance
                 </Link>
               </li>
               <li>
@@ -115,12 +114,12 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/category/body-bath" className="hover:text-ry-white transition-colors">
-                  Body & Bath
+                  Body &amp; Bath
                 </Link>
               </li>
               <li>
                 <Link href="/category/candles" className="hover:text-ry-white transition-colors">
-                  Home & Candles
+                  Home &amp; Candles
                 </Link>
               </li>
               <li>
@@ -144,7 +143,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/dashboard/user" className="hover:text-ry-white transition-colors">
-                  My Account & Wishlist
+                  My Account &amp; Wishlist
                 </Link>
               </li>
               <li>
@@ -154,7 +153,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/delivery" className="hover:text-ry-white transition-colors">
-                  Delivery Information
+                  Delivery &amp; Collection
                 </Link>
               </li>
             </ul>
@@ -168,7 +167,7 @@ export default function Footer() {
             <ul className="space-y-2 text-ry-stone">
               <li>
                 <Link href="/#philosophy" className="hover:text-ry-white transition-colors">
-                  Our Story & Ingredients
+                  Our Story &amp; Ingredients
                 </Link>
               </li>
               <li>
@@ -176,7 +175,32 @@ export default function Footer() {
                   Our Ethos &amp; Story
                 </Link>
               </li>
+              <li>
+                <Link href="/delivery" className="hover:text-ry-white transition-colors">
+                  Collection Studio
+                </Link>
+              </li>
             </ul>
+          </div>
+
+          {/* Studio & Physical Address */}
+          <div className="space-y-3">
+            <h4 className="text-[10px] uppercase tracking-[0.25em] text-ry-white font-medium flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-amber-300" />
+              Studio Location
+            </h4>
+            <div className="text-xs text-ry-stone leading-relaxed space-y-1">
+              <p className="font-serif text-sm text-ry-white font-normal">RYCARIX Atelier</p>
+              <p className="text-ry-white font-medium">83 Fulwell Road</p>
+              <p>Sunderland, Tyne and Wear</p>
+              <p>United Kingdom</p>
+              <div className="pt-2 border-t border-ry-burgundy/60 text-[11px] space-y-1">
+                <span className="text-ry-ash/70 block">Concierge Email:</span>
+                <a href="mailto:orders@rycarix.com" className="text-amber-200 hover:text-white transition-colors block font-mono">
+                  orders@rycarix.com
+                </a>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -184,7 +208,7 @@ export default function Footer() {
         {/* Bottom: Copyright & Legal */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-[11px] text-ry-stone gap-4">
           <div>
-            &copy; {new Date().getFullYear()} Rycarix. All rights reserved.
+            &copy; {new Date().getFullYear()} Rycarix • 83 Fulwell Road, Sunderland, UK • All rights reserved.
           </div>
 
           {/* Accepted Payment Hallmarks */}
