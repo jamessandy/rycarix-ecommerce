@@ -2,7 +2,7 @@ import { saveEmailLog } from "./services/emailService";
 
 // lib/email.ts
 const BUSINESS_ADDRESS = "83 Fulwell Road, Sunderland, UK";
-const FROM_EMAIL = process.env.EMAIL_FROM || "Rycarix <orders@rycarix.com>";
+const FROM_EMAIL = process.env.EMAIL_FROM || "RYCARIX <info@rycarix.com>";
 
 class ResendClient {
   private apiKey?: string;
