@@ -190,16 +190,10 @@ export default function Footer() {
               Studio Location
             </h4>
             <div className="text-xs text-ry-stone leading-relaxed space-y-1">
-              <p className="font-serif text-sm text-ry-white font-normal">RYCARIX Atelier</p>
+              <p className="font-serif text-sm text-ry-white font-normal">RYCARIX</p>
               <p className="text-ry-white font-medium">83 Fulwell Road</p>
               <p>Sunderland, Tyne and Wear</p>
               <p>United Kingdom</p>
-              <div className="pt-2 border-t border-ry-burgundy/60 text-[11px] space-y-1">
-                <span className="text-ry-ash/70 block">Concierge Email:</span>
-                <a href="mailto:orders@rycarix.com" className="text-amber-200 hover:text-white transition-colors block font-mono">
-                  orders@rycarix.com
-                </a>
-              </div>
             </div>
           </div>
 

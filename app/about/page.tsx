@@ -164,19 +164,19 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Atelier & Studio Presence Section */}
+        {/* Studio Presence Section */}
         <div className="p-8 sm:p-12 bg-white border border-ry-ash/70 rounded-2xl shadow-sm text-center max-w-3xl mx-auto space-y-4">
           <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mx-auto">
             <MapPin className="w-5 h-5 text-amber-700" />
           </div>
           <h3 className="font-serif text-2xl sm:text-3xl text-ry-onyx font-normal">
-            Our Atelier &amp; Studio
+            Our Studio
           </h3>
           <p className="text-sm font-semibold text-ry-onyx">
             83 Fulwell Road, Sunderland, United Kingdom
           </p>
           <p className="text-xs text-ry-stone max-w-md mx-auto leading-relaxed">
-            Every formulation, bespoke hairpiece, and signature fragrance is prepared, inspected, and packaged with precision at our Sunderland atelier studio.
+            Every formulation, bespoke hairpiece, and signature fragrance is prepared, inspected, and packaged with precision at our Sunderland studio.
           </p>
           <div className="pt-2">
             <Link
