@@ -9,16 +9,37 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await Promise.resolve(params);
-    const orderId = resolvedParams.id;
-    const { status, trackingNumber, carrier, trackingUrl } = await req.json();
+    const rawId = resolvedParams?.id ? decodeURIComponent(resolvedParams.id).trim() : "";
+    const body = await req.json().catch(() => ({}));
+    const { status, carrier, trackingUrl } = body;
+    let trackingNumber = body.trackingNumber;
 
-    const existingOrder = await prisma.order.findUnique({
-      where: { id: orderId },
+    if (!rawId) {
+      return NextResponse.json({ error: "Order reference is required." }, { status: 400 });
+    }
+
+    // Resolve order by either cuid id or orderNumber (e.g., RY-6620626), case-insensitively
+    const existingOrder = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: rawId },
+          { orderNumber: rawId },
+          { orderNumber: { equals: rawId, mode: "insensitive" } },
+        ],
+      },
       include: { items: true },
     });
 
     if (!existingOrder) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: `Order "${rawId}" not found in database.` },
+        { status: 404 }
+      );
+    }
+
+    const resolvedCarrier = (carrier || existingOrder.carrier || "Royal Mail Tracked").trim();
+    if (status === "SHIPPED" && (!trackingNumber || !trackingNumber.trim())) {
+      trackingNumber = existingOrder.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`;
     }
 
     const isNewlyShipped =
@@ -26,17 +47,44 @@ export async function PATCH(
       (existingOrder.status !== "SHIPPED" ||
         existingOrder.trackingNumber !== trackingNumber);
 
+    const billingObj = (existingOrder.billingAddress || {}) as Record<string, any>;
+    const meta = (billingObj._meta || {}) as Record<string, any>;
+
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: existingOrder.id },
       data: {
         status,
+        fulfillmentStatus:
+          status === "SHIPPED" || status === "DELIVERED"
+            ? "FULFILLED"
+            : existingOrder.fulfillmentStatus,
         trackingNumber: trackingNumber?.trim() || null,
-        carrier: carrier?.trim() || null,
+        carrier: resolvedCarrier || null,
         trackingUrl: trackingUrl?.trim() || null,
         shippedAt:
           status === "SHIPPED"
             ? existingOrder.shippedAt ?? new Date()
             : existingOrder.shippedAt,
+        billingAddress: {
+          ...billingObj,
+          _meta: {
+            ...meta,
+            carrier: resolvedCarrier,
+            fulfillment:
+              status === "DELIVERED"
+                ? "Delivered"
+                : status === "SHIPPED"
+                ? "Dispatched"
+                : "Ready for Dispatch",
+            currentStatus:
+              status === "DELIVERED"
+                ? "DELIVERED"
+                : status === "SHIPPED"
+                ? "IN_TRANSIT"
+                : "DISPATCH_PENDING",
+            dispatchEmailSent: isNewlyShipped ? true : Boolean(meta.dispatchEmailSent),
+          },
+        },
       },
       include: { items: true },
     });
@@ -45,10 +93,14 @@ export async function PATCH(
     if (isNewlyShipped && updatedOrder.trackingNumber) {
       const shippingAddr = (updatedOrder.shippingAddress || {}) as Record<string, any>;
       const resolvedCustomerName =
-        updatedOrder.customerName || shippingAddr.name || "Valued Client";
+        updatedOrder.customerName ||
+        meta.customerName ||
+        shippingAddr.name ||
+        "Valued Client";
       const resolvedCustomerEmail =
         updatedOrder.customerEmail ||
         updatedOrder.guestEmail ||
+        meta.customerEmail ||
         shippingAddr.email ||
         "";
 
@@ -67,7 +119,7 @@ export async function PATCH(
             carrier: updatedOrder.carrier,
             trackingUrl: updatedOrder.trackingUrl,
             items: updatedOrder.items.map((i) => ({
-              productName: i.productName || i.productTitle,
+              productName: i.productName || i.productTitle || "Rycarix Product",
               quantity: i.quantity,
               price: (i.price || i.unitPrice || 0).toString(),
             })),

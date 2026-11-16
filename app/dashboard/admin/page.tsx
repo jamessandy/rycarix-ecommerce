@@ -989,7 +989,7 @@ export default function AdminDashboardPage() {
                       {expandedOrderId === refId && (
                         <tr key={`${refId}-tracking-form`}>
                           <td colSpan={6} className="p-4 bg-neutral-50/80 border-b border-neutral-200">
-                            <AdminTrackingForm order={ord} />
+                            <AdminTrackingForm order={ord} onUpdated={fetchOrders} />
                           </td>
                         </tr>
                       )}
