@@ -26,6 +26,7 @@ enum ProductStatus {
 
 enum OrderStatus {
   PENDING
+  PREPARING
   AUTHORIZED
   PAID
   PROCESSING
@@ -255,16 +256,19 @@ model Order {
   userId           String?
   user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   guestEmail       String?
+  customerEmail    String?
+  customerName     String?
   
   status           OrderStatus       @default(PENDING)
   fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
   
   currency         String            @default("USD")
-  subtotal         Decimal           @db.Decimal(10, 2)
+  subtotal         Decimal           @db.Decimal(10, 2) @default(0.00)
   tax              Decimal           @db.Decimal(10, 2) @default(0.00)
   shippingCost     Decimal           @db.Decimal(10, 2) @default(0.00)
   discountTotal    Decimal           @db.Decimal(10, 2) @default(0.00)
-  total            Decimal           @db.Decimal(10, 2)
+  total            Decimal           @db.Decimal(10, 2) @default(0.00)
+  totalAmount      Decimal?          @db.Decimal(10, 2)
   
   // Immutable address snapshots
   shippingAddress  Json
@@ -274,6 +278,7 @@ model Order {
   carrier          String?           // e.g. "FedEx Priority", "DHL Express"
   trackingNumber   String?
   trackingUrl      String?
+  shippedAt        DateTime?
 
   items            OrderItem[]
   payments         Payment[]
@@ -291,19 +296,22 @@ model OrderItem {
   orderId        String
   order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
-  productId      String
-  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId      String?
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName    String?         // Preserves order history if the product is deleted
+  productImage   String?
   
   variantId      String?
   variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   // Snapshot at point of purchase
-  productTitle   String
+  productTitle   String          @default("")
   variantTitle   String?
-  sku            String
-  unitPrice      Decimal         @db.Decimal(10, 2)
+  sku            String          @default("")
+  unitPrice      Decimal         @db.Decimal(10, 2) @default(0.00)
+  price          Decimal?        @db.Decimal(10, 2)
   quantity       Int
-  total          Decimal         @db.Decimal(10, 2)
+  total          Decimal         @db.Decimal(10, 2) @default(0.00)
   
   attributesSnapshot Json?
 

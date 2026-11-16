@@ -347,19 +347,34 @@ export const catalogService = {
 
   async deleteProduct(id: string): Promise<void> {
     try {
-      await prisma.product.delete({
-        where: { id },
+      await prisma.$transaction(async (tx) => {
+        // Remove any wishlist references first
+        await tx.wishlistItem.deleteMany({
+          where: { productId: id },
+        });
+
+        // Detach from historical order items so order records stay intact
+        await tx.orderItem.updateMany({
+          where: { productId: id },
+          data: { productId: null },
+        });
+
+        // Delete the product
+        await tx.product.delete({
+          where: { id },
+        });
       });
     } catch (err: any) {
-      // Preserve order history integrity when referenced by OrderItem (onDelete: Restrict)
-      if (err?.code === 'P2003') {
+      console.warn('Product deletion fallback to soft archive:', err);
+      try {
         await prisma.product.update({
           where: { id },
-          data: { status: 'ARCHIVED', isLive: false },
+          data: { status: 'ARCHIVED', isLive: false, stock: 0 },
         });
         return;
+      } catch (archiveErr) {
+        throw err;
       }
-      throw err;
     }
   },
 };

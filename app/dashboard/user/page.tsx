@@ -23,6 +23,7 @@ import {
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
 import { useWishlistStore } from '@/lib/store/useWishlistStore';
+import { OrderTrackerCard } from '@/components/orders/OrderTrackerCard';
 
 function UserDashboardContent() {
   const [activeTab, setActiveTab] = useState<'orders' | 'wishlist' | 'addresses' | 'profile'>(
@@ -639,6 +640,22 @@ function UserDashboardContent() {
                           {statusLabel}
                         </span>
                       </div>
+                    </div>
+
+                    {/* 3-Stage Fulfillment Progress Stepper */}
+                    <div className="p-6 border-b border-ry-ash/40">
+                      <OrderTrackerCard
+                        order={{
+                          id: order.id,
+                          orderNumber: orderNumber,
+                          status: order.status || (isDispatched ? 'SHIPPED' : 'PREPARING'),
+                          trackingNumber: order.trackingNumber || null,
+                          carrier: order.carrier || null,
+                          trackingUrl: order.trackingUrl || null,
+                          totalAmount: orderTotal,
+                          createdAt: order.date || order.createdAt || new Date().toISOString(),
+                        }}
+                      />
                     </div>
 
                     {/* Order Items */}

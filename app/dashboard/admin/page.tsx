@@ -26,6 +26,7 @@ import {
   Clock,
   X,
 } from 'lucide-react';
+import { AdminTrackingForm } from '@/components/admin/AdminTrackingForm';
 
 /**
  * Compresses large phone/laptop images to <150KB so PostgreSQL & Serverless POST bodies never fail
@@ -95,6 +96,7 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [dispatchingOrderId, setDispatchingOrderId] = useState<string | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState('');
   const [dispatchErrorMsg, setDispatchErrorMsg] = useState('');
 
@@ -312,13 +314,16 @@ export default function AdminDashboardPage() {
   const handleDeleteProduct = async (id: string) => {
     if (!confirm('Are you sure you want to permanently delete this product from the database?')) return;
     try {
-      const res = await fetch(`/api/products?id=${encodeURIComponent(id)}`, {
+      const res = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
       if (res.ok) {
         await fetchSharedDatabaseCatalog();
-        setStatusMessage({ type: 'success', text: 'Product deleted from shared database.' });
+        setStatusMessage({ type: 'success', text: 'Product deleted/archived from database.' });
         setTimeout(() => setStatusMessage(null), 3000);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'Failed to delete product.');
       }
     } catch (err) {
       console.error('Failed to delete product:', err);
@@ -923,7 +928,8 @@ export default function AdminDashboardPage() {
                     const refId = ord.orderNumber || ord.id;
                     const isSubmittingDispatch = dispatchingOrderId === refId;
                     return (
-                      <tr key={refId} className="hover:bg-neutral-50">
+                      <React.Fragment key={refId}>
+                        <tr className="hover:bg-neutral-50">
                         <td className="py-3 px-3 font-mono text-xs font-medium text-neutral-900">
                           {refId}
                         </td>
@@ -954,37 +960,40 @@ export default function AdminDashboardPage() {
                           </span>
                         </td>
                         <td className="py-3 px-3 text-right">
-                          {isDispatched ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-xs font-medium">
+                          <div className="flex items-center justify-end gap-2">
+                            {isDispatched ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded text-xs font-medium">
                                 <Check className="w-3.5 h-3.5" />
-                                <span>Confirmed</span>
+                                <span>Dispatched</span>
                               </span>
-                              <span className="text-xs text-neutral-500 font-mono">
-                                {ord.trackingNumber}
-                              </span>
-                              {ord.trackingNumber && (
-                                <a
-                                  href={`/track?ref=${encodeURIComponent(ord.trackingNumber)}`}
-                                  className="text-xs text-neutral-700 hover:text-neutral-900 underline flex items-center gap-1"
-                                >
-                                  <span>Track</span>
-                                  <ExternalLink className="w-3 h-3" />
-                                </a>
-                              )}
-                            </div>
-                          ) : (
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isSubmittingDispatch}
+                                onClick={() => handleConfirmDispatch(ord)}
+                                className="px-3 py-1 bg-neutral-900 text-white rounded text-xs font-medium hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50"
+                              >
+                                {isSubmittingDispatch ? 'Confirming...' : 'Quick Dispatch'}
+                              </button>
+                            )}
                             <button
                               type="button"
-                              disabled={isSubmittingDispatch}
-                              onClick={() => handleConfirmDispatch(ord)}
-                              className="px-3 py-1.5 bg-neutral-900 text-white rounded text-xs font-medium hover:bg-neutral-800 transition cursor-pointer disabled:opacity-50"
+                              onClick={() => setExpandedOrderId(expandedOrderId === refId ? null : refId)}
+                              className="px-2.5 py-1 text-xs border border-neutral-300 text-neutral-700 hover:bg-neutral-100 rounded transition font-medium"
                             >
-                              {isSubmittingDispatch ? 'Confirming...' : 'Confirm Dispatch'}
+                              {expandedOrderId === refId ? 'Close' : 'Fulfill / Track'}
                             </button>
-                          )}
+                          </div>
                         </td>
                       </tr>
+                      {expandedOrderId === refId && (
+                        <tr key={`${refId}-tracking-form`}>
+                          <td colSpan={6} className="p-4 bg-neutral-50/80 border-b border-neutral-200">
+                            <AdminTrackingForm order={ord} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                     );
                   })}
                 </tbody>

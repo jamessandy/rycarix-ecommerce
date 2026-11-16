@@ -29,6 +29,7 @@ import {
 import { getCategoryDisplayLabel } from '@/lib/utils/categoryUtils';
 import { useCartStore } from '@/lib/store/useCartStore';
 import { useAuthStore } from '@/lib/store/useAuthStore';
+import { OrderTrackerCard } from '@/components/orders/OrderTrackerCard';
 
 function TrackingPortalContent() {
   const searchParams = useSearchParams();
@@ -281,6 +282,24 @@ function TrackingPortalContent() {
               )}
             </div>
             
+            {/* 3-Stage Fulfillment Progress Stepper Card */}
+            <OrderTrackerCard
+              order={{
+                id: (activeShipment as any).id || activeShipment.orderNumber,
+                orderNumber: activeShipment.orderNumber,
+                status: isShipmentDispatched
+                  ? activeShipment.currentStatus === 'DELIVERED'
+                    ? 'DELIVERED'
+                    : 'SHIPPED'
+                  : 'PREPARING',
+                trackingNumber: isShipmentDispatched ? activeShipment.trackingNumber : null,
+                carrier: isShipmentDispatched ? activeShipment.carrier : null,
+                trackingUrl: isShipmentDispatched ? (activeShipment as any).trackingUrl : null,
+                totalAmount: (activeShipment as any).total || 0,
+                createdAt: (activeShipment as any).date || new Date().toISOString(),
+              }}
+            />
+
             {/* Primary Status Card */}
             <div className="bg-ry-white border border-ry-ash/80 shadow-md p-6 sm:p-10">
               <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-ry-ash/50 gap-4">

@@ -164,7 +164,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
                 Thank you for your purchase, ${data.customerName || 'Valued Client'}.
               </h1>
               <p style="font-size: 14px; line-height: 1.6; color: #5C5850; margin: 0 0 20px 0;">
-                Your order <strong style="color: #1A1A1A; font-family: monospace;">${data.orderNumber}</strong> has been registered at our London fulfillment center. Each product is carefully inspected and prepared prior to courier dispatch.
+                Your order <strong style="color: #1A1A1A; font-family: monospace;">${data.orderNumber}</strong> has been registered at our 83 Fulwell Road, Sunderland fulfillment studio. Each product is carefully inspected and prepared prior to courier dispatch.
               </p>
               
               <div style="background-color: #FBF9F5; border-left: 3px solid #3D1220; padding: 12px 16px; font-size: 12px; color: #666; margin-bottom: 24px;">
@@ -247,7 +247,7 @@ export function buildOrderConfirmationEmailHtml(data: OrderConfirmationEmailData
           <!-- Footer -->
           <tr>
             <td style="background-color: #F2ECE3; padding: 24px 32px; border-top: 1px solid #E5DFD3; text-align: center; font-size: 11px; color: #736E65; line-height: 1.6;">
-              <div>RYCARIX • Rycarix Atelier House, London, United Kingdom</div>
+              <div>RYCARIX • 83 Fulwell Road, Sunderland, United Kingdom</div>
               <div style="margin-top: 6px;">Questions? Inquire with our private concierge at <a href="mailto:concierge@rycarix.com" style="color: #3D1220; text-decoration: underline;">concierge@rycarix.com</a></div>
               <div style="margin-top: 10px; color: #9E988E; font-size: 10px;">© ${new Date().getFullYear()} RYCARIX. All rights reserved.</div>
             </td>
@@ -387,7 +387,7 @@ export function buildDispatchNotificationEmailHtml(data: DispatchNotificationEma
           <!-- Footer -->
           <tr>
             <td style="background-color: #F2ECE3; padding: 24px 32px; border-top: 1px solid #E5DFD3; text-align: center; font-size: 11px; color: #736E65; line-height: 1.6;">
-              <div>RYCARIX • Rycarix Atelier House, London, United Kingdom</div>
+              <div>RYCARIX • 83 Fulwell Road, Sunderland, United Kingdom</div>
               <div style="margin-top: 6px;">Questions about your parcel? Reach out at <a href="mailto:concierge@rycarix.com" style="color: #3D1220; text-decoration: underline;">concierge@rycarix.com</a></div>
               <div style="margin-top: 10px; color: #9E988E; font-size: 10px;">© ${new Date().getFullYear()} RYCARIX. All rights reserved.</div>
             </td>

@@ -572,6 +572,7 @@ export async function confirmOrderCompletion(params: {
     if (!meta.stockDeducted) {
       const qtyByProduct = new Map<string, number>();
       for (const item of freshOrder.items) {
+        if (!item.productId) continue;
         qtyByProduct.set(
           item.productId,
           (qtyByProduct.get(item.productId) || 0) + Number(item.quantity || 1)
