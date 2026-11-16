@@ -37,55 +37,60 @@ export async function PATCH(
       );
     }
 
-    const resolvedCarrier = (carrier || existingOrder.carrier || "Royal Mail Tracked").trim();
+    const ord = existingOrder as any;
+    const resolvedCarrier = (carrier || ord.carrier || "Royal Mail Tracked").trim();
     if (status === "SHIPPED" && (!trackingNumber || !trackingNumber.trim())) {
-      trackingNumber = existingOrder.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`;
+      trackingNumber = ord.trackingNumber || `GB${Date.now().toString().slice(-8)}RY`;
     }
 
     const isNewlyShipped =
       status === "SHIPPED" &&
-      (existingOrder.status !== "SHIPPED" ||
-        existingOrder.trackingNumber !== trackingNumber);
+      (ord.status !== "SHIPPED" ||
+        ord.trackingNumber !== trackingNumber);
 
-    const billingObj = (existingOrder.billingAddress || {}) as Record<string, any>;
+    const billingObj = (ord.billingAddress || {}) as Record<string, any>;
     const meta = (billingObj._meta || {}) as Record<string, any>;
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: existingOrder.id },
-      data: {
-        status,
-        fulfillmentStatus:
-          status === "SHIPPED" || status === "DELIVERED"
-            ? "FULFILLED"
-            : existingOrder.fulfillmentStatus,
-        trackingNumber: trackingNumber?.trim() || null,
-        carrier: resolvedCarrier || null,
-        trackingUrl: trackingUrl?.trim() || null,
-        shippedAt:
-          status === "SHIPPED"
-            ? existingOrder.shippedAt ?? new Date()
-            : existingOrder.shippedAt,
-        billingAddress: {
-          ...billingObj,
-          _meta: {
-            ...meta,
-            carrier: resolvedCarrier,
-            fulfillment:
-              status === "DELIVERED"
-                ? "Delivered"
-                : status === "SHIPPED"
-                ? "Dispatched"
-                : "Ready for Dispatch",
-            currentStatus:
-              status === "DELIVERED"
-                ? "DELIVERED"
-                : status === "SHIPPED"
-                ? "IN_TRANSIT"
-                : "DISPATCH_PENDING",
-            dispatchEmailSent: isNewlyShipped ? true : Boolean(meta.dispatchEmailSent),
-          },
+    const updateData: any = {
+      status,
+      fulfillmentStatus:
+        status === "SHIPPED" || status === "DELIVERED"
+          ? "FULFILLED"
+          : ord.fulfillmentStatus,
+      trackingNumber: trackingNumber?.trim() || null,
+      carrier: resolvedCarrier || null,
+      trackingUrl: trackingUrl?.trim() || null,
+      billingAddress: {
+        ...billingObj,
+        _meta: {
+          ...meta,
+          carrier: resolvedCarrier,
+          fulfillment:
+            status === "DELIVERED"
+              ? "Delivered"
+              : status === "SHIPPED"
+              ? "Dispatched"
+              : "Ready for Dispatch",
+          currentStatus:
+            status === "DELIVERED"
+              ? "DELIVERED"
+              : status === "SHIPPED"
+              ? "IN_TRANSIT"
+              : "DISPATCH_PENDING",
+          dispatchEmailSent: isNewlyShipped ? true : Boolean(meta.dispatchEmailSent),
         },
       },
+    };
+
+    if (status === "SHIPPED") {
+      updateData.shippedAt = ord.shippedAt ?? new Date();
+    } else if (ord.shippedAt) {
+      updateData.shippedAt = ord.shippedAt;
+    }
+
+    const updatedOrder: any = await prisma.order.update({
+      where: { id: ord.id },
+      data: updateData,
       include: { items: true },
     });
 
@@ -106,6 +111,7 @@ export async function PATCH(
 
       if (resolvedCustomerEmail) {
         try {
+          const rawItems = Array.isArray(updatedOrder.items) ? updatedOrder.items : [];
           await sendOrderShippedEmail({
             orderNumber: updatedOrder.orderNumber,
             customerName: resolvedCustomerName,
@@ -118,9 +124,9 @@ export async function PATCH(
             trackingNumber: updatedOrder.trackingNumber,
             carrier: updatedOrder.carrier,
             trackingUrl: updatedOrder.trackingUrl,
-            items: updatedOrder.items.map((i) => ({
+            items: rawItems.map((i: any) => ({
               productName: i.productName || i.productTitle || "Rycarix Product",
-              quantity: i.quantity,
+              quantity: Number(i.quantity || 1),
               price: (i.price || i.unitPrice || 0).toString(),
             })),
           });
